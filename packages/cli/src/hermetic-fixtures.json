@@ -1,0 +1,5 @@
+{
+  "mock.search": { "hits": [], "found": 0 },
+  "mock.embed": [0, 0, 0, 0, 0, 0, 0, 0],
+  "mock.complete": "stubbed"
+}

@@ -1,0 +1,11 @@
+node_modules/
+.next/
+.turbo/
+.vercel/
+dist/
+bun.lock
+.env
+.env.local
+apps/*/.env
+apps/*/.env.local
+*.log

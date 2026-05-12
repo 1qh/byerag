@@ -1,0 +1,6 @@
+@import '@a/ui/globals.css';
+@source '../../../../readonly/ui/src';
+@source '..';
+[data-verbosity='clean'] [data-verbose='debug'] {
+  display: none;
+}

@@ -1,0 +1,12 @@
+node_modules
+.next
+.turbo
+apps/*/node_modules
+apps/*/.next
+apps/*/.turbo
+packages/*/node_modules
+readonly/*/node_modules
+dist
+build
+coverage
+*.tsbuildinfo

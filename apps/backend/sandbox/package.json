@@ -1,0 +1,14 @@
+{
+  "name": "sandbox-agent",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "latest",
+    "@anthropic-ai/claude-code": "latest",
+    "@anthropic-ai/claude-code-linux-x64": "latest",
+    "convex": "latest"
+  },
+  "trustedDependencies": [
+    "@anthropic-ai/claude-code"
+  ]
+}

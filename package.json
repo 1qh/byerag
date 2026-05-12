@@ -1,0 +1,56 @@
+{
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "readonly/ui"
+  ],
+  "scripts": {
+    "action": "sh up.sh",
+    "build": "turbo build --output-logs=errors-only",
+    "check": "lintmax check",
+    "clean": "sh clean.sh",
+    "deploy": "bun --filter=backend run deploy",
+    "dev": "turbo dev",
+    "fix": "lintmax fix",
+    "postinstall": "sherif",
+    "new-app": "bun scripts/new-app.ts",
+    "prepare": "bunx simple-git-hooks",
+    "sync": "bun --filter=backend run sync",
+    "test": "bun --env-file=apps/backend/.env test apps/backend packages/cli && bun --filter='./packages/react' run test && bun --filter='./apps/*' run test",
+    "test:e2e": "bun --env-file=apps/backend/.env test --parallel=1 apps/*/tests-e2e/"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "sh up.sh && git add -u"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.133",
+    "@google/genai": "^2.0.0"
+  },
+  "devDependencies": {
+    "@anthropic-ai/claude-code": "latest",
+    "@anthropic-ai/claude-code-linux-x64": "^2.1.119",
+    "@happy-dom/global-registrator": "latest",
+    "@testing-library/dom": "latest",
+    "@testing-library/react": "latest",
+    "@vercel/sdk": "^1.19.40",
+    "convex-test": "latest",
+    "drizzle-kit": "latest",
+    "fast-check": "^4.7.0",
+    "lintmax": "latest",
+    "sherif": "latest",
+    "simple-git-hooks": "latest",
+    "tsdown": "latest",
+    "turbo": "latest",
+    "typescript": "latest",
+    "unrun": "latest"
+  },
+  "packageManager": "bun@1.3.13",
+  "trustedDependencies": [
+    "esbuild",
+    "lintmax",
+    "msw",
+    "sharp",
+    "simple-git-hooks"
+  ]
+}

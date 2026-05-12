@@ -1,0 +1,19 @@
+{
+  "name": "@a/cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./codegen": "./src/codegen/index.ts",
+    "./load-hermetic-fixtures": "./src/load-hermetic-fixtures.ts"
+  },
+  "bin": {
+    "x": "./bin/x.ts",
+    "x-codegen": "./bin/x-codegen.ts"
+  },
+  "dependencies": {
+    "convex": "latest",
+    "typescript": "latest"
+  }
+}

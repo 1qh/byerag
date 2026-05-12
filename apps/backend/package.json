@@ -1,0 +1,58 @@
+{
+  "name": "backend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./convex/_generated/api": {
+      "types": "./convex/_generated/api.d.ts",
+      "default": "./convex/_generated/api.js"
+    },
+    "./convex/_generated/dataModel": {
+      "types": "./convex/_generated/dataModel.d.ts",
+      "default": "./convex/_generated/dataModel.d.ts"
+    },
+    "./convex/streamProtocol": "./convex/streamProtocol.ts",
+    "./convex/constants": "./convex/constants.ts",
+    "./convex/env": "./convex/env.ts",
+    "./convex/tools/_api": "./convex/tools/_api.ts",
+    "./convex/apps/types": "./convex/apps/types.ts",
+    "./convex/tools/generated/registry": "./convex/tools/generated/registry.ts",
+    "./convex/tools/generated/toolCallers": "./convex/tools/generated/toolCallers.ts",
+    "./convex/tools/generated/toolTypes": "./convex/tools/generated/toolTypes.ts",
+    "./convex/_generated/server": {
+      "types": "./convex/_generated/server.d.ts",
+      "default": "./convex/_generated/server.js"
+    },
+    "./test-utils/setup": "./test-utils/setup.ts",
+    "./test-utils/convex": "./test-utils/convex.ts",
+    "./test-utils/messages-helpers": "./test-utils/messages-helpers.ts"
+  },
+  "scripts": {
+    "build": "bun run codegen",
+    "build-agent": "bun build-agent.ts",
+    "canary:sandbox": "bun scripts/canary-sandbox.ts",
+    "check:convex-deploy": "bun scripts/check-convex-deploy.ts",
+    "check:convex-names": "bun scripts/check-convex-names.ts",
+    "check:schema": "bun scripts/check-schema-migration.ts",
+    "codegen": "q bun ../../packages/cli/bin/x-codegen.ts && q bun run docgen",
+    "codegen:convex": "q bunx convex codegen --typecheck disable",
+    "coverage": "bun test --coverage",
+    "deploy": "bun run build-agent && bun run codegen:convex && bun run codegen && bunx convex dev --once && rm -f .env.local",
+    "docgen": "bun ../../packages/cli/bin/x-docgen.ts",
+    "mutate": "bun scripts/mutate-test.ts",
+    "smoke:sendgrid": "bun --env-file=./.env scripts/smoke-sendgrid.ts",
+    "sync": "bun scripts/sync.ts"
+  },
+  "dependencies": {
+    "@a/cli": "workspace:*",
+    "@anthropic-ai/claude-agent-sdk": "latest",
+    "@anthropic-ai/sdk": "latest",
+    "@auth/core": "^0.41",
+    "@convex-dev/auth": "latest",
+    "convex": "latest",
+    "e2b": "2.19.0",
+    "react": "latest",
+    "zod": "latest"
+  }
+}

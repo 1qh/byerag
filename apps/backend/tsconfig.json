@@ -1,0 +1,17 @@
+{
+  "extends": "lintmax/tsconfig",
+  "compilerOptions": {
+    "strict": true,
+    "jsx": "react-jsx",
+    "types": ["node", "bun-types"],
+    "allowSyntheticDefaultImports": true,
+    "lib": ["ES2023", "dom"],
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "paths": {
+      "@test-utils": ["./test-utils/setup.ts"],
+      "@test-utils/*": ["./test-utils/*"]
+    }
+  },
+  "exclude": ["./convex/_generated", "./convex/tools/generated", "node_modules", "dist"]
+}
