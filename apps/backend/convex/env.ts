@@ -3,19 +3,19 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-type-parameters */
 import { z } from 'zod/v4'
 const schema = z.object({
-  ANTHROPIC_API_KEY: z.string().min(1),
-  CONVEX_SELF_HOSTED_URL: z.url().startsWith('https://'),
-  CONVEX_SITE_URL: z.url().startsWith('https://'),
-  E2B_API_KEY: z.string().min(1),
-  TEMPLATE_ID: z.string().min(1)
+  CONVEX_SELF_HOSTED_URL: z.url().startsWith('http'),
+  CONVEX_SITE_URL: z.url().startsWith('http'),
+  KIMI_API_KEY: z.string().min(1),
+  KIMI_BASE_URL: z.url().startsWith('https://'),
+  SANDBOX_IMAGE: z.string().min(1)
 })
 type EnvSchema = z.infer<typeof schema>
 const readRaw = (): Record<keyof EnvSchema, string | undefined> => ({
-  ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
   CONVEX_SELF_HOSTED_URL: process.env.CONVEX_SELF_HOSTED_URL,
   CONVEX_SITE_URL: process.env.CONVEX_SITE_URL,
-  E2B_API_KEY: process.env.E2B_API_KEY,
-  TEMPLATE_ID: process.env.TEMPLATE_ID
+  KIMI_API_KEY: process.env.KIMI_API_KEY,
+  KIMI_BASE_URL: process.env.KIMI_BASE_URL,
+  SANDBOX_IMAGE: process.env.SANDBOX_IMAGE
 })
 const env = new Proxy({} as EnvSchema, {
   get: (_, key: string) => schema.parse(readRaw())[key as keyof EnvSchema]

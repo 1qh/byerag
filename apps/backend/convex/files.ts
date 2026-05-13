@@ -3,9 +3,9 @@
 /* oxlint-disable eslint(max-params), eslint(no-control-regex) */
 'use node'
 import type { GenericActionCtx } from 'convex/server'
-import type { CommandResult, EntryInfo, Sandbox } from 'e2b'
 import { v } from 'convex/values'
 import type { DataModel } from './_generated/dataModel'
+import type { CommandResult, EntryInfo, Sandbox } from './sandboxClient'
 import { internal } from './_generated/api'
 import { internalAction } from './_generated/server'
 import {
@@ -68,9 +68,9 @@ const list = internalAction({
     withSandbox(ctx, email, path, async (sandbox, safePath) => {
       const entries: EntryInfo[] = await sandbox.files.list(safePath)
       return entries.map((e: EntryInfo) => {
-        const fileType: string = e.type ?? 'file'
+        const fileType: string = e.type
         const entry: FileEntry = { name: e.name, type: fileType }
-        if (fileType === 'file') entry.size = e.size
+        if (fileType === 'file' && typeof e.size === 'number') entry.size = e.size
         return entry
       })
     })

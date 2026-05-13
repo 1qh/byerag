@@ -152,7 +152,7 @@ const insertStreamEvent = internalMutation({
   },
   returns: v.null()
 })
-const stripSecretsForProxyLog = (s: string): string => redactSecrets(s).replaceAll(env.ANTHROPIC_API_KEY, '[REDACTED]')
+const stripSecretsForProxyLog = (s: string): string => redactSecrets(s).replaceAll(env.KIMI_API_KEY, '[REDACTED]')
 type MessageType = 'agent' | 'assistant' | 'error' | 'rate_limit_event' | 'result' | 'stream_event' | 'system' | 'user'
 const KNOWN_MSG_TYPES = new Set<MessageType>([
   'agent',
@@ -582,17 +582,19 @@ const anthropicProxy = httpAction(async (ctx, req) => {
   }
   let settledDoneOuter = false
   let upstream: string
+  const upstreamBase = new URL(env.KIMI_BASE_URL)
   try {
-    const candidate = new URL(upstreamPath, 'https://api.anthropic.com')
-    if (candidate.host !== 'api.anthropic.com') return jsonErr('invalid upstream', 400)
+    const candidate = new URL(upstreamPath, upstreamBase)
+    if (candidate.host !== upstreamBase.host) return jsonErr('invalid upstream', 400)
     upstream = candidate.toString()
   } catch {
     return jsonErr('invalid upstream', 400)
   }
-  const realKey = env.ANTHROPIC_API_KEY
+  const realKey = env.KIMI_API_KEY
   const forwardHeaders = new Headers()
   for (const [k, val] of req.headers.entries()) if (!SKIP_REQ_HEADERS.has(k.toLowerCase())) forwardHeaders.set(k, val)
-  forwardHeaders.set('x-api-key', realKey)
+  forwardHeaders.set('Authorization', `Bearer ${realKey}`)
+  forwardHeaders.delete('x-api-key')
   forwardHeaders.set('anthropic-version', clientVersion)
   const refundReservation = async (cause: string): Promise<void> => {
     if (reservedDayKey === null) return

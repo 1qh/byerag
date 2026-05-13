@@ -24,19 +24,16 @@
     "pre-commit": "sh up.sh && git add -u"
   },
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.2.133",
-    "@google/genai": "^2.0.0"
+    "@anthropic-ai/claude-agent-sdk": "latest"
   },
   "devDependencies": {
     "@anthropic-ai/claude-code": "latest",
-    "@anthropic-ai/claude-code-linux-x64": "^2.1.119",
     "@happy-dom/global-registrator": "latest",
     "@testing-library/dom": "latest",
     "@testing-library/react": "latest",
-    "@vercel/sdk": "^1.19.40",
     "convex-test": "latest",
     "drizzle-kit": "latest",
-    "fast-check": "^4.7.0",
+    "fast-check": "latest",
     "lintmax": "latest",
     "sherif": "latest",
     "simple-git-hooks": "latest",

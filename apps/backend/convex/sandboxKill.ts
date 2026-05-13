@@ -1,16 +1,15 @@
-/** biome-ignore-all lint/performance/noAwaitInLoops: sequential E2B kills */
+/** biome-ignore-all lint/performance/noAwaitInLoops: sequential sandbox kills */
 /* eslint-disable no-await-in-loop */
 /* oxlint-disable eslint(no-await-in-loop) */
 'use node'
 import { v } from 'convex/values'
-import { Sandbox } from 'e2b'
 import { internal } from './_generated/api'
 import { internalAction } from './_generated/server'
-import { env } from './env'
+import { killSandbox } from './sandboxClient'
 const KILL_NOT_FOUND_RE = /404|not.{0,3}found|no such/iu
 const killOne = async (sandboxId: string): Promise<{ done: boolean; reason?: string }> => {
   try {
-    await Sandbox.kill(sandboxId, { apiKey: env.E2B_API_KEY })
+    await killSandbox(sandboxId)
     return { done: true }
   } catch (caughtError) {
     const msg = caughtError instanceof Error ? caughtError.message : String(caughtError)

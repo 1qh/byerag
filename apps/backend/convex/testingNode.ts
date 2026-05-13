@@ -1,14 +1,13 @@
 /** biome-ignore-all lint/style/noProcessEnv: TEST_SECRET standalone test env */
 /** biome-ignore-all lint/complexity/useLiteralKeys: env bracket */
-/** biome-ignore-all lint/performance/noAwaitInLoops: sequential E2B kill loop */
+/** biome-ignore-all lint/performance/noAwaitInLoops: sequential sandbox kill loop */
 /* eslint-disable @typescript-eslint/dot-notation, no-await-in-loop */
 /* oxlint-disable eslint(dot-notation), eslint(no-await-in-loop) */
 'use node'
 import { v } from 'convex/values'
-import { Sandbox } from 'e2b'
 import { internal } from './_generated/api'
 import { action } from './_generated/server'
-import { env } from './env'
+import { killSandbox, listSandboxIds } from './sandboxClient'
 import { constantTimeEqual } from './utils'
 const verifyTestSecret = (secret: string) => {
   // biome-ignore lint/nursery/noUndeclaredEnvVars: NODE_ENV=test (in-process bun:test) OR ALLOW_TESTING_ENDPOINTS=1 (real backend opt-in)
@@ -26,18 +25,15 @@ const killAllSandboxes = action({
       testSecret
     })
     let killed = 0
-    const pager = Sandbox.list({ apiKey: env.E2B_API_KEY, query: { state: ['running', 'paused'] } })
-    while (pager.hasNext) {
-      const items = await pager.nextItems()
-      for (const s of items)
-        try {
-          await Sandbox.kill(s.sandboxId, { apiKey: env.E2B_API_KEY })
-          killed += 1
-        } catch {
-          /* Ignore */
-        }
-    }
-    for (const r of rows) await ctx.runMutation(internal.sandboxes.remove, { owner: r.owner })
+    const ids = await listSandboxIds()
+    for (const id of ids)
+      try {
+        await killSandbox(id)
+        killed += 1
+      } catch {
+        /* Ignore */
+      }
+    for (const r of rows) await ctx.runMutation(internal.sandboxes.remove, { owner: r.owner, sandboxId: r.sandboxId })
     await ctx.runMutation(internal.testing.clearStreamingFlagsInternal, { testSecret })
     return { killed }
   }

@@ -19,6 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     bsdmainutils \
   && rm -rf /var/lib/apt/lists/*
 RUN npm install -g bun@1.3.13 --silent && bun --version
+RUN userdel -r node 2>/dev/null || true
 RUN useradd -m -u 1000 -s /bin/bash agent && \
     mkdir -p /workspace /home/agent/.cache && \
     chown -R agent:agent /workspace /home/agent

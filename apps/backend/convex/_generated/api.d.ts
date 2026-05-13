@@ -7,24 +7,19 @@
  * To regenerate, run `npx convex dev`.
  * @module
  */
+
 import type * as agent from "../agent.js";
 import type * as agentScript from "../agentScript.js";
 import type * as apps__apps from "../apps/_apps.js";
 import type * as apps_manifest from "../apps/manifest.js";
 import type * as apps_types from "../apps/types.js";
-import type * as artifacts from "../artifacts.js";
 import type * as auth from "../auth.js";
 import type * as authHelpers from "../authHelpers.js";
-import type * as bookmarks from "../bookmarks.js";
 import type * as chatRuntime from "../chatRuntime.js";
 import type * as chats from "../chats.js";
 import type * as cliScript from "../cliScript.js";
 import type * as constants from "../constants.js";
-import type * as corridors from "../corridors.js";
-import type * as emails from "../emails.js";
-import type * as employees from "../employees.js";
 import type * as env from "../env.js";
-import type * as feedbacks from "../feedbacks.js";
 import type * as fileActions from "../fileActions.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
@@ -35,7 +30,6 @@ import type * as messages_proxyHelpers from "../messages/proxyHelpers.js";
 import type * as messages_sendCore from "../messages/sendCore.js";
 import type * as messages_streamHelpers from "../messages/streamHelpers.js";
 import type * as ownerSpend from "../ownerSpend.js";
-import type * as profiles from "../profiles.js";
 import type * as redactor from "../redactor.js";
 import type * as sandboxClient from "../sandboxClient.js";
 import type * as sandboxKill from "../sandboxKill.js";
@@ -57,33 +51,28 @@ import type * as tools__app_stream from "../tools/_app/stream.js";
 import type * as tools_generated_registry from "../tools/generated/registry.js";
 import type * as tools_generated_toolCallers from "../tools/generated/toolCallers.js";
 import type * as tools_generated_toolTypes from "../tools/generated/toolTypes.js";
-import type * as userArtifacts from "../userArtifacts.js";
 import type * as userContexts from "../userContexts.js";
 import type * as utils from "../utils.js";
+
 import type {
   ApiFromModules,
   FilterApi,
   FunctionReference,
 } from "convex/server";
+
 declare const fullApi: ApiFromModules<{
   agent: typeof agent;
   agentScript: typeof agentScript;
   "apps/_apps": typeof apps__apps;
   "apps/manifest": typeof apps_manifest;
   "apps/types": typeof apps_types;
-  artifacts: typeof artifacts;
   auth: typeof auth;
   authHelpers: typeof authHelpers;
-  bookmarks: typeof bookmarks;
   chatRuntime: typeof chatRuntime;
   chats: typeof chats;
   cliScript: typeof cliScript;
   constants: typeof constants;
-  corridors: typeof corridors;
-  emails: typeof emails;
-  employees: typeof employees;
   env: typeof env;
-  feedbacks: typeof feedbacks;
   fileActions: typeof fileActions;
   files: typeof files;
   http: typeof http;
@@ -94,7 +83,6 @@ declare const fullApi: ApiFromModules<{
   "messages/sendCore": typeof messages_sendCore;
   "messages/streamHelpers": typeof messages_streamHelpers;
   ownerSpend: typeof ownerSpend;
-  profiles: typeof profiles;
   redactor: typeof redactor;
   sandboxClient: typeof sandboxClient;
   sandboxKill: typeof sandboxKill;
@@ -116,10 +104,10 @@ declare const fullApi: ApiFromModules<{
   "tools/generated/registry": typeof tools_generated_registry;
   "tools/generated/toolCallers": typeof tools_generated_toolCallers;
   "tools/generated/toolTypes": typeof tools_generated_toolTypes;
-  userArtifacts: typeof userArtifacts;
   userContexts: typeof userContexts;
   utils: typeof utils;
 }>;
+
 /**
  * A utility for referencing Convex functions in your app's public API.
  *
@@ -132,6 +120,7 @@ export declare const api: FilterApi<
   typeof fullApi,
   FunctionReference<any, "public">
 >;
+
 /**
  * A utility for referencing Convex functions in your app's internal API.
  *
@@ -144,4 +133,5 @@ export declare const internal: FilterApi<
   typeof fullApi,
   FunctionReference<any, "internal">
 >;
+
 export declare const components: {};

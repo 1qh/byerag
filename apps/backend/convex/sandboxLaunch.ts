@@ -1,5 +1,5 @@
 'use node'
-import type { Sandbox } from 'e2b'
+import type { Sandbox } from './sandboxClient'
 import { CLAUDE_SESSIONS_PATH, CLAUDE_SHARED_MEMORY_PATH, CLAUDE_TMP_PATH } from './constants'
 import { env as siteEnv } from './env'
 import { redactSecrets } from './redactor'

@@ -1,7 +1,7 @@
 'use node'
-import type { Sandbox } from 'e2b'
 import { v } from 'convex/values'
 import { z } from 'zod/v4'
+import type { Sandbox } from './sandboxClient'
 import type { AgentSubtype } from './streamProtocol'
 import { internal } from './_generated/api'
 import { internalAction } from './_generated/server'
@@ -67,9 +67,10 @@ const run = internalAction({
       ])
       if (!lastUser) throw new Error('no user message to process')
       const parsed = userMessageContent.safeParse(JSON.parse(lastUser.content))
-      if (!(parsed.success && parsed.data.message.content[0]?.text))
-        throw new Error('last user message malformed or empty')
-      const { text } = parsed.data.message.content[0]
+      if (!parsed.success) throw new Error('last user message malformed or empty')
+      const first = parsed.data.message.content[0]
+      if (!first?.text) throw new Error('last user message malformed or empty')
+      const { text } = first
       if (sandboxDoc)
         try {
           await emit('sandbox_connect', { sandboxId: sandboxDoc.sandboxId })
@@ -94,8 +95,8 @@ const run = internalAction({
           owner: `sandbox-create:${email}`
         })
         if (!allowed) throw new Error('sandbox create rate limited')
-        await emit('sandbox_create', { template: env.TEMPLATE_ID })
-        sandbox = await createSandbox(env.TEMPLATE_ID, { timeoutMs: SANDBOX_TIMEOUT_MS })
+        await emit('sandbox_create', { template: env.SANDBOX_IMAGE })
+        sandbox = await createSandbox(env.SANDBOX_IMAGE, { timeoutMs: SANDBOX_TIMEOUT_MS })
         const result: { accepted: boolean; existingSandboxId?: string } = await ctx.runMutation(
           internal.sandboxes.upsert,
           { owner: email, sandboxId: sandbox.sandboxId }

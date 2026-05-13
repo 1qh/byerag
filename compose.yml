@@ -46,6 +46,7 @@ services:
       HTTP_SERVER_TIMEOUT_SECONDS: '86400'
     volumes:
       - convex-data:/convex/data
+      - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - '127.0.0.1:3210:3210'
       - '127.0.0.1:3211:3211'
