@@ -8,11 +8,13 @@ export default defineSchema({
     command: v.string(),
     mode: v.string(),
     ok: v.boolean(),
-    owner: v.string()
+    owner: v.string(),
+    severity: v.optional(v.union(v.literal('low'), v.literal('medium'), v.literal('high')))
   })
     .index('by_owner', ['owner'])
     .index('by_command', ['command'])
-    .index('by_owner_command', ['owner', 'command']),
+    .index('by_owner_command', ['owner', 'command'])
+    .index('by_severity', ['severity']),
   chatRuntime: defineTable({
     chatId: v.id('chats'),
     proxyCallsThisTurn: v.optional(v.number()),
@@ -110,6 +112,10 @@ export default defineSchema({
     policyReason: v.optional(v.string()),
     policyReviewRequestedAt: v.optional(v.number()),
     policyStatus: v.union(v.literal('pending'), v.literal('approved'), v.literal('rejected')),
+    scanCancelledAt: v.optional(v.number()),
+    scanOverrideSignature: v.optional(v.string()),
+    scanOverriddenAt: v.optional(v.number()),
+    scanOverriddenBy: v.optional(v.string()),
     scanStatus: v.union(v.literal('pending'), v.literal('clean'), v.literal('quarantined')),
     scope: v.union(v.literal('shared'), v.literal('mine')),
     sha256: v.string(),
@@ -129,6 +135,7 @@ export default defineSchema({
     .index('by_sha256_scope_owner', ['sha256', 'scope', 'owner'])
     .index('by_filename_scope_owner', ['filename', 'scope', 'owner'])
     .index('by_policyStatus', ['policyStatus'])
+    .index('by_scanOverriddenBy', ['scanOverriddenBy'])
     .vectorIndex('by_embedding', {
       dimensions: 768,
       filterFields: ['owner', 'scope'],
