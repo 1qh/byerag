@@ -4,9 +4,5 @@
   "type": "module",
   "scripts": {
     "start": "bun run src/server.ts"
-  },
-  "dependencies": {
-    "hono": "latest",
-    "clamscan": "latest"
   }
 }
