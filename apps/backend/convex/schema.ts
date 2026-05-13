@@ -96,6 +96,20 @@ export default defineSchema({
     lang: v.optional(v.string()),
     mime: v.string(),
     owner: v.optional(v.string()),
+    policyCategory: v.optional(
+      v.union(
+        v.literal('on-topic'),
+        v.literal('off-topic'),
+        v.literal('spam'),
+        v.literal('prompt-injection'),
+        v.literal('abusive'),
+        v.literal('promotional')
+      )
+    ),
+    policyOverriddenBy: v.optional(v.string()),
+    policyReason: v.optional(v.string()),
+    policyReviewRequestedAt: v.optional(v.number()),
+    policyStatus: v.union(v.literal('pending'), v.literal('approved'), v.literal('rejected')),
     scanStatus: v.union(v.literal('pending'), v.literal('clean'), v.literal('quarantined')),
     scope: v.union(v.literal('shared'), v.literal('mine')),
     sha256: v.string(),
@@ -114,6 +128,7 @@ export default defineSchema({
     .index('by_deletedAt', ['deletedAt'])
     .index('by_sha256_scope_owner', ['sha256', 'scope', 'owner'])
     .index('by_filename_scope_owner', ['filename', 'scope', 'owner'])
+    .index('by_policyStatus', ['policyStatus'])
     .vectorIndex('by_embedding', {
       dimensions: 768,
       filterFields: ['owner', 'scope'],
@@ -154,6 +169,12 @@ export default defineSchema({
   })
     .index('by_owner', ['owner'])
     .index('by_updatedAt', ['updatedAt']),
+  settings: defineTable({
+    key: v.string(),
+    updatedAt: v.number(),
+    updatedBy: v.string(),
+    value: v.string()
+  }).index('by_key', ['key']),
   sandboxes: defineTable({
     lastUsedAt: v.optional(v.number()),
     owner: v.string(),
