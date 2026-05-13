@@ -1,0 +1,113 @@
+name: byerag
+networks:
+  internal:
+    driver: bridge
+    internal: false
+  sandbox-egress:
+    driver: bridge
+    internal: true
+volumes:
+  postgres-data:
+  convex-data:
+  ollama-data:
+  clamav-data:
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: convex
+      POSTGRES_DB: convex_self_hosted
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks: [internal]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U convex -d convex_self_hosted']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+  convex-backend:
+    image: ghcr.io/get-convex/convex-backend:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      INSTANCE_SECRET_FILE: /run/secrets/convex_instance_secret
+      DB_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_URL: postgres://convex@postgres:5432/convex_self_hosted
+      DO_NOT_REQUIRE_SSL: '1'
+      CONVEX_CLOUD_ORIGIN: http://convex-backend:3210
+      CONVEX_SITE_ORIGIN: http://convex-backend:3211
+      ACTIONS_USER_TIMEOUT_SECS: '86400'
+      HTTP_SERVER_TIMEOUT_SECONDS: '86400'
+    secrets:
+      - postgres_password
+      - convex_instance_secret
+    volumes:
+      - convex-data:/convex/data
+    ports:
+      - '127.0.0.1:3210:3210'
+      - '127.0.0.1:3211:3211'
+    networks: [internal, sandbox-egress]
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:3210/version']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollama-data:/root/.ollama
+    networks: [internal]
+    healthcheck:
+      test: ['CMD', 'ollama', 'list']
+      interval: 30s
+      timeout: 10s
+      retries: 6
+  ollama-init:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ['sh', '-c', 'ollama pull nomic-embed-text:v2-moe && echo ok']
+    networks: [internal]
+    restart: 'no'
+  clamav:
+    image: clamav/clamav:latest
+    restart: unless-stopped
+    volumes:
+      - clamav-data:/var/lib/clamav
+    networks: [internal]
+    healthcheck:
+      test: ['CMD', 'clamdcheck.sh']
+      interval: 30s
+      timeout: 10s
+      retries: 12
+  scan:
+    build: ./apps/scan
+    restart: unless-stopped
+    depends_on:
+      clamav:
+        condition: service_healthy
+    environment:
+      CLAMD_HOST: clamav
+      CLAMD_PORT: '3310'
+      MAX_FILE_BYTES: '104857600'
+    networks: [internal]
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8080/healthz']
+      interval: 15s
+      timeout: 5s
+      retries: 6
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+  convex_instance_secret:
+    file: ./secrets/convex_instance_secret.txt

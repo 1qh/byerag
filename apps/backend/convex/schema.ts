@@ -72,23 +72,46 @@ export default defineSchema({
   })
     .index('by_hash', ['tokenHash'])
     .index('by_user', ['userId']),
+  docChunks: defineTable({
+    docId: v.id('docs'),
+    embedding: v.array(v.float64()),
+    end: v.number(),
+    seq: v.number(),
+    start: v.number(),
+    text: v.string()
+  })
+    .index('by_doc', ['docId'])
+    .index('by_doc_seq', ['docId', 'seq'])
+    .vectorIndex('by_embedding', {
+      dimensions: 768,
+      filterFields: ['docId'],
+      vectorField: 'embedding'
+    }),
   docs: defineTable({
+    deletedAt: v.optional(v.number()),
     embedding: v.optional(v.array(v.float64())),
+    extractedText: v.optional(v.string()),
     fileSize: v.number(),
     filename: v.string(),
+    lang: v.optional(v.string()),
     mime: v.string(),
     owner: v.optional(v.string()),
     scanStatus: v.union(v.literal('pending'), v.literal('clean'), v.literal('quarantined')),
     scope: v.union(v.literal('shared'), v.literal('mine')),
     sha256: v.string(),
-    storageId: v.id('_storage'),
+    storageId: v.optional(v.id('_storage')),
     summary: v.optional(v.string()),
+    supersededBy: v.optional(v.id('docs')),
+    supersedes: v.optional(v.id('docs')),
     uploadedAt: v.number(),
-    uploadedBy: v.string()
+    uploadedBy: v.string(),
+    version: v.number()
   })
     .index('by_scope', ['scope'])
     .index('by_owner', ['owner'])
     .index('by_scope_uploadedAt', ['scope', 'uploadedAt'])
+    .index('by_supersedes', ['supersedes'])
+    .index('by_deletedAt', ['deletedAt'])
     .vectorIndex('by_embedding', {
       dimensions: 768,
       filterFields: ['owner', 'scope'],
