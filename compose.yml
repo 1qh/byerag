@@ -90,22 +90,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 12
-  scan:
-    build: ./apps/scan
-    restart: unless-stopped
-    depends_on:
-      clamav:
-        condition: service_healthy
-    environment:
-      CLAMD_HOST: clamav
-      CLAMD_PORT: '3310'
-      MAX_FILE_BYTES: '104857600'
-    networks: [internal]
-    healthcheck:
-      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8080/healthz']
-      interval: 15s
-      timeout: 5s
-      retries: 6
 secrets:
   postgres_password:
     file: ./secrets/postgres_password.txt
