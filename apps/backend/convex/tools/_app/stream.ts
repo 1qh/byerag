@@ -195,21 +195,9 @@ const execStreamHttp = httpAction(async (ctx, req) => {
           Record<string, unknown>,
           WrappedResult
         >
-        if (entry.kind === 'action')
-          result = await ctx.runAction(
-            fn as FunctionReference<'action', 'internal', Record<string, unknown>, WrappedResult>,
-            toolArgs
-          )
-        else if (entry.kind === 'mutation')
-          result = await ctx.runMutation(
-            fn as FunctionReference<'mutation', 'internal', Record<string, unknown>, WrappedResult>,
-            toolArgs
-          )
-        else
-          result = await ctx.runQuery(
-            fn as FunctionReference<'query', 'internal', Record<string, unknown>, WrappedResult>,
-            toolArgs
-          )
+        if (entry.kind === 'action') result = await ctx.runAction(fn, toolArgs)
+        else if (entry.kind === 'mutation') result = await ctx.runMutation(fn, toolArgs)
+        else result = await ctx.runQuery(fn, toolArgs)
       } catch (error) {
         result = { error: toDispatchError(error), ok: false }
       }

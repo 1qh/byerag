@@ -9,3 +9,5 @@ bun.lock
 apps/*/.env
 apps/*/.env.local
 *.log
+secrets/
+apps/backend/test-fixtures/

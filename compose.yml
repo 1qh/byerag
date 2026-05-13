@@ -13,19 +13,17 @@ volumes:
   clamav-data:
 services:
   postgres:
-    image: postgres:18-alpine
+    image: postgres:17-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: convex
-      POSTGRES_DB: convex_self_hosted
-      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
-    secrets:
-      - postgres_password
+      POSTGRES_DB: byerag_self_hosted
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks: [internal]
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U convex -d convex_self_hosted']
+      test: ['CMD-SHELL', 'pg_isready -U convex -d byerag_self_hosted']
       interval: 10s
       timeout: 5s
       retries: 12
@@ -36,17 +34,17 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      INSTANCE_SECRET_FILE: /run/secrets/convex_instance_secret
-      DB_PASSWORD_FILE: /run/secrets/postgres_password
-      POSTGRES_URL: postgres://convex@postgres:5432/convex_self_hosted
-      DO_NOT_REQUIRE_SSL: '1'
-      CONVEX_CLOUD_ORIGIN: http://convex-backend:3210
-      CONVEX_SITE_ORIGIN: http://convex-backend:3211
+      INSTANCE_NAME: byerag-self-hosted
+      INSTANCE_SECRET: ${INSTANCE_SECRET}
+      DB_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_URL: ${POSTGRES_URL}
+      DISABLE_BEACON: 'true'
+      CONVEX_CLOUD_ORIGIN: ${CONVEX_CLOUD_ORIGIN}
+      CONVEX_SITE_ORIGIN: ${CONVEX_SITE_ORIGIN}
+      DO_NOT_REQUIRE_SSL: ${DO_NOT_REQUIRE_SSL}
+      RUST_LOG: ${RUST_LOG}
       ACTIONS_USER_TIMEOUT_SECS: '86400'
       HTTP_SERVER_TIMEOUT_SECONDS: '86400'
-    secrets:
-      - postgres_password
-      - convex_instance_secret
     volumes:
       - convex-data:/convex/data
     ports:
@@ -54,7 +52,7 @@ services:
       - '127.0.0.1:3211:3211'
     networks: [internal, sandbox-egress]
     healthcheck:
-      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:3210/version']
+      test: ['CMD', 'curl', '-f', 'http://localhost:3210/version']
       interval: 10s
       timeout: 5s
       retries: 12
@@ -90,8 +88,3 @@ services:
       interval: 30s
       timeout: 10s
       retries: 12
-secrets:
-  postgres_password:
-    file: ./secrets/postgres_password.txt
-  convex_instance_secret:
-    file: ./secrets/convex_instance_secret.txt

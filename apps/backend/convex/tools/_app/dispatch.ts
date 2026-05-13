@@ -60,7 +60,7 @@ interface ExecBody extends AuthBody {
   contextToken?: string
   path?: unknown
 }
-const BUSY_BYPASS = new Set<string>([])
+const BUSY_BYPASS = new Set<string>()
 type FnRef = FunctionReference<'action' | 'mutation' | 'query', 'internal', Record<string, unknown>, WrappedResult>
 interface MentionResolveErr {
   code: 'INVALID_ARG' | 'NOT_FOUND'
@@ -215,21 +215,9 @@ const callTool = async (opts: {
   kind: 'action' | 'mutation' | 'query'
 }): Promise<WrappedResult> => {
   let promise: Promise<WrappedResult>
-  if (opts.kind === 'mutation')
-    promise = opts.ctx.runMutation(
-      opts.fn as FunctionReference<'mutation', 'internal', Record<string, unknown>, WrappedResult>,
-      opts.args
-    )
-  else if (opts.kind === 'query')
-    promise = opts.ctx.runQuery(
-      opts.fn as FunctionReference<'query', 'internal', Record<string, unknown>, WrappedResult>,
-      opts.args
-    )
-  else
-    promise = opts.ctx.runAction(
-      opts.fn as FunctionReference<'action', 'internal', Record<string, unknown>, WrappedResult>,
-      opts.args
-    )
+  if (opts.kind === 'mutation') promise = opts.ctx.runMutation(opts.fn, opts.args)
+  else if (opts.kind === 'query') promise = opts.ctx.runQuery(opts.fn, opts.args)
+  else promise = opts.ctx.runAction(opts.fn, opts.args)
   const result = await promise
   return result
 }

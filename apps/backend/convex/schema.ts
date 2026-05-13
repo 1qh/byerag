@@ -190,12 +190,6 @@ export default defineSchema({
   })
     .index('by_owner', ['owner'])
     .index('by_updatedAt', ['updatedAt']),
-  settings: defineTable({
-    key: v.string(),
-    updatedAt: v.number(),
-    updatedBy: v.string(),
-    value: v.string()
-  }).index('by_key', ['key']),
   sandboxes: defineTable({
     lastUsedAt: v.optional(v.number()),
     owner: v.string(),
@@ -203,6 +197,12 @@ export default defineSchema({
   })
     .index('by_owner', ['owner'])
     .index('by_lastUsedAt', ['lastUsedAt']),
+  settings: defineTable({
+    key: v.string(),
+    updatedAt: v.number(),
+    updatedBy: v.string(),
+    value: v.string()
+  }).index('by_key', ['key']),
   streamEvents: defineTable({
     chatId: v.id('chats'),
     content: v.string(),
