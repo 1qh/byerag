@@ -112,6 +112,8 @@ export default defineSchema({
     .index('by_scope_uploadedAt', ['scope', 'uploadedAt'])
     .index('by_supersedes', ['supersedes'])
     .index('by_deletedAt', ['deletedAt'])
+    .index('by_sha256_scope_owner', ['sha256', 'scope', 'owner'])
+    .index('by_filename_scope_owner', ['filename', 'scope', 'owner'])
     .vectorIndex('by_embedding', {
       dimensions: 768,
       filterFields: ['owner', 'scope'],
