@@ -74,6 +74,20 @@ export default defineSchema({
   })
     .index('by_hash', ['tokenHash'])
     .index('by_user', ['userId']),
+  costRecords: defineTable({
+    cacheCreationInputTokens: v.number(),
+    cacheReadInputTokens: v.number(),
+    callCount: v.number(),
+    cents: v.number(),
+    dayKey: v.string(),
+    inputTokens: v.number(),
+    model: v.string(),
+    outputTokens: v.number(),
+    owner: v.string()
+  })
+    .index('by_owner_model_dayKey', ['owner', 'model', 'dayKey'])
+    .index('by_dayKey', ['dayKey'])
+    .index('by_owner_dayKey', ['owner', 'dayKey']),
   docChunks: defineTable({
     docId: v.id('docs'),
     embedding: v.array(v.float64()),
@@ -203,5 +217,11 @@ export default defineSchema({
     busyKind: v.optional(v.union(v.literal('agent'), v.literal('pipeline'))),
     busyUntil: v.optional(v.number()),
     userId: v.string()
-  }).index('by_user', ['userId'])
+  }).index('by_user', ['userId']),
+  userProfiles: defineTable({
+    department: v.optional(v.union(v.literal('HR'), v.literal('Sales'), v.literal('IT'))),
+    updatedAt: v.number(),
+    updatedBy: v.string(),
+    userId: v.string()
+  }).index('by_userId', ['userId'])
 })
