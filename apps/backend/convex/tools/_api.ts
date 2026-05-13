@@ -32,7 +32,7 @@ const convexBind = {
 const builder = createBuilder({
   authValidator: AUTH_VALIDATOR as Validator<ResolvedAuth, 'required', string>,
   cached: async ({ auth, ctx, toolPath, args, compute }) =>
-    projectCached(ctx, auth.owner, auth.mode, toolPath, args, compute),
+    projectCached({ args, compute, ctx, mode: auth.mode, owner: auth.owner, toolPath }),
   internalAction: convexBind.action,
   internalMutation: convexBind.mutation,
   internalQuery: convexBind.query

@@ -69,7 +69,7 @@ const requireOwnedChat = async ({ app, chatId, ctx, email }: RequireOwnedChatOpt
   const chat = await ctx.db.get(chatId)
   if (!chat) throw new Error('chat not found')
   if (chat.owner !== email) throw new Error('forbidden')
-  if (chat.app !== app) throw new Error(`app mismatch: chat belongs to ${chat.app ?? '?'}, not ${app}`)
+  if (chat.app !== app) throw new Error(`app mismatch: chat belongs to ${chat.app}, not ${app}`)
   return chat
 }
 const abort = mutation({

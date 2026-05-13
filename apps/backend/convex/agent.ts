@@ -115,7 +115,6 @@ const run = internalAction({
       })
       const pgidFile = `${CLAUDE_SESSIONS_PATH}/${chatId}/agent.pgid`
       if (!chat) throw new Error(`agent.run: chat ${chatId} not found`)
-      if (!chat.app) throw new Error(`agent.run: chat ${chatId} has no app id`)
       const app = resolveApp(chat.app)
       await prepareSandboxLayout(sandbox, {
         agentScript: AGENT_SCRIPT,

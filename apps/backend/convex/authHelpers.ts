@@ -65,30 +65,18 @@ interface ProfileLike {
   email_verified?: unknown
 }
 interface ValidateOpts {
-  allowed: Set<string>
   existingEmail: null | string
   profile: ProfileLike
-  publicSignin?: boolean
 }
-const validateProfileEmail = ({
-  profile,
-  allowed,
-  existingEmail,
-  publicSignin = false
-}: ValidateOpts): { canonicalEmail: string } => {
+const validateProfileEmail = ({ profile, existingEmail }: ValidateOpts): { canonicalEmail: string } => {
   const rawEmail = typeof profile.email === 'string' ? profile.email.toLowerCase() : ''
   const canonicalEmail = canonicalizeEmail(rawEmail)
-  if (!(canonicalEmail && rawEmail)) throw new Error('Email not allowed')
+  if (!(canonicalEmail && rawEmail)) throw new Error('Email missing or invalid')
   if (profile.email_verified === false) throw new Error('Email not verified by provider')
-  if (!publicSignin) {
-    if (allowed.size === 0) throw new Error('ALLOWED_EMAILS not configured — access denied')
-    if (!allowed.has(canonicalEmail)) throw new Error('Email not allowed')
-    if (existingEmail !== null) {
-      const canonicalExisting = canonicalizeEmail(existingEmail)
-      if (!canonicalExisting) throw new Error('Existing user missing email — access denied')
-      if (!allowed.has(canonicalExisting)) throw new Error('Email not allowed (re-checked)')
-      if (canonicalExisting !== canonicalEmail) throw new Error('Email mismatch — existing account vs current sign-in')
-    }
+  if (existingEmail !== null) {
+    const canonicalExisting = canonicalizeEmail(existingEmail)
+    if (canonicalExisting && canonicalExisting !== canonicalEmail)
+      throw new Error('Email mismatch — existing account vs current sign-in')
   }
   return { canonicalEmail }
 }

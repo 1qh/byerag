@@ -22,7 +22,7 @@ describe('canonicalizeEmail', () => {
     expect(canonicalizeEmail('notanemail')).toBe('notanemail')
   })
 })
-describe('parseAllowed', () => {
+describe('parseAllowed (used for BOOTSTRAP_ADMIN_EMAIL CSV)', () => {
   test('parses CSV and canonicalizes', () => {
     const s = parseAllowed('a.b@gmail.com, User+x@Example.com')
     expect(s.has('ab@gmail.com')).toBe(true)
@@ -58,52 +58,38 @@ describe('parseSiteUrls', () => {
   })
 })
 describe('validateProfileEmail', () => {
-  const allowed = new Set(['user@example.com'])
-  test('accepts allowed email with email_verified=true', () => {
+  test('accepts email with email_verified=true', () => {
     expect(
-      validateProfileEmail({ allowed, existingEmail: null, profile: { email: 'user@example.com', email_verified: true } })
+      validateProfileEmail({ existingEmail: null, profile: { email: 'user@example.com', email_verified: true } })
         .canonicalEmail
     ).toBe('user@example.com')
   })
-  test('accepts allowed email when email_verified is undefined (Google self-hosted profile)', () => {
-    expect(
-      validateProfileEmail({ allowed, existingEmail: null, profile: { email: 'user@example.com' } }).canonicalEmail
-    ).toBe('user@example.com')
+  test('accepts email when email_verified is undefined (Google self-hosted profile)', () => {
+    expect(validateProfileEmail({ existingEmail: null, profile: { email: 'user@example.com' } }).canonicalEmail).toBe(
+      'user@example.com'
+    )
   })
   test('rejects email_verified === false', () => {
     expect(() =>
-      validateProfileEmail({ allowed, existingEmail: null, profile: { email: 'user@example.com', email_verified: false } })
+      validateProfileEmail({ existingEmail: null, profile: { email: 'user@example.com', email_verified: false } })
     ).toThrow('Email not verified by provider')
   })
   test('rejects when email missing', () => {
-    expect(() => validateProfileEmail({ allowed, existingEmail: null, profile: {} })).toThrow('Email not allowed')
+    expect(() => validateProfileEmail({ existingEmail: null, profile: {} })).toThrow('Email missing or invalid')
   })
-  test('rejects when allowed set empty', () => {
-    expect(() =>
-      validateProfileEmail({ allowed: new Set(), existingEmail: null, profile: { email: 'user@example.com' } })
-    ).toThrow('ALLOWED_EMAILS not configured')
-  })
-  test('rejects when email not in allowlist', () => {
-    expect(() => validateProfileEmail({ allowed, existingEmail: null, profile: { email: 'evil@example.com' } })).toThrow(
-      'Email not allowed'
+  test('canonicalizes — gmail dots strip', () => {
+    expect(validateProfileEmail({ existingEmail: null, profile: { email: 'a.b@gmail.com' } }).canonicalEmail).toBe(
+      'ab@gmail.com'
     )
   })
-  test('canonicalizes before comparing — gmail dots strip', () => {
-    const allow = new Set(['ab@gmail.com'])
-    expect(
-      validateProfileEmail({ allowed: allow, existingEmail: null, profile: { email: 'a.b@gmail.com' } }).canonicalEmail
-    ).toBe('ab@gmail.com')
-  })
   test('rejects existing-user email mismatch', () => {
-    const allow = new Set(['other@example.com', 'user@example.com'])
     expect(() =>
-      validateProfileEmail({ allowed: allow, existingEmail: 'other@example.com', profile: { email: 'user@example.com' } })
+      validateProfileEmail({ existingEmail: 'other@example.com', profile: { email: 'user@example.com' } })
     ).toThrow('Email mismatch')
   })
   test('accepts existing-user with matching email', () => {
     expect(
-      validateProfileEmail({ allowed, existingEmail: 'user@example.com', profile: { email: 'user@example.com' } })
-        .canonicalEmail
+      validateProfileEmail({ existingEmail: 'user@example.com', profile: { email: 'user@example.com' } }).canonicalEmail
     ).toBe('user@example.com')
   })
 })
