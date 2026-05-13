@@ -220,8 +220,11 @@ export default defineSchema({
   }).index('by_user', ['userId']),
   userProfiles: defineTable({
     department: v.optional(v.union(v.literal('HR'), v.literal('Sales'), v.literal('IT'))),
+    role: v.union(v.literal('admin'), v.literal('user')),
     updatedAt: v.number(),
     updatedBy: v.string(),
     userId: v.string()
-  }).index('by_userId', ['userId'])
+  })
+    .index('by_userId', ['userId'])
+    .index('by_role', ['role'])
 })
