@@ -111,6 +111,13 @@ const docsGenerateUploadUrl = mutation({
     return ctx.storage.generateUploadUrl()
   }
 })
+const checkRateLimitProbe = action({
+  args: { max: v.number(), owner: v.string(), testSecret: v.string() },
+  handler: async (ctx, { max, owner, testSecret }): Promise<boolean> => {
+    verifyTestSecret(testSecret)
+    return ctx.runMutation(internal.lib.checkRateLimit, { max, owner })
+  }
+})
 const reserveBudgetProbe = action({
   args: { cents: v.number(), owner: v.string(), testSecret: v.string() },
   handler: async (
@@ -306,6 +313,7 @@ const listSandboxIds = internalQuery({
   }
 })
 export {
+  checkRateLimitProbe,
   clearStreamingFlagsInternal,
   countAuditLogs,
   countCostRecords,

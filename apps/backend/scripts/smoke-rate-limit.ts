@@ -3,6 +3,7 @@
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
 /** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
+
 import { ConvexHttpClient } from 'convex/browser'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -28,17 +29,9 @@ if (!(url && testSecret)) {
   process.exit(2)
 }
 const c = new ConvexHttpClient(url)
-const OWNER = `budget-cap-${Date.now()}@example.com`
-const DAILY_CENTS_CAP = 2500
-interface Probe {
-  centsToday: number
-  dayKey: string
-  ok: boolean
-  reason?: string
-}
-console.log(`[budget-cap] owner=${OWNER}`)
-console.log('[budget-cap] wipe owner spend')
-await c.mutation(api.testing.wipeAllForOwner, { email: OWNER, testSecret })
+const OWNER = `rate-limit-${Date.now()}@example.com`
+const MAX = 5
+console.log(`[rate-limit] owner=${OWNER} max=${MAX}`)
 let pass = 0
 let fail = 0
 const check = (label: string, ok: boolean, detail: string): void => {
@@ -46,15 +39,24 @@ const check = (label: string, ok: boolean, detail: string): void => {
   if (ok) pass += 1
   else fail += 1
 }
-console.log('[budget-cap] reserve 100c — under cap')
-const r1 = await c.action(api.testing.reserveBudgetProbe, { cents: 100, owner: OWNER, testSecret })
-check('reserve 100c ok', r1.ok, `centsToday=${r1.centsToday} reason=${r1.reason ?? '—'}`)
-console.log('[budget-cap] reserve 2400c — drives to cap')
-const r2 = await c.action(api.testing.reserveBudgetProbe, { cents: 2400, owner: OWNER, testSecret })
-check('reserve 2400c ok (at cap)', r2.ok && r2.centsToday === DAILY_CENTS_CAP, `centsToday=${r2.centsToday}`)
-console.log('[budget-cap] reserve 1c — past cap → must reject')
-const r3 = await c.action(api.testing.reserveBudgetProbe, { cents: 1, owner: OWNER, testSecret })
-check('reserve past cap rejected', !r3.ok && r3.reason === 'cap', `ok=${r3.ok} reason=${r3.reason ?? '—'}`)
-check('rejection preserves centsToday', r3.centsToday === DAILY_CENTS_CAP, `centsToday=${r3.centsToday}`)
-console.log(`\n[budget-cap] SUMMARY pass=${pass} fail=${fail} total=4`)
+const results: boolean[] = []
+for (let i = 1; i <= MAX + 2; i += 1) {
+  const allowed = await c.action(api.testing.checkRateLimitProbe, { max: MAX, owner: OWNER, testSecret })
+  results.push(allowed)
+  console.log(`  call ${i}: allowed=${allowed}`)
+}
+const firstN = results.slice(0, MAX)
+const overflow = results.slice(MAX)
+check(
+  'first MAX calls all allowed',
+  firstN.every(r => r),
+  `firstN=${JSON.stringify(firstN)}`
+)
+check(
+  'overflow calls rejected',
+  overflow.every(r => !r),
+  `overflow=${JSON.stringify(overflow)}`
+)
+check('total allowed === MAX', results.filter(r => r).length === MAX, `count=${results.filter(r => r).length}`)
+console.log(`\n[rate-limit] SUMMARY pass=${pass} fail=${fail} total=3`)
 if (fail > 0) process.exit(1)
