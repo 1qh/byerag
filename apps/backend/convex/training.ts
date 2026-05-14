@@ -345,6 +345,32 @@ const listPendingSuggestionsForAdmin = query({
     return out
   }
 })
+const listAttemptsForAdmin = query({
+  args: { topicId: v.id('topics'), userId: v.string() },
+  handler: async (ctx, { topicId, userId }) => {
+    const identity = await ctx.auth.getUserIdentity()
+    const email = identity?.email?.toLowerCase()
+    if (!email) return []
+    const profile = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', email))
+      .first()
+    if (profile?.role !== 'admin') return []
+    const rows = await ctx.db
+      .query('testAttempts')
+      .withIndex('by_user_topic', q => q.eq('userId', userId).eq('topicId', topicId))
+      .order('desc')
+      .take(50)
+    return rows.map(r => ({
+      _id: r._id,
+      finishedAt: r.finishedAt,
+      kind: r.kind,
+      score: r.score,
+      startedAt: r.startedAt,
+      status: r.status
+    }))
+  }
+})
 const rejectSuggestionPublic = mutation({
   args: { suggestionId: v.id('testQuestionSuggestions') },
   handler: async (ctx, { suggestionId }): Promise<void> => {
@@ -482,6 +508,7 @@ export {
   autoAssign,
   insertAuto,
   isAutoAssignEnabled,
+  listAttemptsForAdmin,
   listEligibleTopics,
   listMyTopics,
   listPendingSuggestionsForAdmin,

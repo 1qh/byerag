@@ -110,7 +110,13 @@ const DashboardPage = (): React.ReactElement => {
                   <td className="pr-3 text-muted-foreground">{u.department ?? '—'}</td>
                   {grade.topics.map(t => {
                     const cell = grade.cells.find(c => c.userId === u.userId && c.topicId === t._id)
-                    return <td key={t._id} className="px-2 text-center font-mono">{cell?.glyph ?? '·'}</td>
+                    return (
+                      <td key={t._id} className="px-2 text-center font-mono">
+                        <a href={`/users/${encodeURIComponent(u.userId)}/topics/${t._id}`} className="hover:underline">
+                          {cell?.glyph ?? '·'}
+                        </a>
+                      </td>
+                    )
                   })}
                 </tr>
               ))}
