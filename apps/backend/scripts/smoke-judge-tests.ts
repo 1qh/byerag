@@ -74,10 +74,10 @@ record(
   !(convexVersion.startsWith('HTTP') || convexVersion.startsWith('ERR')),
   convexVersion.slice(0, 200)
 )
-const ollamaTags = await fetch(`http://localhost:${ollamaPort}/api/tags`)
-  .then(async r => (r.ok ? r.json() : null))
-  .catch(() => null)
-const ollamaModels = (ollamaTags as null | { models?: { name?: string }[] })?.models?.map(m => m.name ?? '') ?? []
+const ollamaTags = (await fetch(`http://localhost:${ollamaPort}/api/tags`)
+  .then(async r => (r.ok ? ((await r.json()) as unknown) : null))
+  .catch(() => null)) as null | { models?: { name?: string }[] }
+const ollamaModels = ollamaTags?.models?.map(m => m.name ?? '') ?? []
 const hasNomic = ollamaModels.some(n => n.includes('nomic-embed-text-v2-moe'))
 record('B.ollama-nomic', 'Ollama serves nomic-embed-text-v2-moe', hasNomic, `models=${ollamaModels.join(', ')}`)
 console.log('\n[judge] C — Web apps reachable')
