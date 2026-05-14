@@ -1,7 +1,6 @@
 /** biome-ignore-all lint/style/noProcessEnv: env loader site */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: KIMI vars */
 /** biome-ignore-all lint/suspicious/useAwait: fetch chain */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 'use node'
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
