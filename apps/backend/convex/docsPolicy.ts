@@ -7,7 +7,6 @@
 /** biome-ignore-all lint/style/useExplicitLengthCheck: idiomatic */
 /** biome-ignore-all lint/correctness/noUnusedVariables: pending feature */
 /** biome-ignore-all lint/suspicious/useAwait: fetch chain */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 'use node'
 import { v } from 'convex/values'
 import { internal } from './_generated/api'

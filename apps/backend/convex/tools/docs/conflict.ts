@@ -6,7 +6,6 @@
 /** biome-ignore-all lint/style/useExplicitLengthCheck: idiomatic */
 /** biome-ignore-all lint/correctness/noUnusedVariables: pending feature */
 /* eslint-disable @typescript-eslint/only-throw-error -- fail() returns never (throws ToolError internally); rule misclassifies */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { Id } from '../../_generated/dataModel'
 import { internal } from '../../_generated/api'
 import { env } from '../../env'
