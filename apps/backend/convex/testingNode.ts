@@ -56,4 +56,11 @@ const docsSimilarProbe = action({
     return { dim, hits: r.map(h => ({ _id: h._id, _score: h._score })) }
   }
 })
-export { docsSimilarProbe, killAllSandboxes }
+const classifyProbeError = action({
+  args: { docId: v.id('docs'), testSecret: v.string() },
+  handler: async (ctx, { docId, testSecret }): Promise<{ classified: boolean; reason?: string }> => {
+    verifyTestSecret(testSecret)
+    return ctx.runAction(internal.docsPolicy.classify, { docId, simulateError: true })
+  }
+})
+export { classifyProbeError, docsSimilarProbe, killAllSandboxes }

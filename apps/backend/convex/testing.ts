@@ -111,6 +111,13 @@ const docsGenerateUploadUrl = mutation({
     return ctx.storage.generateUploadUrl()
   }
 })
+const resetPolicyPending = mutation({
+  args: { docId: v.id('docs'), testSecret: v.string() },
+  handler: async (ctx, { docId, testSecret }): Promise<void> => {
+    verifyTestSecret(testSecret)
+    await ctx.db.patch(docId, { policyCategory: undefined, policyReason: undefined, policyStatus: 'pending' })
+  }
+})
 const ageQuarantineRow = mutation({
   args: { ageMs: v.number(), docId: v.id('docs'), testSecret: v.string() },
   handler: async (ctx, { ageMs, docId, testSecret }): Promise<void> => {
@@ -413,6 +420,7 @@ export {
   removeChat,
   requestReviewProbe,
   reserveBudgetProbe,
+  resetPolicyPending,
   runQuarantinePurge,
   scanOverrideProbe,
   send,

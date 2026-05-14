@@ -556,6 +556,22 @@ const listShared = query({
   }
 })
 const PURGE_TTL_MS = 30 * 24 * 60 * 60 * 1000
+const markClassifierError = internalMutation({
+  args: { docId: v.id('docs'), reason: v.string() },
+  handler: async (ctx, { docId, reason }): Promise<void> => {
+    const doc = await ctx.db.get(docId)
+    if (!doc) return
+    await ctx.db.patch(docId, { policyReason: reason })
+    await ctx.db.insert('auditLogs', {
+      args: JSON.stringify({ docId, filename: doc.filename, reason }),
+      command: 'docs.classifierError',
+      mode: 'system',
+      ok: false,
+      owner: doc.uploadedBy,
+      severity: 'medium'
+    })
+  }
+})
 const purgeQuarantineStaging = internalMutation({
   args: {},
   handler: async (ctx): Promise<{ blobsPurged: number; rowsTouched: number }> => {
@@ -582,7 +598,6 @@ const purgeQuarantineStaging = internalMutation({
         } catch {
           // Already gone
         }
-
       await ctx.db.patch(doc._id, { scanCancelledAt: Date.now(), storageId: undefined })
       rowsTouched += 1
     }
@@ -640,6 +655,7 @@ export {
   listForQuarantine,
   listMine,
   listShared,
+  markClassifierError,
   persistChunks,
   purgeQuarantineStaging,
   purgeSoftDeleted,
