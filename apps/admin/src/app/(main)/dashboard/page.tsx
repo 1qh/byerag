@@ -7,7 +7,8 @@ const fmtCents = (cents: number): string => `$${(cents / 100).toFixed(2)}`
 const DashboardPage = (): React.ReactElement => {
   const top = useQuery(api.dashboard.topStrip)
   const pivot = useQuery(api.dashboard.costCyclePivot, {})
-  const grade = useQuery(api.dashboard.gradebook)
+  const [gradeNonce, setGradeNonce] = useState<null | number>(null)
+  const grade = useQuery(api.dashboard.gradebook, gradeNonce === null ? 'skip' : {})
   const assignAll = useMutation(api.trainingAssignments.assignAllForTopic)
   const unassignAll = useMutation(api.trainingAssignments.unassignAllForTopic)
   const rearm = useMutation(api.training.markTopicSubstantive)
@@ -27,8 +28,8 @@ const DashboardPage = (): React.ReactElement => {
         })
       })
   }
-  if (top === undefined || pivot === undefined || grade === undefined) return <div className='p-6'>Loading…</div>
-  if (top === null || grade === null) return <div className='p-6 text-destructive'>Admin role required.</div>
+  if (top === undefined || pivot === undefined) return <div className='p-6'>Loading…</div>
+  if (top === null) return <div className='p-6 text-destructive'>Admin role required.</div>
   return (
     <div className='space-y-8 p-6'>
       <section className='grid grid-cols-3 gap-4'>
@@ -79,69 +80,81 @@ const DashboardPage = (): React.ReactElement => {
         </table>
       </section>
       <section>
-        <h2 className='mb-2 font-semibold text-lg'>
-          Gradebook ({grade.users.length} × {grade.topics.length})
+        <h2 className='mb-2 flex items-center gap-3 font-semibold text-lg'>
+          Gradebook{grade ? ` (${grade.users.length} × ${grade.topics.length})` : ''}
+          <button
+            className='rounded border px-2 py-1 text-xs'
+            onClick={() => {
+              setGradeNonce(Date.now())
+            }}
+            type='button'>
+            {gradeNonce === null ? 'Load' : 'Refresh'}
+          </button>
         </h2>
-        {grade.topics.length === 0 ? (
-          <div className='text-muted-foreground'>No topics with pool ≥ 5 yet.</div>
-        ) : (
-          <table className='text-sm'>
-            <thead>
-              <tr className='border-b'>
-                <th className='py-2 pr-3 text-left'>User</th>
-                <th className='pr-3 text-left'>Dept</th>
-                {grade.topics.map(t => (
-                  <th className='px-2 text-center' key={t._id} title={t.name}>
-                    <div>{t.name.slice(0, 8)}</div>
-                    <div className='space-x-1'>
-                      <button
-                        className='rounded border px-1 text-xs disabled:opacity-50'
-                        disabled={busy.has(`${t._id}|assign`)}
-                        onClick={() => onTopicAction(t._id, 'assign')}
-                        title='Assign to all role=user'
-                        type='button'>
-                        +
-                      </button>
-                      <button
-                        className='rounded border px-1 text-xs disabled:opacity-50'
-                        disabled={busy.has(`${t._id}|rearm`)}
-                        onClick={() => onTopicAction(t._id, 'rearm')}
-                        title='Mark substantive — re-arm assigned passes'
-                        type='button'>
-                        ↻
-                      </button>
-                      <button
-                        className='rounded border px-1 text-xs disabled:opacity-50'
-                        disabled={busy.has(`${t._id}|unassign`)}
-                        onClick={() => onTopicAction(t._id, 'unassign')}
-                        title='Un-assign all'
-                        type='button'>
-                        ×
-                      </button>
-                    </div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {grade.users.map(u => (
-                <tr className='border-b' key={u.userId}>
-                  <td className='py-2 pr-3'>{u.userId}</td>
-                  <td className='pr-3 text-muted-foreground'>{u.department ?? '—'}</td>
-                  {grade.topics.map(t => {
-                    const cell = grade.cells.find(c => c.userId === u.userId && c.topicId === t._id)
-                    return (
-                      <td className='px-2 text-center font-mono' key={t._id}>
-                        <a className='hover:underline' href={`/users/${encodeURIComponent(u.userId)}/topics/${t._id}`}>
-                          {cell?.glyph ?? '·'}
-                        </a>
-                      </td>
-                    )
-                  })}
+        {grade ? (
+          grade.topics.length === 0 ? (
+            <div className='text-muted-foreground'>No topics with pool ≥ 5 yet.</div>
+          ) : (
+            <table className='text-sm'>
+              <thead>
+                <tr className='border-b'>
+                  <th className='py-2 pr-3 text-left'>User</th>
+                  <th className='pr-3 text-left'>Dept</th>
+                  {grade.topics.map(t => (
+                    <th className='px-2 text-center' key={t._id} title={t.name}>
+                      <div>{t.name.slice(0, 8)}</div>
+                      <div className='space-x-1'>
+                        <button
+                          className='rounded border px-1 text-xs disabled:opacity-50'
+                          disabled={busy.has(`${t._id}|assign`)}
+                          onClick={() => onTopicAction(t._id, 'assign')}
+                          title='Assign to all role=user'
+                          type='button'>
+                          +
+                        </button>
+                        <button
+                          className='rounded border px-1 text-xs disabled:opacity-50'
+                          disabled={busy.has(`${t._id}|rearm`)}
+                          onClick={() => onTopicAction(t._id, 'rearm')}
+                          title='Mark substantive — re-arm assigned passes'
+                          type='button'>
+                          ↻
+                        </button>
+                        <button
+                          className='rounded border px-1 text-xs disabled:opacity-50'
+                          disabled={busy.has(`${t._id}|unassign`)}
+                          onClick={() => onTopicAction(t._id, 'unassign')}
+                          title='Un-assign all'
+                          type='button'>
+                          ×
+                        </button>
+                      </div>
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {grade.users.map(u => (
+                  <tr className='border-b' key={u.userId}>
+                    <td className='py-2 pr-3'>{u.userId}</td>
+                    <td className='pr-3 text-muted-foreground'>{u.department ?? '—'}</td>
+                    {grade.topics.map(t => {
+                      const cell = grade.cells.find(c => c.userId === u.userId && c.topicId === t._id)
+                      return (
+                        <td className='px-2 text-center font-mono' key={t._id}>
+                          <a className='hover:underline' href={`/users/${encodeURIComponent(u.userId)}/topics/${t._id}`}>
+                            {cell?.glyph ?? '·'}
+                          </a>
+                        </td>
+                      )
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )
+        ) : (
+          <div className='text-muted-foreground'>{gradeNonce === null ? 'Click Load to fetch.' : 'Loading…'}</div>
         )}
       </section>
     </div>
