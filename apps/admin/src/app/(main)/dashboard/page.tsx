@@ -1,11 +1,23 @@
 'use client'
-import { useQuery } from 'convex/react'
+import { useMutation, useQuery } from 'convex/react'
 import { api } from 'backend/convex/_generated/api'
+import { useState } from 'react'
 const fmtCents = (cents: number): string => `$${(cents / 100).toFixed(2)}`
 const DashboardPage = (): React.ReactElement => {
   const top = useQuery(api.dashboard.topStrip)
   const pivot = useQuery(api.dashboard.costCyclePivot, {})
   const grade = useQuery(api.dashboard.gradebook)
+  const assignAll = useMutation(api.trainingAssignments.assignAllForTopic)
+  const unassignAll = useMutation(api.trainingAssignments.unassignAllForTopic)
+  const rearm = useMutation(api.training.markTopicSubstantive)
+  const [busy, setBusy] = useState<Set<string>>(new Set())
+  const onTopicAction = (topicId: string, kind: 'assign' | 'rearm' | 'unassign'): void => {
+    setBusy(p => new Set(p).add(`${topicId}|${kind}`))
+    const fn = kind === 'assign' ? assignAll : kind === 'unassign' ? unassignAll : rearm
+    fn({ topicId: topicId as never })
+      .catch((e: unknown) => alert(String(e)))
+      .finally(() => setBusy(p => { const n = new Set(p); n.delete(`${topicId}|${kind}`); return n }))
+  }
   if (top === undefined || pivot === undefined || grade === undefined) return <div className="p-6">Loading…</div>
   if (top === null || grade === null)
     return <div className="p-6 text-destructive">Admin role required.</div>
@@ -65,7 +77,29 @@ const DashboardPage = (): React.ReactElement => {
                 <th className="py-2 pr-3 text-left">User</th>
                 <th className="pr-3 text-left">Dept</th>
                 {grade.topics.map(t => (
-                  <th key={t._id} className="px-2 text-center" title={t.name}>{t.name.slice(0, 6)}</th>
+                  <th key={t._id} className="px-2 text-center" title={t.name}>
+                    <div>{t.name.slice(0, 8)}</div>
+                    <div className="space-x-1">
+                      <button
+                        type="button"
+                        className="rounded border px-1 text-xs disabled:opacity-50"
+                        title="Assign to all role=user"
+                        disabled={busy.has(`${t._id}|assign`)}
+                        onClick={() => onTopicAction(t._id, 'assign')}>+</button>
+                      <button
+                        type="button"
+                        className="rounded border px-1 text-xs disabled:opacity-50"
+                        title="Mark substantive — re-arm assigned passes"
+                        disabled={busy.has(`${t._id}|rearm`)}
+                        onClick={() => onTopicAction(t._id, 'rearm')}>↻</button>
+                      <button
+                        type="button"
+                        className="rounded border px-1 text-xs disabled:opacity-50"
+                        title="Un-assign all"
+                        disabled={busy.has(`${t._id}|unassign`)}
+                        onClick={() => onTopicAction(t._id, 'unassign')}>×</button>
+                    </div>
+                  </th>
                 ))}
               </tr>
             </thead>
