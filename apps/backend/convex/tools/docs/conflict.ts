@@ -84,7 +84,7 @@ const action = defineTool({
     'LLM-driven semantic conflict scan between two docs. Returns factual/wording/gap conflicts; excerpts grep-verified, hallucinated dropped, sorted factual-first.',
   errorCodes: ['FORBIDDEN', 'NOT_FOUND', 'UPSTREAM_ERROR'],
   examples: ['docs conflict --a kx7abc --b kx7def'],
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<unknown> => {
     const fail = makeFail('docs.conflict')
     const rowA = await ctx.runQuery(internal.docs.getForConflict, { docId: args.a as Id<'docs'> })
     if (!rowA) throw fail({ code: 'NOT_FOUND', message: `doc ${args.a} not found or no extracted text` })
