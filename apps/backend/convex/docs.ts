@@ -315,6 +315,23 @@ const listMine = query({
     }))
   }
 })
+const getCitationBadge = query({
+  args: { docId: v.id('docs') },
+  handler: async (
+    ctx,
+    { docId }
+  ): Promise<null | {
+    badge: 'deleted' | 'fresh' | 'superseded'
+    filename: string
+    supersededBy?: string
+    version: number
+  }> => {
+    const row = await ctx.db.get(docId)
+    if (!row) return null
+    const badge: 'deleted' | 'fresh' | 'superseded' = row.deletedAt ? 'deleted' : row.supersededBy ? 'superseded' : 'fresh'
+    return { badge, filename: row.filename, supersededBy: row.supersededBy, version: row.version }
+  }
+})
 const adminDeleteDoc = mutation({
   args: { docId: v.id('docs') },
   handler: async (ctx, { docId }): Promise<{ pendingSuggestionsCancelled: number; questionsSoftDeleted: number }> => {
@@ -652,6 +669,7 @@ export {
   adminScanOverride,
   findByFilename,
   findBySha256,
+  getCitationBadge,
   getForClassify,
   getForConflict,
   getForEmbed,
