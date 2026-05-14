@@ -15,9 +15,9 @@ const action = defineQuery({
     const cap = Math.min(args.bytes, MAX_BYTES)
     type DocRow = { _id: string; extractedText?: string; filename: string; lang?: string; mime: string; owner?: string; scope: 'mine' | 'shared'; version: number }
     const row = (await ctx.db.get(args.id as never)) as DocRow | null
-    if (!row) throw fail('NOT_FOUND', `doc ${args.id} not found`)
+    if (!row) fail('NOT_FOUND', `doc ${args.id} not found`)
     if (row.scope === 'mine' && row.owner !== ctx.auth.owner)
-      throw fail('FORBIDDEN', 'doc not in caller scope')
+      fail('FORBIDDEN', 'doc not in caller scope')
     const text = row.extractedText ?? ''
     return {
       _id: row._id,
