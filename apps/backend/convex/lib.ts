@@ -19,7 +19,7 @@ const RE_SHELL_SUBST = /\$[({A-Z_]/gu
 const RE_PIPE_SEMI = /[|;]/gu
 const RATE_LIMIT_WINDOW_MS = 60_000
 const RATE_LIMIT_MAX = 30
-const AUDIT_LOG_TTL_MS = 30 * 24 * 60 * 60 * 1000
+const AUDIT_LOG_TTL_MS = 90 * 24 * 60 * 60 * 1000
 const sanitizeForDisplay = (text: unknown, max = 4000): string => {
   if (typeof text !== 'string') return ''
   return text
