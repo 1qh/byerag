@@ -115,11 +115,9 @@ const ensureChatRuntime = mutation({
   args: { chatId: v.id('chats'), testSecret: v.string() },
   handler: async (ctx, { chatId, testSecret }): Promise<void> => {
     verifyTestSecret(testSecret)
-    const existing = await ctx.db
-      .query('chatRuntime')
-      .withIndex('by_chat', q => q.eq('chatId', chatId))
-      .first()
-    if (existing) await ctx.db.patch(existing._id, { proxyCallsThisTurn: 0, streamEventCount: 0 })
+    const query = ctx.db.query('chatRuntime').withIndex('by_chat', q => q.eq('chatId', chatId))
+    const existing: null | { _id: Id<'chatRuntime'> } = query.first()
+    if (existing?._id) await ctx.db.patch(existing._id, { proxyCallsThisTurn: 0, streamEventCount: 0 })
     else await ctx.db.insert('chatRuntime', { chatId, proxyCallsThisTurn: 0, streamEventCount: 0 })
   }
 })
@@ -270,6 +268,7 @@ const countAuditLogs = query({
 const docsFinalize = action({
   args: {
     filename: v.string(),
+    keepBoth: v.optional(v.boolean()),
     mime: v.string(),
     replace: v.optional(v.boolean()),
     scope: v.union(v.literal('shared'), v.literal('mine')),
