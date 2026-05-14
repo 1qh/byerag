@@ -70,7 +70,7 @@ const prepareSandboxLayout = async (
   const cliNames = opts.providers.map(p => p.replace(CLI_PREFIX_RE, '')).filter(n => PROVIDER_NAME_RE.test(n))
   const binDir = `${HOME}/.bun/bin`
   const writeWrapper = (n: string): string =>
-    `rm -f '${binDir}/${n}'; { printf '#!/bin/sh\\nexec node ${AGENT_CLI_PATH} "$@"\\n' > '${binDir}/${n}'; chmod +x '${binDir}/${n}'; }`
+    `rm -f '${binDir}/${n}'; { printf '#!/bin/sh\\nexec node ${AGENT_CLI_PATH} ${n} "$@"\\n' > '${binDir}/${n}'; chmod +x '${binDir}/${n}'; }`
   const parts = [
     `mkdir -p '${binDir}'`,
     `chmod +x ${CLAUDE_CLI_PATH} 2>/dev/null || true`,
