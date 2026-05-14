@@ -20,6 +20,7 @@ import type * as chats from "../chats.js";
 import type * as cliScript from "../cliScript.js";
 import type * as constants from "../constants.js";
 import type * as costRecords from "../costRecords.js";
+import type * as crons from "../crons.js";
 import type * as docs from "../docs.js";
 import type * as docsEmbed from "../docsEmbed.js";
 import type * as docsExtract from "../docsExtract.js";
@@ -65,6 +66,7 @@ import type * as tools_docs_similar from "../tools/docs/similar.js";
 import type * as tools_generated_registry from "../tools/generated/registry.js";
 import type * as tools_generated_toolCallers from "../tools/generated/toolCallers.js";
 import type * as tools_generated_toolTypes from "../tools/generated/toolTypes.js";
+import type * as training from "../training.js";
 import type * as userContexts from "../userContexts.js";
 import type * as utils from "../utils.js";
 
@@ -87,6 +89,7 @@ declare const fullApi: ApiFromModules<{
   cliScript: typeof cliScript;
   constants: typeof constants;
   costRecords: typeof costRecords;
+  crons: typeof crons;
   docs: typeof docs;
   docsEmbed: typeof docsEmbed;
   docsExtract: typeof docsExtract;
@@ -132,6 +135,7 @@ declare const fullApi: ApiFromModules<{
   "tools/generated/registry": typeof tools_generated_registry;
   "tools/generated/toolCallers": typeof tools_generated_toolCallers;
   "tools/generated/toolTypes": typeof tools_generated_toolTypes;
+  training: typeof training;
   userContexts: typeof userContexts;
   utils: typeof utils;
 }>;

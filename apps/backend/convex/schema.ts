@@ -242,5 +242,120 @@ export default defineSchema({
     userId: v.string()
   })
     .index('by_userId', ['userId'])
-    .index('by_role', ['role'])
+    .index('by_role', ['role']),
+  topics: defineTable({
+    autoLabeled: v.boolean(),
+    centroid: v.optional(v.array(v.float64())),
+    createdAt: v.number(),
+    deletedAt: v.optional(v.number()),
+    lastSubstantiveUpdate: v.optional(v.number()),
+    name: v.string(),
+    poolCap: v.number()
+  })
+    .index('by_deletedAt', ['deletedAt'])
+    .index('by_name', ['name']),
+  testQuestions: defineTable({
+    choices: v.array(v.string()),
+    correctIndex: v.number(),
+    createdAt: v.number(),
+    createdBy: v.string(),
+    deleteReason: v.optional(
+      v.union(
+        v.literal('admin-retire'),
+        v.literal('agent-retire-conflict'),
+        v.literal('source-doc-cascade'),
+        v.literal('topic-cascade')
+      )
+    ),
+    deletedAt: v.optional(v.number()),
+    prompt: v.string(),
+    revision: v.number(),
+    sourceDocIds: v.array(v.id('docs')),
+    topicId: v.id('topics')
+  })
+    .index('by_topic', ['topicId'])
+    .index('by_topic_deletedAt', ['topicId', 'deletedAt'])
+    .index('by_deletedAt', ['deletedAt'])
+    .index('by_sourceDocIds', ['sourceDocIds']),
+  testQuestionSuggestions: defineTable({
+    choices: v.optional(v.array(v.string())),
+    correctIndex: v.optional(v.number()),
+    createdAt: v.number(),
+    hint: v.optional(v.string()),
+    kind: v.union(v.literal('new'), v.literal('revision'), v.literal('retire')),
+    pairKind: v.optional(v.union(v.literal('conflict'), v.literal('cap-swap'))),
+    pairedWith: v.optional(v.id('testQuestionSuggestions')),
+    prompt: v.optional(v.string()),
+    promptEmbedding: v.optional(v.array(v.float64())),
+    reason: v.optional(v.string()),
+    regenCount: v.number(),
+    resolvedAction: v.optional(v.union(v.literal('approve'), v.literal('reject'), v.literal('auto-rejected'))),
+    resolvedAt: v.optional(v.number()),
+    resolvedBy: v.optional(v.string()),
+    resolvedReason: v.optional(
+      v.union(v.literal('admin-action'), v.literal('source-doc-deleted'), v.literal('topic-deleted'))
+    ),
+    sourceDocIds: v.array(v.id('docs')),
+    status: v.union(v.literal('pending'), v.literal('resolved')),
+    targetQuestionId: v.optional(v.id('testQuestions')),
+    topicId: v.id('topics')
+  })
+    .index('by_topic_status', ['topicId', 'status'])
+    .index('by_pair', ['pairedWith'])
+    .index('by_target', ['targetQuestionId'])
+    .index('by_resolvedAt', ['resolvedAt']),
+  testAttempts: defineTable({
+    cancelledReason: v.optional(
+      v.union(v.literal('new-attempt-started'), v.literal('topic-deleted'), v.literal('assignment-cancelled'))
+    ),
+    durationMs: v.optional(v.number()),
+    finishedAt: v.optional(v.number()),
+    kind: v.union(v.literal('self'), v.literal('assigned')),
+    questionSnapshots: v.array(
+      v.object({
+        choicesShuffled: v.array(v.string()),
+        correctIndexShuffled: v.number(),
+        promptText: v.string(),
+        questionId: v.id('testQuestions'),
+        revision: v.number(),
+        sourceDocIds: v.array(v.id('docs')),
+        userAnswerIndex: v.optional(v.number())
+      })
+    ),
+    score: v.optional(v.number()),
+    startedAt: v.number(),
+    status: v.union(
+      v.literal('in-progress'),
+      v.literal('passed'),
+      v.literal('failed'),
+      v.literal('cancelled')
+    ),
+    topicId: v.id('topics'),
+    userId: v.string()
+  })
+    .index('by_user', ['userId'])
+    .index('by_user_topic', ['userId', 'topicId'])
+    .index('by_topic_status', ['topicId', 'status'])
+    .index('by_status_startedAt', ['status', 'startedAt']),
+  testAssignments: defineTable({
+    createdAt: v.number(),
+    createdBy: v.string(),
+    deletedAt: v.optional(v.number()),
+    deletedBy: v.optional(v.string()),
+    topicId: v.id('topics'),
+    userId: v.string()
+  })
+    .index('by_user_topic', ['userId', 'topicId'])
+    .index('by_topic_deletedAt', ['topicId', 'deletedAt'])
+    .index('by_user_deletedAt', ['userId', 'deletedAt']),
+  testPasses: defineTable({
+    attemptId: v.id('testAttempts'),
+    kind: v.union(v.literal('self'), v.literal('assigned')),
+    passedAt: v.number(),
+    topicId: v.id('topics'),
+    userId: v.string()
+  })
+    .index('by_user_topic_kind', ['userId', 'topicId', 'kind'])
+    .index('by_topic_kind_passedAt', ['topicId', 'kind', 'passedAt'])
+    .index('by_user', ['userId'])
 })
