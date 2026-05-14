@@ -137,7 +137,7 @@ const listMyTopics = query({
         .withIndex('by_user_topic_kind', q => q.eq('userId', userId).eq('topicId', t._id).eq('kind', 'self'))
         .collect()
       const myStatus = passRows[0] ? 'passed-assigned' : selfPassRows[0] ? 'passed-self' : 'not-attempted'
-      out.push({ _id: t._id, myStatus, name: t.name, poolSize: pool.length })
+      if (pool.length > 0) out.push({ _id: t._id, myStatus, name: t.name, poolSize: pool.length })
     }
     return out
   }

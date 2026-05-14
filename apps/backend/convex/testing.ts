@@ -970,6 +970,25 @@ const seedTestPass = mutation({
     })
   }
 })
+const listMyTopicsProbe = query({
+  args: { testSecret: v.string(), userId: v.string() },
+  handler: async (ctx, { testSecret, userId }): Promise<{ _id: string; name: string; poolSize: number }[]> => {
+    verifyTestSecret(testSecret)
+    const topics = await ctx.db
+      .query('topics')
+      .withIndex('by_deletedAt', q => q.eq('deletedAt', undefined))
+      .take(500)
+    const out: { _id: string; name: string; poolSize: number }[] = []
+    for (const t of topics) {
+      const pool = await ctx.db
+        .query('testQuestions')
+        .withIndex('by_topic_deletedAt', q => q.eq('topicId', t._id).eq('deletedAt', undefined))
+        .take(100)
+      if (pool.length > 0) out.push({ _id: t._id, name: t.name, poolSize: pool.length })
+    }
+    return out
+  }
+})
 const getSuggestionRow = query({
   args: { suggestionId: v.id('testQuestionSuggestions'), testSecret: v.string() },
   handler: async (ctx, { suggestionId, testSecret }) => {
@@ -1486,6 +1505,7 @@ export {
   listDocsByOwner,
   listFiles,
   listMessages,
+  listMyTopicsProbe,
   listQuestionsForTopic,
   listSandboxIds,
   listStreamEvents,
