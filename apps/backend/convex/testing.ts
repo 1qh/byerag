@@ -480,6 +480,69 @@ const seedCostRecord = mutation({
     })
   }
 })
+const assignAllForTopicProbe = mutation({
+  args: { adminEmail: v.string(), testSecret: v.string(), topicId: v.id('topics') },
+  handler: async (ctx, { topicId, adminEmail, testSecret }): Promise<{ assignmentsCreated: number }> => {
+    verifyTestSecret(testSecret)
+    const pool = await ctx.db
+      .query('testQuestions')
+      .withIndex('by_topic_deletedAt', q => q.eq('topicId', topicId).eq('deletedAt', undefined))
+      .take(6)
+    if (pool.length < 5) throw new Error(`pool too small: ${pool.length}/5`)
+    const users = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_role', q => q.eq('role', 'user'))
+      .take(2000)
+    let created = 0
+    for (const u of users) {
+      const passRows = await ctx.db
+        .query('testPasses')
+        .withIndex('by_user_topic_kind', q => q.eq('userId', u.userId).eq('topicId', topicId).eq('kind', 'assigned'))
+        .collect()
+      if (passRows[0]) continue
+      const exRows = await ctx.db
+        .query('testAssignments')
+        .withIndex('by_user_topic', q => q.eq('userId', u.userId).eq('topicId', topicId))
+        .filter(q => q.eq(q.field('deletedAt'), undefined))
+        .collect()
+      if (exRows[0]) continue
+      await ctx.db.insert('testAssignments', { createdAt: Date.now(), createdBy: adminEmail, topicId, userId: u.userId })
+      created += 1
+    }
+    return { assignmentsCreated: created }
+  }
+})
+const unassignAllForTopicProbe = mutation({
+  args: { adminEmail: v.string(), testSecret: v.string(), topicId: v.id('topics') },
+  handler: async (
+    ctx,
+    { topicId, adminEmail, testSecret }
+  ): Promise<{ assignmentsCancelled: number; inProgressCancelled: number }> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db
+      .query('testAssignments')
+      .withIndex('by_topic_deletedAt', q => q.eq('topicId', topicId).eq('deletedAt', undefined))
+      .take(2000)
+    const now = Date.now()
+    let cancelled = 0
+    let liveCancelled = 0
+    for (const r of rows) {
+      await ctx.db.patch(r._id, { deletedAt: now, deletedBy: adminEmail })
+      const liveRows = await ctx.db
+        .query('testAttempts')
+        .withIndex('by_user_topic', q => q.eq('userId', r.userId).eq('topicId', topicId))
+        .filter(q => q.eq(q.field('status'), 'in-progress'))
+        .collect()
+      const live = liveRows[0]
+      if (live) {
+        await ctx.db.patch(live._id, { cancelledReason: 'assignment-cancelled', status: 'cancelled' })
+        liveCancelled += 1
+      }
+      cancelled += 1
+    }
+    return { assignmentsCancelled: cancelled, inProgressCancelled: liveCancelled }
+  }
+})
 const adminDeleteTopicProbe = mutation({
   args: { adminEmail: v.string(), testSecret: v.string(), topicId: v.id('topics') },
   handler: async (
@@ -972,6 +1035,7 @@ export {
   adminDeleteTopicProbe,
   ageDocDeletedAt,
   ageQuarantineRow,
+  assignAllForTopicProbe,
   attemptDetailProbe,
   checkRateLimitProbe,
   clearStreamingFlagsInternal,
@@ -1023,6 +1087,7 @@ export {
   startAttemptProbe,
   submitAttemptProbe,
   topStripProbe,
+  unassignAllForTopicProbe,
   uploadFile,
   wipeAllForOwner,
   wipeCostRecords,

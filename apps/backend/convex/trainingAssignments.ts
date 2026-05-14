@@ -40,17 +40,17 @@ const assignAllForTopic = mutation({
       .take(2000)
     let created = 0
     for (const u of users) {
-      const existingPass = ctx.db
+      const passRows = await ctx.db
         .query('testPasses')
         .withIndex('by_user_topic_kind', q => q.eq('userId', u.userId).eq('topicId', topicId).eq('kind', 'assigned'))
-        .first()
-      if (existingPass) continue
-      const existing = ctx.db
+        .collect()
+      if (passRows[0]) continue
+      const existingRows = await ctx.db
         .query('testAssignments')
         .withIndex('by_user_topic', q => q.eq('userId', u.userId).eq('topicId', topicId))
         .filter(q => q.eq(q.field('deletedAt'), undefined))
-        .first()
-      if (existing) continue
+        .collect()
+      if (existingRows[0]) continue
       await ctx.db.insert('testAssignments', { createdAt: Date.now(), createdBy: adminEmail, topicId, userId: u.userId })
       created += 1
     }
@@ -77,11 +77,12 @@ const unassignAllForTopic = mutation({
     let cancelled = 0
     for (const r of rows) {
       await ctx.db.patch(r._id, { deletedAt: now, deletedBy: adminEmail })
-      const liveAttempt = ctx.db
+      const liveRows = await ctx.db
         .query('testAttempts')
         .withIndex('by_user_topic', q => q.eq('userId', r.userId).eq('topicId', topicId))
         .filter(q => q.eq(q.field('status'), 'in-progress'))
-        .first()
+        .collect()
+      const liveAttempt = liveRows[0]
       if (liveAttempt)
         await ctx.db.patch(liveAttempt._id, { cancelledReason: 'assignment-cancelled', status: 'cancelled' })
       cancelled += 1
