@@ -41,10 +41,11 @@ const action = defineQuery({
   examples: ['docs diff --a kx7abc --b kx7def'],
   handler: async (ctx, args) => {
     const fail = makeFail('FORBIDDEN', 'NOT_FOUND')
-    const rowA = await ctx.db.get(args.a as never)
+    type DocRow = { _id: string; extractedText?: string; filename: string; owner?: string; scope: 'mine' | 'shared' }
+    const rowA = (await ctx.db.get(args.a as never)) as DocRow | null
     if (!rowA) throw fail('NOT_FOUND', `doc ${args.a} not found`)
     if (!aclCheck(rowA, ctx.auth.owner)) throw fail('FORBIDDEN', 'doc A not in caller scope')
-    const rowB = await ctx.db.get(args.b as never)
+    const rowB = (await ctx.db.get(args.b as never)) as DocRow | null
     if (!rowB) throw fail('NOT_FOUND', `doc ${args.b} not found`)
     if (!aclCheck(rowB, ctx.auth.owner)) throw fail('FORBIDDEN', 'doc B not in caller scope')
     const linesA = (rowA.extractedText ?? '').split('\n')
