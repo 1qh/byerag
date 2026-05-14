@@ -130,11 +130,10 @@ const ASSISTANT_TEXT_RE = /"type":"text","text":"(?<txt>(?:[^"\\]|\\.)*)"/gu
 const extractAssistantText = (messages: Message[]): string => {
   const parts: string[] = []
   for (const m of messages)
-    if (m.type === 'assistant') {
+    if (m.type === 'assistant')
       for (const match of m.content.matchAll(ASSISTANT_TEXT_RE))
         if (match.groups?.txt)
           parts.push(match.groups.txt.replaceAll(String.raw`\n`, '\n').replaceAll(String.raw`\"`, '"'))
-    }
 
   return parts.join('\n')
 }
