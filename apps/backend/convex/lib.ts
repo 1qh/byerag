@@ -162,10 +162,11 @@ const setUserDepartment = mutation({
   handler: async (ctx, { userId, department }): Promise<void> => {
     const adminEmail = await requireAdminEmail(ctx)
     if (!adminEmail) throw new Error('admin only')
-    const row = ctx.db
+    const rows = await ctx.db
       .query('userProfiles')
       .withIndex('by_userId', q => q.eq('userId', userId))
-      .first()
+      .collect()
+    const row = rows[0]
     if (!row) throw new Error(`userProfiles row not found for ${userId}`)
     await ctx.db.patch(row._id, { department, updatedAt: Date.now(), updatedBy: adminEmail })
     await ctx.db.insert('auditLogs', {
@@ -183,10 +184,11 @@ const setUserRole = mutation({
   handler: async (ctx, { userId, role }): Promise<void> => {
     const adminEmail = await requireAdminEmail(ctx)
     if (!adminEmail) throw new Error('admin only')
-    const row = ctx.db
+    const rows = await ctx.db
       .query('userProfiles')
       .withIndex('by_userId', q => q.eq('userId', userId))
-      .first()
+      .collect()
+    const row = rows[0]
     if (!row) throw new Error(`userProfiles row not found for ${userId}`)
     if (row.role === 'admin' && role === 'user') {
       const otherAdmins = await ctx.db

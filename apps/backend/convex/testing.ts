@@ -118,6 +118,65 @@ const resetPolicyPending = mutation({
     await ctx.db.patch(docId, { policyCategory: undefined, policyReason: undefined, policyStatus: 'pending' })
   }
 })
+const seedUserProfile = mutation({
+  args: { role: v.union(v.literal('admin'), v.literal('user')), testSecret: v.string(), userId: v.string() },
+  handler: async (ctx, { userId, role, testSecret }): Promise<void> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', userId))
+      .collect()
+    const existing = rows[0]
+    if (existing) await ctx.db.patch(existing._id, { role, updatedAt: Date.now(), updatedBy: 'test-seed' })
+    else await ctx.db.insert('userProfiles', { role, updatedAt: Date.now(), updatedBy: 'test-seed', userId })
+  }
+})
+const setUserRoleProbe = mutation({
+  args: {
+    adminEmail: v.string(),
+    role: v.union(v.literal('admin'), v.literal('user')),
+    testSecret: v.string(),
+    userId: v.string()
+  },
+  handler: async (ctx, { userId, role, adminEmail, testSecret }): Promise<{ error?: string; ok: boolean }> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', userId))
+      .collect()
+    const row = rows[0]
+    if (!row) return { error: 'not-found', ok: false }
+    if (row.role === 'admin' && role === 'user') {
+      const adminRows = await ctx.db
+        .query('userProfiles')
+        .withIndex('by_role', q => q.eq('role', 'admin'))
+        .take(50)
+      if (adminRows.filter(a => a.userId !== userId).length === 0) return { error: 'cannot demote last admin', ok: false }
+    }
+    await ctx.db.patch(row._id, { role, updatedAt: Date.now(), updatedBy: adminEmail })
+    return { ok: true }
+  }
+})
+const countAdmins = query({
+  args: { testSecret: v.string() },
+  handler: async (ctx, { testSecret }): Promise<number> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_role', q => q.eq('role', 'admin'))
+      .collect()
+    return rows.length
+  }
+})
+const wipeUserProfiles = mutation({
+  args: { testSecret: v.string() },
+  handler: async (ctx, { testSecret }): Promise<number> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db.query('userProfiles').collect()
+    for (const r of rows) await ctx.db.delete(r._id)
+    return rows.length
+  }
+})
 const countChunksForDoc = query({
   args: { docId: v.id('docs'), testSecret: v.string() },
   handler: async (ctx, { docId, testSecret }): Promise<{ count: number; firstEnd?: number; firstStart?: number }> => {
@@ -438,6 +497,7 @@ export {
   checkRateLimitProbe,
   clearStreamingFlagsInternal,
   consumeProxyBudgetProbe,
+  countAdmins,
   countAuditLogs,
   countChunksForDoc,
   countCostRecords,
@@ -463,9 +523,12 @@ export {
   resetPolicyPending,
   runQuarantinePurge,
   scanOverrideProbe,
+  seedUserProfile,
   send,
   setChatStreaming,
+  setUserRoleProbe,
   uploadFile,
   wipeAllForOwner,
-  wipeDocs
+  wipeDocs,
+  wipeUserProfiles
 }
