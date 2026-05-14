@@ -118,6 +118,37 @@ const resetPolicyPending = mutation({
     await ctx.db.patch(docId, { policyCategory: undefined, policyReason: undefined, policyStatus: 'pending' })
   }
 })
+const setUserDepartmentProbe = mutation({
+  args: {
+    adminEmail: v.string(),
+    department: v.optional(v.union(v.literal('HR'), v.literal('IT'), v.literal('Sales'))),
+    testSecret: v.string(),
+    userId: v.string()
+  },
+  handler: async (ctx, { userId, department, adminEmail, testSecret }): Promise<{ ok: boolean }> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', userId))
+      .collect()
+    const row = rows[0]
+    if (!row) throw new Error('not found')
+    await ctx.db.patch(row._id, { department, updatedAt: Date.now(), updatedBy: adminEmail })
+    return { ok: true }
+  }
+})
+const getUserProfile = query({
+  args: { testSecret: v.string(), userId: v.string() },
+  handler: async (ctx, { userId, testSecret }): Promise<null | { department?: string; role: string }> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', userId))
+      .collect()
+    const r = rows[0]
+    return r ? { department: r.department ?? undefined, role: r.role } : null
+  }
+})
 const seedUserProfile = mutation({
   args: { role: v.union(v.literal('admin'), v.literal('user')), testSecret: v.string(), userId: v.string() },
   handler: async (ctx, { userId, role, testSecret }): Promise<void> => {
@@ -901,6 +932,7 @@ export {
   ensureChatRuntime,
   getChatStreaming,
   getDocRow,
+  getUserProfile,
   gradebookProbe,
   insertStreamEventProbe,
   listChats,
@@ -926,6 +958,7 @@ export {
   send,
   setChatStreaming,
   setSetting,
+  setUserDepartmentProbe,
   setUserRoleProbe,
   softDeleteDocProbe,
   startAttemptProbe,
