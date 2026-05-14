@@ -1,4 +1,5 @@
 'use client'
+import { cn } from '@a/ui'
 import { api } from 'backend/convex/_generated/api'
 import { useMutation, useQuery } from 'convex/react'
 import { useState } from 'react'
@@ -6,7 +7,9 @@ import { toast } from 'sonner'
 const fmtCents = (cents: number): string => `$${(cents / 100).toFixed(2)}`
 const DashboardPage = (): React.ReactElement => {
   const top = useQuery(api.dashboard.topStrip)
-  const pivot = useQuery(api.dashboard.costCyclePivot, {})
+  const history = useQuery(api.dashboard.costCycleHistory, { count: 6 })
+  const [selectedCycle, setSelectedCycle] = useState<string | undefined>(undefined)
+  const pivot = useQuery(api.dashboard.costCyclePivot, { cycleStart: selectedCycle })
   const [gradeNonce, setGradeNonce] = useState<null | number>(null)
   const grade = useQuery(api.dashboard.gradebook, gradeNonce === null ? 'skip' : {})
   const assignAll = useMutation(api.trainingAssignments.assignAllForTopic)
@@ -46,8 +49,44 @@ const DashboardPage = (): React.ReactElement => {
           <div className='font-bold text-2xl'>{top.docsInCorpus}</div>
         </div>
       </section>
+      {history && history.length > 0 ? (
+        <section>
+          <h2 className='mb-2 font-semibold text-lg'>Cost history (last {history.length} cycles)</h2>
+          <div className='flex items-end gap-2'>
+            {[...history].toReversed().map(c => {
+              const maxCents = Math.max(1, ...history.map(h => h.cents))
+              const heightPct = Math.max(2, (c.cents / maxCents) * 100)
+              return (
+                <button
+                  className={cn(
+                    'flex flex-col items-center gap-1 text-xs',
+                    selectedCycle === c.cycleStart && 'font-semibold'
+                  )}
+                  key={c.cycleStart}
+                  onClick={() => {
+                    setSelectedCycle(c.cycleStart === selectedCycle ? undefined : c.cycleStart)
+                  }}
+                  type='button'>
+                  <div className='text-muted-foreground'>{fmtCents(c.cents)}</div>
+                  <div
+                    className={cn(
+                      'w-12 rounded-t',
+                      c.isCurrent ? 'animate-pulse bg-primary/60' : 'bg-primary',
+                      selectedCycle === c.cycleStart && 'ring-2 ring-foreground'
+                    )}
+                    style={{ height: `${heightPct}px` }}
+                  />
+                  <div>{c.cycleStart.slice(5)}</div>
+                </button>
+              )
+            })}
+          </div>
+        </section>
+      ) : null}
       <section>
-        <h2 className='mb-2 font-semibold text-lg'>Cost pivot (current cycle)</h2>
+        <h2 className='mb-2 font-semibold text-lg'>
+          Cost pivot ({selectedCycle ? `cycle from ${selectedCycle}` : 'current cycle'})
+        </h2>
         <table className='w-full text-sm'>
           <thead>
             <tr className='border-b text-left'>

@@ -63,6 +63,27 @@ const topStrip = query({
     return { cycleCents, cycleStart: cycle.start, docsInCorpus, totalUsers }
   }
 })
+const costCycleHistory = query({
+  args: { count: v.optional(v.number()) },
+  handler: async (
+    ctx,
+    { count }
+  ): Promise<{ cents: number; cycleEnd: string; cycleStart: string; isCurrent: boolean }[]> => {
+    const adminEmail = await requireAdmin(ctx)
+    if (!adminEmail) return []
+    const n = Math.min(count ?? 6, 24)
+    const now = Date.now()
+    const cycles: { end: string; start: string }[] = []
+    for (let i = 0; i < n; i += 1) cycles.push(cycleStartFor(now - 30 * 86_400_000 * i, BILLING_CYCLE_ANCHOR_DAY))
+    const rows = await ctx.db.query('costRecords').take(10_000)
+    const todayCycle = cycleStartFor(now, BILLING_CYCLE_ANCHOR_DAY)
+    return cycles.map(c => {
+      let cents = 0
+      for (const r of rows) if (r.dayKey >= c.start && r.dayKey <= c.end) cents += r.cents
+      return { cents, cycleEnd: c.end, cycleStart: c.start, isCurrent: c.start === todayCycle.start }
+    })
+  }
+})
 const costCyclePivot = query({
   args: { cycleStart: v.optional(v.string()) },
   handler: async (
@@ -192,4 +213,4 @@ const gradebook = query({
     return { cells, colFooters, rowTotals, topics: topicsWithPool, users: usersSorted }
   }
 })
-export { costCyclePivot, gradebook, topStrip }
+export { costCycleHistory, costCyclePivot, gradebook, topStrip }
