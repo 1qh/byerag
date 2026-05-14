@@ -133,7 +133,7 @@ const gradebook = query({
     const cells: { glyph: '·' | '✓' | '✗' | 'ⓐ'; topicId: string; userId: string }[] = []
     for (const u of users)
       for (const t of topicsWithPool) {
-        const pass = ctx.db
+        const passRows = await ctx.db
           .query('testPasses')
           .withIndex('by_user_topic_kind', q =>
             q
@@ -141,8 +141,8 @@ const gradebook = query({
               .eq('topicId', t._id as never)
               .eq('kind', 'assigned')
           )
-          .first()
-        const selfPass = ctx.db
+          .collect()
+        const selfPassRows = await ctx.db
           .query('testPasses')
           .withIndex('by_user_topic_kind', q =>
             q
@@ -150,16 +150,17 @@ const gradebook = query({
               .eq('topicId', t._id as never)
               .eq('kind', 'self')
           )
-          .first()
-        if (pass || selfPass) {
+          .collect()
+        if (passRows[0] || selfPassRows[0]) {
           cells.push({ glyph: '✓', topicId: t._id, userId: u.userId })
           continue
         }
-        const assignment = ctx.db
+        const assignmentRows = await ctx.db
           .query('testAssignments')
           .withIndex('by_user_topic', q => q.eq('userId', u.userId).eq('topicId', t._id as never))
           .filter(q => q.eq(q.field('deletedAt'), undefined))
-          .first()
+          .collect()
+        const assignment = assignmentRows[0]
         if (!assignment) {
           cells.push({ glyph: '·', topicId: t._id, userId: u.userId })
           continue

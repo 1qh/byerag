@@ -181,6 +181,81 @@ const setSetting = mutation({
     else await ctx.db.insert('settings', { key, updatedAt: Date.now(), updatedBy: 'test', value })
   }
 })
+const gradebookProbe = query({
+  args: { testSecret: v.string() },
+  handler: async (
+    ctx,
+    { testSecret }
+  ): Promise<{
+    cells: { glyph: string; topicId: string; userId: string }[]
+    topics: { _id: string; name: string }[]
+    users: { userId: string }[]
+  }> => {
+    verifyTestSecret(testSecret)
+    const userRows = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_role', q => q.eq('role', 'user'))
+      .take(2000)
+    const users = userRows.map(u => ({ userId: u.userId }))
+    const topicRows = await ctx.db
+      .query('topics')
+      .withIndex('by_deletedAt', q => q.eq('deletedAt', undefined))
+      .take(500)
+    const topicsWithPool: { _id: string; name: string }[] = []
+    for (const t of topicRows) {
+      const pool = await ctx.db
+        .query('testQuestions')
+        .withIndex('by_topic_deletedAt', q => q.eq('topicId', t._id).eq('deletedAt', undefined))
+        .take(6)
+      if (pool.length >= 5) topicsWithPool.push({ _id: t._id, name: t.name })
+    }
+    const cells: { glyph: string; topicId: string; userId: string }[] = []
+    for (const u of users)
+      for (const t of topicsWithPool) {
+        const passes = await ctx.db
+          .query('testPasses')
+          .withIndex('by_user_topic_kind', q =>
+            q
+              .eq('userId', u.userId)
+              .eq('topicId', t._id as never)
+              .eq('kind', 'assigned')
+          )
+          .collect()
+        const selfPasses = await ctx.db
+          .query('testPasses')
+          .withIndex('by_user_topic_kind', q =>
+            q
+              .eq('userId', u.userId)
+              .eq('topicId', t._id as never)
+              .eq('kind', 'self')
+          )
+          .collect()
+        if (passes[0] || selfPasses[0]) {
+          cells.push({ glyph: '✓', topicId: t._id, userId: u.userId })
+          continue
+        }
+        const assigns = await ctx.db
+          .query('testAssignments')
+          .withIndex('by_user_topic', q => q.eq('userId', u.userId).eq('topicId', t._id as never))
+          .filter(q => q.eq(q.field('deletedAt'), undefined))
+          .collect()
+        const a = assigns[0]
+        if (!a) {
+          cells.push({ glyph: '·', topicId: t._id, userId: u.userId })
+          continue
+        }
+        cells.push({ glyph: a.createdBy === 'agent' ? 'ⓐ' : '✗', topicId: t._id, userId: u.userId })
+      }
+    return { cells, topics: topicsWithPool, users }
+  }
+})
+const seedAssignment = mutation({
+  args: { createdBy: v.string(), testSecret: v.string(), topicId: v.id('topics'), userId: v.string() },
+  handler: async (ctx, { userId, topicId, createdBy, testSecret }): Promise<void> => {
+    verifyTestSecret(testSecret)
+    await ctx.db.insert('testAssignments', { createdAt: Date.now(), createdBy, topicId, userId })
+  }
+})
 const costCyclePivotProbe = query({
   args: { testSecret: v.string() },
   handler: async (
@@ -713,6 +788,7 @@ export {
   ensureChatRuntime,
   getChatStreaming,
   getDocRow,
+  gradebookProbe,
   insertStreamEventProbe,
   listChats,
   listDocsByOwner,
@@ -729,6 +805,7 @@ export {
   runPurgeSoftDeleted,
   runQuarantinePurge,
   scanOverrideProbe,
+  seedAssignment,
   seedCostRecord,
   seedTestPass,
   seedTopicWithPool,
