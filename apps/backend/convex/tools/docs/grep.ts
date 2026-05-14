@@ -13,7 +13,7 @@ const action = defineQuery({
   errorCodes: ['INVALID_ARG'],
   examples: ['docs grep --pattern "warranty" --scope shared'],
   handler: async (ctx, args) => {
-    const fail = makeFail('docs.grep')
+    const fail = makeFail('INVALID_ARG')
     const cap = Math.min(args.limit, MAX_HITS)
     let regex: RegExp
     try {

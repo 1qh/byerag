@@ -85,7 +85,7 @@ const action = defineTool({
   errorCodes: ['FORBIDDEN', 'NOT_FOUND', 'UPSTREAM_ERROR'],
   examples: ['docs conflict --a kx7abc --b kx7def'],
   handler: async (ctx, args): Promise<unknown> => {
-    const fail = makeFail('docs.conflict')
+    const fail = makeFail('FORBIDDEN', 'NOT_FOUND', 'UPSTREAM_ERROR')
     const rowA = await ctx.runQuery(internal.docs.getForConflict, { docId: args.a as Id<'docs'> })
     if (!rowA) throw fail('NOT_FOUND', `doc ${args.a} not found or no extracted text`)
     if (!aclCheck(rowA, ctx.auth.owner)) throw fail('FORBIDDEN', 'doc A not in caller scope')

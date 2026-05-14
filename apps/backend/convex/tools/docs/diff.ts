@@ -40,7 +40,7 @@ const action = defineQuery({
   errorCodes: ['FORBIDDEN', 'NOT_FOUND'],
   examples: ['docs diff --a kx7abc --b kx7def'],
   handler: async (ctx, args) => {
-    const fail = makeFail('docs.diff')
+    const fail = makeFail('FORBIDDEN', 'NOT_FOUND')
     const rowA = await ctx.db.get(args.a as never)
     if (!rowA) throw fail('NOT_FOUND', `doc ${args.a} not found`)
     if (!aclCheck(rowA, ctx.auth.owner)) throw fail('FORBIDDEN', 'doc A not in caller scope')

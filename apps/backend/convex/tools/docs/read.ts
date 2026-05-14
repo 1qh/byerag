@@ -11,7 +11,7 @@ const action = defineQuery({
   errorCodes: ['FORBIDDEN', 'NOT_FOUND', 'INVALID_ARG'],
   examples: ['docs read --id kx7abc...'],
   handler: async (ctx, args) => {
-    const fail = makeFail('docs.read')
+    const fail = makeFail('FORBIDDEN', 'NOT_FOUND', 'INVALID_ARG')
     const cap = Math.min(args.bytes, MAX_BYTES)
     const row = await ctx.db.get(args.id as never)
     if (!row) throw fail('NOT_FOUND', `doc ${args.id} not found`)
