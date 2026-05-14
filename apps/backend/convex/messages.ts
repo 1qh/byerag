@@ -43,12 +43,21 @@ const SEND_BUCKET_MAX = 30
 const SEND_BUCKET_WINDOW_MS = 60_000
 const send = mutation({
   args: {
+    activeContextToken: v.optional(v.string()),
     app: v.string(),
     chatId: v.optional(v.id('chats')),
     content: v.string()
   },
-  handler: async (ctx, { app, chatId, content }) => {
+  handler: async (ctx, { activeContextToken, app, chatId, content }) => {
     const email = await requireOwnerEmail(ctx)
+    if (activeContextToken !== undefined) {
+      const ctxRows = await ctx.db
+        .query('userContexts')
+        .withIndex('by_user', q => q.eq('userId', email))
+        .collect()
+      const ctxRow = ctxRows[0] ?? null
+      if (ctxRow?.activeContextToken !== activeContextToken) throw new Error('activeContextToken mismatch')
+    }
     // biome-ignore lint/nursery/noPlaywrightUselessAwait: Convex .first() returns thenable
     const rows = await ctx.db
       .query('rateLimits')
