@@ -168,6 +168,27 @@ const countAdmins = query({
     return rows.length
   }
 })
+const softDeleteDocProbe = mutation({
+  args: { docId: v.id('docs'), testSecret: v.string() },
+  handler: async (ctx, { docId, testSecret }): Promise<void> => {
+    verifyTestSecret(testSecret)
+    await ctx.db.patch(docId, { deletedAt: Date.now() })
+  }
+})
+const ageDocDeletedAt = mutation({
+  args: { ageMs: v.number(), docId: v.id('docs'), testSecret: v.string() },
+  handler: async (ctx, { ageMs, docId, testSecret }): Promise<void> => {
+    verifyTestSecret(testSecret)
+    await ctx.db.patch(docId, { deletedAt: Date.now() - ageMs })
+  }
+})
+const runPurgeSoftDeleted = action({
+  args: { testSecret: v.string() },
+  handler: async (ctx, { testSecret }): Promise<{ blobsPurged: number; chunksPurged: number }> => {
+    verifyTestSecret(testSecret)
+    return ctx.runMutation(internal.docs.purgeSoftDeleted, {})
+  }
+})
 const wipeUserProfiles = mutation({
   args: { testSecret: v.string() },
   handler: async (ctx, { testSecret }): Promise<number> => {
@@ -493,6 +514,7 @@ const listSandboxIds = internalQuery({
   }
 })
 export {
+  ageDocDeletedAt,
   ageQuarantineRow,
   checkRateLimitProbe,
   clearStreamingFlagsInternal,
@@ -521,12 +543,14 @@ export {
   requestReviewProbe,
   reserveBudgetProbe,
   resetPolicyPending,
+  runPurgeSoftDeleted,
   runQuarantinePurge,
   scanOverrideProbe,
   seedUserProfile,
   send,
   setChatStreaming,
   setUserRoleProbe,
+  softDeleteDocProbe,
   uploadFile,
   wipeAllForOwner,
   wipeDocs,
