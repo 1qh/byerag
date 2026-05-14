@@ -130,6 +130,36 @@ const getDocRow = query({
     return ctx.db.get(docId)
   }
 })
+const countOwnerSpend = query({
+  args: { testSecret: v.string() },
+  handler: async (ctx, { testSecret }): Promise<{ count: number; totalCents: number }> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db.query('ownerSpend').take(200)
+    let total = 0
+    for (const r of rows) total += r.centsToday
+    return { count: rows.length, totalCents: total }
+  }
+})
+const countCostRecords = query({
+  args: { testSecret: v.string() },
+  handler: async (ctx, { testSecret }): Promise<{ count: number; sampleOwners: string[] }> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db.query('costRecords').take(200)
+    const owners = new Set<string>()
+    for (const r of rows) owners.add(r.owner)
+    return { count: rows.length, sampleOwners: [...owners].slice(0, 5) }
+  }
+})
+const countAuditLogs = query({
+  args: { testSecret: v.string() },
+  handler: async (ctx, { testSecret }): Promise<{ count: number; sampleCommands: string[] }> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db.query('auditLogs').take(200)
+    const cmds = new Set<string>()
+    for (const r of rows) cmds.add(r.command)
+    return { count: rows.length, sampleCommands: [...cmds].slice(0, 10) }
+  }
+})
 const docsFinalize = action({
   args: {
     filename: v.string(),
@@ -237,6 +267,9 @@ const listSandboxIds = internalQuery({
 })
 export {
   clearStreamingFlagsInternal,
+  countAuditLogs,
+  countCostRecords,
+  countOwnerSpend,
   docsFinalize,
   docsGenerateUploadUrl,
   downloadZip,

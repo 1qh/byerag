@@ -1,0 +1,50 @@
+import { v } from 'convex/values'
+import { internalMutation } from './_generated/server'
+const dayKey = (epochMs: number): string => {
+  const d = new Date(epochMs)
+  const y = d.getUTCFullYear()
+  const m = (d.getUTCMonth() + 1).toString().padStart(2, '0')
+  const day = d.getUTCDate().toString().padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+const upsert = internalMutation({
+  args: {
+    cacheCreationInputTokens: v.number(),
+    cacheReadInputTokens: v.number(),
+    cents: v.number(),
+    inputTokens: v.number(),
+    model: v.string(),
+    outputTokens: v.number(),
+    owner: v.string()
+  },
+  handler: async (ctx, args): Promise<void> => {
+    const k = dayKey(Date.now())
+    // biome-ignore lint/nursery/noPlaywrightUselessAwait: Convex .first() returns thenable
+    const existing = await ctx.db
+      .query('costRecords')
+      .withIndex('by_owner_model_dayKey', q => q.eq('owner', args.owner).eq('model', args.model).eq('dayKey', k))
+      .first()
+    if (existing)
+      await ctx.db.patch(existing._id, {
+        cacheCreationInputTokens: existing.cacheCreationInputTokens + args.cacheCreationInputTokens,
+        cacheReadInputTokens: existing.cacheReadInputTokens + args.cacheReadInputTokens,
+        callCount: existing.callCount + 1,
+        cents: existing.cents + args.cents,
+        inputTokens: existing.inputTokens + args.inputTokens,
+        outputTokens: existing.outputTokens + args.outputTokens
+      })
+    else
+      await ctx.db.insert('costRecords', {
+        cacheCreationInputTokens: args.cacheCreationInputTokens,
+        cacheReadInputTokens: args.cacheReadInputTokens,
+        callCount: 1,
+        cents: args.cents,
+        dayKey: k,
+        inputTokens: args.inputTokens,
+        model: args.model,
+        outputTokens: args.outputTokens,
+        owner: args.owner
+      })
+  }
+})
+export { upsert }

@@ -193,6 +193,27 @@ const settleReservation = internalMutation({
     reservedDayKey: v.string()
   },
   handler: async (ctx, { owner, reservedCents, reservedDayKey: rDay, actualCents }) => {
+    if (actualCents > 0) {
+      const k = dayKey(Date.now())
+      const existing = ctx.db
+        .query('costRecords')
+        .withIndex('by_owner_model_dayKey', q => q.eq('owner', owner).eq('model', 'kimi-for-coding').eq('dayKey', k))
+        .first()
+      if (existing)
+        await ctx.db.patch(existing._id, { callCount: existing.callCount + 1, cents: existing.cents + actualCents })
+      else
+        await ctx.db.insert('costRecords', {
+          cacheCreationInputTokens: 0,
+          cacheReadInputTokens: 0,
+          callCount: 1,
+          cents: actualCents,
+          dayKey: k,
+          inputTokens: 0,
+          model: 'kimi-for-coding',
+          outputTokens: 0,
+          owner
+        })
+    }
     const reserved = await findRowForDay(ctx, owner, rDay)
     const today = dayKey(Date.now())
     if (!reserved.id) {

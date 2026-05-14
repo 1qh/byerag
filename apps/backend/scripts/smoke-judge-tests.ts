@@ -89,6 +89,41 @@ const userStatus = await fetch(`http://localhost:${userPort}/`)
   .then(r => `HTTP ${r.status}`)
   .catch(error => `ERR ${String(error).slice(0, 80)}`)
 record('C.user-app', `user app at :${userPort} returns 200`, userStatus === 'HTTP 200', userStatus)
+console.log('\n[judge] I — Cost + audit recording')
+const testSecret = env.TEST_SECRET ?? ''
+const convexFetch = async <T>(path: string, body: Record<string, unknown>): Promise<T> => {
+  const res = await fetch(`${url}/api/query`, {
+    body: JSON.stringify({ args: body, path }),
+    headers: { 'Content-Type': 'application/json' },
+    method: 'POST'
+  })
+  if (!res.ok) throw new Error(`${path} HTTP ${res.status}`)
+  const j = (await res.json()) as { status: string; value?: T }
+  if (j.status !== 'success') throw new Error(`${path} ${j.status}`)
+  return j.value as T
+}
+try {
+  const cost = await convexFetch<{ count: number; sampleOwners: string[] }>('testing:countCostRecords', { testSecret })
+  record(
+    'I.cost-records',
+    `costRecords has rows (got ${cost.count})`,
+    cost.count > 0,
+    `count=${cost.count} owners=${cost.sampleOwners.join(',')}`
+  )
+} catch (error) {
+  record('I.cost-records', 'costRecords has rows', false, String(error).slice(0, 200))
+}
+try {
+  const audit = await convexFetch<{ count: number; sampleCommands: string[] }>('testing:countAuditLogs', { testSecret })
+  record(
+    'I.audit-logs',
+    `auditLogs has rows (got ${audit.count})`,
+    audit.count > 0,
+    `count=${audit.count} cmds=${audit.sampleCommands.join(',')}`
+  )
+} catch (error) {
+  record('I.audit-logs', 'auditLogs has rows', false, String(error).slice(0, 200))
+}
 console.log('\n[judge] J — Test corpus + Kimi probe')
 const probeLogPath = join(import.meta.dir, '..', 'test-fixtures', 'probe-log.jsonl')
 let probeAccepted = 0
@@ -131,7 +166,6 @@ for (const s of scenarios)
   } catch {
     // Missing
   }
-
 record(
   'supportiveness',
   `${scenarios.length} scenarios captured + verdict=pass`,
