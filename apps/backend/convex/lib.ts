@@ -4,7 +4,8 @@
 /* oxlint-disable eslint(no-await-in-loop), eslint(no-control-regex) */
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
-import { internalMutation, internalQuery } from './_generated/server'
+import type { QueryCtx } from './_generated/server'
+import { internalMutation, internalQuery, query } from './_generated/server'
 const RE_CONTROL_ASCII = /[\u0000-\u0009\u000B\u000C\u000E-\u001F\u007F]/gu
 const RE_NEWLINES = /[\n\r\u0085\u2028\u2029]/gu
 const RE_HTML_TAGS = /<[^>]*>/gu
@@ -129,10 +130,64 @@ const checkRateLimit = internalMutation({
     return true
   }
 })
+const requireAdminEmail = async (ctx: QueryCtx): Promise<null | string> => {
+  const identity = await ctx.auth.getUserIdentity()
+  const email = identity?.email?.toLowerCase()
+  if (!email) return null
+  // biome-ignore lint/nursery/noPlaywrightUselessAwait: Convex .first() returns thenable
+  const profile = await ctx.db
+    .query('userProfiles')
+    .withIndex('by_userId', q => q.eq('userId', email))
+    .first()
+  return profile?.role === 'admin' ? email : null
+}
+const listAuditLogsForAdmin = query({
+  args: { limit: v.optional(v.number()), ownerFilter: v.optional(v.string()) },
+  handler: async (ctx, { ownerFilter, limit }) => {
+    const adminEmail = await requireAdminEmail(ctx)
+    if (!adminEmail) return []
+    const cap = Math.min(limit ?? 100, 500)
+    const rows = ownerFilter
+      ? await ctx.db.query('auditLogs').withIndex('by_owner', x => x.eq('owner', ownerFilter)).order('desc').take(cap)
+      : await ctx.db.query('auditLogs').order('desc').take(cap)
+    return rows.map(r => ({
+      _creationTime: r._creationTime,
+      _id: r._id,
+      args: r.args,
+      command: r.command,
+      mode: r.mode,
+      ok: r.ok,
+      owner: r.owner,
+      severity: r.severity
+    }))
+  }
+})
+const listCostRecordsForAdmin = query({
+  args: { dayKey: v.optional(v.string()) },
+  handler: async (ctx, { dayKey }) => {
+    const adminEmail = await requireAdminEmail(ctx)
+    if (!adminEmail) return []
+    const rows = dayKey
+      ? await ctx.db.query('costRecords').withIndex('by_dayKey', q => q.eq('dayKey', dayKey)).take(500)
+      : await ctx.db.query('costRecords').order('desc').take(500)
+    return rows.map(r => ({
+      cacheReadInputTokens: r.cacheReadInputTokens,
+      callCount: r.callCount,
+      cents: r.cents,
+      dayKey: r.dayKey,
+      inputTokens: r.inputTokens,
+      model: r.model,
+      outputTokens: r.outputTokens,
+      owner: r.owner
+    }))
+  }
+})
 export {
   checkRateLimit,
   getStats,
   insertAuditLog,
+  listAuditLogsForAdmin,
+  listCostRecordsForAdmin,
   pruneAuditLogs,
   pruneStaleRateLimits,
   sanitizeExternal,
