@@ -3,7 +3,6 @@
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
 /** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
-
 import { $ } from 'bun'
 import { ConvexHttpClient } from 'convex/browser'
 import { readFileSync, writeFileSync } from 'node:fs'
@@ -77,7 +76,6 @@ const waitExtracted = async (
     }
     if (row?.extractedText && row.extractedText.length > 0)
       return { extractedTextLen: row.extractedText.length, foundToken: row.extractedText.includes(expectedToken) }
-
     await sleep(2000)
   }
   return { extractedTextLen: 0, foundToken: false }

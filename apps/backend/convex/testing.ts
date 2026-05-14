@@ -111,6 +111,21 @@ const docsGenerateUploadUrl = mutation({
     return ctx.storage.generateUploadUrl()
   }
 })
+const listDocsByOwner = query({
+  args: { owner: v.string(), testSecret: v.string() },
+  handler: async (
+    ctx,
+    { owner, testSecret }
+  ): Promise<{ _id: Id<'docs'>; filename: string; owner: null | string; scope: 'mine' | 'shared' }[]> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db
+      .query('docs')
+      .withIndex('by_scope_uploadedAt', q => q.eq('scope', 'mine'))
+      .filter(q => q.and(q.eq(q.field('owner'), owner), q.eq(q.field('deletedAt'), undefined)))
+      .collect()
+    return rows.map(r => ({ _id: r._id, filename: r.filename, owner: r.owner ?? null, scope: r.scope }))
+  }
+})
 const wipeDocs = mutation({
   args: { testSecret: v.string() },
   handler: async (ctx, { testSecret }): Promise<number> => {
@@ -292,6 +307,7 @@ export {
   getChatStreaming,
   getDocRow,
   listChats,
+  listDocsByOwner,
   listFiles,
   listMessages,
   listSandboxIds,
