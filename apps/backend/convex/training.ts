@@ -1,5 +1,5 @@
 import { v } from 'convex/values'
-import { internalAction, internalMutation, internalQuery, query } from './_generated/server'
+import { internalAction, internalMutation, internalQuery, mutation, query } from './_generated/server'
 import { internal } from './_generated/api'
 const AGENT_OWNER = 'agent'
 const POOL_MIN = 5
@@ -137,4 +137,159 @@ const listMyTopics = query({
     return out
   }
 })
-export { autoAssign, insertAuto, isAutoAssignEnabled, listEligibleTopics, listMyTopics, listRoleUsers, writeAuditRow }
+const DEFAULT_POOL_CAP = 50
+const persistSuggestions = internalMutation({
+  args: {
+    docId: v.id('docs'),
+    questions: v.array(
+      v.object({
+        choices: v.array(v.string()),
+        correctIndex: v.number(),
+        prompt: v.string(),
+        topicName: v.string()
+      })
+    )
+  },
+  handler: async (ctx, { docId, questions }): Promise<{ topicsCreated: number; suggestionsInserted: number }> => {
+    const topicCache = new Map<string, string>()
+    let topicsCreated = 0
+    let suggestionsInserted = 0
+    for (const q of questions) {
+      let topicId = topicCache.get(q.topicName)
+      if (!topicId) {
+        const existing = await ctx.db
+          .query('topics')
+          .withIndex('by_name', x => x.eq('name', q.topicName))
+          .first()
+        if (existing) topicId = existing._id
+        else {
+          topicId = await ctx.db.insert('topics', {
+            autoLabeled: true,
+            createdAt: Date.now(),
+            name: q.topicName,
+            poolCap: DEFAULT_POOL_CAP
+          })
+          topicsCreated += 1
+        }
+        topicCache.set(q.topicName, topicId)
+      }
+      await ctx.db.insert('testQuestionSuggestions', {
+        choices: q.choices,
+        correctIndex: q.correctIndex,
+        createdAt: Date.now(),
+        kind: 'new',
+        regenCount: 0,
+        sourceDocIds: [docId],
+        status: 'pending',
+        topicId: topicId as never
+      })
+      suggestionsInserted += 1
+    }
+    return { suggestionsInserted, topicsCreated }
+  }
+})
+const listPendingSuggestionsForAdmin = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (
+    ctx,
+    { limit }
+  ): Promise<{ _id: string; choices?: string[]; correctIndex?: number; prompt?: string; topicId: string }[]> => {
+    const identity = await ctx.auth.getUserIdentity()
+    const email = identity?.email?.toLowerCase()
+    if (!email) return []
+    const profile = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', email))
+      .first()
+    if (profile?.role !== 'admin') return []
+    const rows = await ctx.db
+      .query('testQuestionSuggestions')
+      .filter(q => q.eq(q.field('status'), 'pending'))
+      .order('desc')
+      .take(Math.min(limit ?? 100, 500))
+    return rows.map(r => ({
+      _id: r._id,
+      choices: r.choices,
+      correctIndex: r.correctIndex,
+      prompt: r.prompt,
+      topicId: r.topicId
+    }))
+  }
+})
+const approveSuggestion = internalMutation({
+  args: { adminEmail: v.string(), suggestionId: v.id('testQuestionSuggestions') },
+  handler: async (ctx, { suggestionId, adminEmail }): Promise<{ questionId: string }> => {
+    const s = await ctx.db.get(suggestionId)
+    if (!s) throw new Error('suggestion not found')
+    if (s.status !== 'pending') throw new Error('suggestion already resolved')
+    if (s.kind !== 'new' || !s.prompt || !s.choices || s.correctIndex === undefined)
+      throw new Error('only new-kind approvals supported here')
+    const questionId = await ctx.db.insert('testQuestions', {
+      choices: s.choices,
+      correctIndex: s.correctIndex,
+      createdAt: Date.now(),
+      createdBy: adminEmail,
+      prompt: s.prompt,
+      revision: 1,
+      sourceDocIds: s.sourceDocIds,
+      topicId: s.topicId
+    })
+    await ctx.db.patch(suggestionId, {
+      resolvedAction: 'approve',
+      resolvedAt: Date.now(),
+      resolvedBy: adminEmail,
+      resolvedReason: 'admin-action',
+      status: 'resolved'
+    })
+    return { questionId }
+  }
+})
+const approveSuggestionPublic = mutation({
+  args: { suggestionId: v.id('testQuestionSuggestions') },
+  handler: async (ctx, { suggestionId }): Promise<{ questionId: string }> => {
+    const identity = await ctx.auth.getUserIdentity()
+    const email = identity?.email?.toLowerCase()
+    if (!email) throw new Error('not authenticated')
+    const profile = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', email))
+      .first()
+    if (profile?.role !== 'admin') throw new Error('admin only')
+    const s = await ctx.db.get(suggestionId)
+    if (!s) throw new Error('suggestion not found')
+    if (s.status !== 'pending') throw new Error('suggestion already resolved')
+    if (s.kind !== 'new' || !s.prompt || !s.choices || s.correctIndex === undefined)
+      throw new Error('only new-kind approvals supported here')
+    const questionId = await ctx.db.insert('testQuestions', {
+      choices: s.choices,
+      correctIndex: s.correctIndex,
+      createdAt: Date.now(),
+      createdBy: email,
+      prompt: s.prompt,
+      revision: 1,
+      sourceDocIds: s.sourceDocIds,
+      topicId: s.topicId
+    })
+    await ctx.db.patch(suggestionId, {
+      resolvedAction: 'approve',
+      resolvedAt: Date.now(),
+      resolvedBy: email,
+      resolvedReason: 'admin-action',
+      status: 'resolved'
+    })
+    return { questionId }
+  }
+})
+export {
+  approveSuggestion,
+  approveSuggestionPublic,
+  autoAssign,
+  insertAuto,
+  isAutoAssignEnabled,
+  listEligibleTopics,
+  listMyTopics,
+  listPendingSuggestionsForAdmin,
+  listRoleUsers,
+  persistSuggestions,
+  writeAuditRow
+}
