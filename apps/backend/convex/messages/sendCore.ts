@@ -136,7 +136,8 @@ const sendCore = async (
   await ctx.scheduler.runAfter(0, internal.agent.run, { chatId: cid, email, secret })
   const d = new Date()
   const dayKey = `${d.getUTCFullYear()}-${(d.getUTCMonth() + 1).toString().padStart(2, '0')}-${d.getUTCDate().toString().padStart(2, '0')}`
-  const existing = ctx.db
+  // biome-ignore lint/nursery/noPlaywrightUselessAwait: Convex .first() returns thenable
+  const existing = await ctx.db
     .query('costRecords')
     .withIndex('by_owner_model_dayKey', q => q.eq('owner', email).eq('model', 'kimi-for-coding').eq('dayKey', dayKey))
     .first()
