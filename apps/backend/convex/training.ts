@@ -526,7 +526,6 @@ const resolvePairAction = mutation({
     if (action === 'accept-swap' || action === 'keep-both') {
       if (newSug.kind !== 'new' || !newSug.prompt || !newSug.choices || newSug.correctIndex === undefined)
         throw new Error('new-suggestion shape invalid')
-
       approvedQuestionId = await ctx.db.insert('testQuestions', {
         choices: newSug.choices,
         correctIndex: newSug.correctIndex,
@@ -539,14 +538,12 @@ const resolvePairAction = mutation({
       })
       await ctx.db.patch(newSug._id, resolved('approve'))
     } else await ctx.db.patch(newSug._id, resolved('reject'))
-
     if (retireSug)
       if (action === 'accept-swap' && retireSug.targetQuestionId) {
         await ctx.db.patch(retireSug.targetQuestionId, { deleteReason: 'agent-retire-conflict', deletedAt: now })
         retiredQuestionId = retireSug.targetQuestionId
         await ctx.db.patch(retireSug._id, resolved('approve'))
       } else await ctx.db.patch(retireSug._id, resolved('reject'))
-
     return { approvedQuestionId, retiredQuestionId }
   }
 })
