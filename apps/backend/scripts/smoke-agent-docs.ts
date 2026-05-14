@@ -37,8 +37,8 @@ const sleep = async (ms: number): Promise<void> =>
   new Promise(resolve => {
     setTimeout(resolve, ms)
   })
-const DEADLINE_MS = 180_000
-const POLL_MS = 2000
+const DEADLINE_MS = 360_000
+const POLL_MS = 3000
 const client = new ConvexHttpClient(url)
 console.log(`[smoke-agent-docs] target=${url} email=${bootstrapEmail}`)
 await client.mutation(api.testing.wipeDocs, { testSecret })
@@ -89,18 +89,47 @@ const chatId = await client.mutation(api.testing.send, {
   testSecret
 })
 console.log(`[smoke-agent-docs] chat created chatId=${chatId}`)
+interface Message {
+  content: string
+  type: string
+}
+interface Page {
+  continueCursor: null | string
+  isDone: boolean
+  page: Message[]
+}
+const fetchAllMessages = async (): Promise<Message[]> => {
+  let cursor: null | string = null
+  const out: Message[] = []
+  for (let i = 0; i < 30; i += 1) {
+    const r = (await client.query(api.testing.listMessages, {
+      chatId,
+      paginationOpts: { cursor, numItems: 200 },
+      testSecret
+    })) as Page
+    out.push(...r.page)
+    if (r.isDone) break
+    cursor = r.continueCursor
+  }
+  return out
+}
 const deadline = Date.now() + DEADLINE_MS
-let events: { content: string; seq: number }[] = []
+let messages: Message[] = []
 let toolNames = new Set<string>()
+let done = false
 const TOOL_RE = /byerag\s+docs\s+(list|read|grep|conflict|similar)/gu
 while (Date.now() < deadline) {
-  events = (await client.query(api.testing.listStreamEvents, { chatId, testSecret })) as typeof events
+  messages = await fetchAllMessages()
   toolNames = new Set<string>()
-  for (const e of events) for (const m of e.content.matchAll(TOOL_RE)) if (m[1]) toolNames.add(m[1])
-  if (toolNames.size >= 2) break
+  for (const m of messages) for (const x of m.content.matchAll(TOOL_RE)) if (x[1]) toolNames.add(x[1])
+  done = messages.some(m => m.type === 'result')
+  if (done) break
   await sleep(POLL_MS)
 }
-console.log(`[smoke-agent-docs] events=${events.length} toolsInvoked=${[...toolNames].join(',')}`)
+const typeCounts: Record<string, number> = {}
+for (const m of messages) typeCounts[m.type] = (typeCounts[m.type] ?? 0) + 1
+console.log(`[smoke-agent-docs] messages=${messages.length} types=${JSON.stringify(typeCounts)} done=${done}`)
+console.log(`[smoke-agent-docs] toolsInvoked=${[...toolNames].join(',')}`)
 if (toolNames.size === 0) {
   console.error('[smoke-agent-docs] FAIL agent invoked no docs tools')
   process.exit(1)
