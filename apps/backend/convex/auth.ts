@@ -4,6 +4,7 @@
 /* oxlint-disable eslint(complexity) */
 import Google from '@auth/core/providers/google'
 import { convexAuth } from '@convex-dev/auth/server'
+import type { DatabaseWriter } from './_generated/server'
 import { parseAllowed, parseSiteUrls, validateProfileEmail, validateRedirectTo } from './authHelpers'
 const { allowedOrigins: ALLOWED_ORIGINS, primary: PRIMARY_SITE_URL } = parseSiteUrls(process.env.SITE_URL)
 const BOOTSTRAP_ADMIN_EMAILS = parseAllowed(process.env.BOOTSTRAP_ADMIN_EMAIL)
@@ -23,7 +24,8 @@ const { auth, isAuthenticated, signIn, signOut, store } = convexAuth({
           : undefined
       const rawImage = typeof profile.image === 'string' ? profile.image : ''
       const safeImage = rawImage.startsWith('https://') && rawImage.length <= 2000 ? rawImage : undefined
-      const dup = (await ctx.db
+      const db = ctx.db as unknown as DatabaseWriter
+      const dup = (await db
         .query('users')
         .filter(q => q.eq(q.field('email'), email))
         .first()) as null | { _id: string; email?: string }
@@ -34,7 +36,7 @@ const { auth, isAuthenticated, signIn, signOut, store } = convexAuth({
             ...(safeName ? { name: safeName } : {}),
             ...(safeImage ? { image: safeImage } : {})
           })
-      const existingProfile = (await ctx.db
+      const existingProfile = (await db
         .query('userProfiles')
         .withIndex('by_userId', q => q.eq('userId', email))
         .first()) as null | { _id: string }
