@@ -27,7 +27,7 @@ const findBySha256 = internalQuery({
           ? q.eq('sha256', sha256).eq('scope', scope)
           : q.eq('sha256', sha256).eq('scope', scope).eq('owner', owner)
       )
-      .filter(q => q.eq(q.field('deletedAt'), undefined))
+      .filter(q => q.and(q.eq(q.field('deletedAt'), undefined), q.neq(q.field('scanStatus'), 'quarantined')))
       .first()
     return row ? { _id: row._id, filename: row.filename, uploadedAt: row.uploadedAt, version: row.version } : null
   }
@@ -210,6 +210,24 @@ interface ChunkRow {
   seq: number
   text: string
 }
+const countRecentQuarantines = internalQuery({
+  args: { sha256: v.string(), sinceMs: v.number(), uploadedBy: v.string() },
+  handler: async (ctx, { sha256, uploadedBy, sinceMs }): Promise<number> => {
+    const cutoff = Date.now() - sinceMs
+    const rows = await ctx.db
+      .query('docs')
+      .filter(q =>
+        q.and(
+          q.eq(q.field('sha256'), sha256),
+          q.eq(q.field('uploadedBy'), uploadedBy),
+          q.eq(q.field('scanStatus'), 'quarantined'),
+          q.gte(q.field('uploadedAt'), cutoff)
+        )
+      )
+      .collect()
+    return rows.length
+  }
+})
 const getChunkRows = internalQuery({
   args: { ids: v.array(v.id('docChunks')) },
   handler: async (ctx, { ids }): Promise<ChunkRow[]> => {
@@ -684,6 +702,7 @@ export {
   adminDeleteDoc,
   adminScanCancel,
   adminScanOverride,
+  countRecentQuarantines,
   findByFilename,
   findBySha256,
   getChunkRows,
