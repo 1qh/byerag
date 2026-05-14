@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-condition -- WrappedResult.ok is a discriminator; lint can't see the catch path */
 /** biome-ignore-all lint/suspicious/useAwait: Convex httpAction handler signature */
 /** biome-ignore-all lint/performance/noAwaitInLoops: polling + sequential delete loops are intentional */
 /** biome-ignore-all lint/style/noProcessEnv: ALLOW_DEV_TOKENS env gate */
@@ -201,9 +202,9 @@ const execStreamHttp = httpAction(async (ctx, req) => {
       } catch (error) {
         result = { error: toDispatchError(error), ok: false }
       }
-      const terminal = result.ok
-        ? { kind: 'complete', result: result.result, runId }
-        : { error: result.error, kind: 'failed', runId }
+      const terminal: Record<string, unknown> = result.ok
+        ? { kind: 'complete', result: result.result as unknown, runId }
+        : { error: result.error as unknown, kind: 'failed', runId }
       emit(terminal)
       controller.close()
     }
