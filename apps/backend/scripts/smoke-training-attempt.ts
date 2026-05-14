@@ -1,13 +1,12 @@
 #!/usr/bin/env bun
-/* eslint-disable no-console, no-await-in-loop */
+/* eslint-disable no-console */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
 /** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
+
 import { ConvexHttpClient } from 'convex/browser'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { api } from '../convex/_generated/api'
 const ENV_LINE = /^\s*(?<key>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?<val>.*?)\s*$/u
 const parseEnv = (text: string): Record<string, string> => {
   const out: Record<string, string> = {}
@@ -24,7 +23,7 @@ const parseEnv = (text: string): Record<string, string> => {
 const env = parseEnv(readFileSync(join(import.meta.dir, '..', '.env'), 'utf8'))
 const url = env.CONVEX_SELF_HOSTED_URL ?? ''
 const testSecret = env.TEST_SECRET ?? ''
-if (!url || !testSecret) {
+if (!(url && testSecret)) {
   console.error('env missing')
   process.exit(2)
 }

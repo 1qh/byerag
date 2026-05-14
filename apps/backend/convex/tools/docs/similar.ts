@@ -1,6 +1,6 @@
 import type { Id } from '../../_generated/dataModel'
 import { internal } from '../../_generated/api'
-import { embedQuery } from '../../docsEmbed'
+import { embedQuery, matryoshkaTruncate } from '../../docsEmbed'
 import { arg, defineTool } from '../_api'
 const SCOPES = ['shared', 'mine', 'both'] as const
 interface SnippetRow {
@@ -22,7 +22,8 @@ const action = defineTool({
   examples: ['docs similar --query "PTO policy" --scope shared'],
   handler: async (ctx, args) => {
     const cap = Math.min(args.limit, 50)
-    const vec = await embedQuery(args.query)
+    const full = await embedQuery(args.query)
+    const vec = matryoshkaTruncate(full, Number.parseInt(args.dim, 10))
     const wantShared = args.scope === 'shared' || args.scope === 'both'
     const wantMine = args.scope === 'mine' || args.scope === 'both'
     const hits: { _id: Id<'docs'>; _score: number }[] = []

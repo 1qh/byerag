@@ -88,22 +88,6 @@ export default defineSchema({
     .index('by_owner_model_dayKey', ['owner', 'model', 'dayKey'])
     .index('by_dayKey', ['dayKey'])
     .index('by_owner_dayKey', ['owner', 'dayKey']),
-  xTraces: defineTable({
-    args: v.string(),
-    command: v.string(),
-    durationMs: v.number(),
-    error: v.optional(v.string()),
-    expiresAt: v.number(),
-    inputsResolved: v.optional(v.string()),
-    mode: v.string(),
-    ok: v.boolean(),
-    owner: v.string(),
-    steps: v.optional(v.string()),
-    traceId: v.string()
-  })
-    .index('by_expires', ['expiresAt'])
-    .index('by_owner', ['owner'])
-    .index('by_trace', ['traceId']),
   docChunks: defineTable({
     docId: v.id('docs'),
     embedding: v.array(v.float64()),
@@ -226,57 +210,55 @@ export default defineSchema({
   })
     .index('by_chat', ['chatId'])
     .index('by_chat_seq', ['chatId', 'seq']),
-  userContexts: defineTable({
-    activeContextHeartbeatAt: v.optional(v.number()),
-    activeContextToken: v.optional(v.string()),
-    busyChatId: v.optional(v.id('chats')),
-    busyKind: v.optional(v.union(v.literal('agent'), v.literal('pipeline'))),
-    busyUntil: v.optional(v.number()),
-    userId: v.string()
-  }).index('by_user', ['userId']),
-  userProfiles: defineTable({
-    department: v.optional(v.union(v.literal('HR'), v.literal('Sales'), v.literal('IT'))),
-    role: v.union(v.literal('admin'), v.literal('user')),
-    updatedAt: v.number(),
-    updatedBy: v.string(),
-    userId: v.string()
-  })
-    .index('by_userId', ['userId'])
-    .index('by_role', ['role']),
-  topics: defineTable({
-    autoLabeled: v.boolean(),
-    centroid: v.optional(v.array(v.float64())),
-    createdAt: v.number(),
-    deletedAt: v.optional(v.number()),
-    lastSubstantiveUpdate: v.optional(v.number()),
-    name: v.string(),
-    poolCap: v.number()
-  })
-    .index('by_deletedAt', ['deletedAt'])
-    .index('by_name', ['name']),
-  testQuestions: defineTable({
-    choices: v.array(v.string()),
-    correctIndex: v.number(),
+  testAssignments: defineTable({
     createdAt: v.number(),
     createdBy: v.string(),
-    deleteReason: v.optional(
-      v.union(
-        v.literal('admin-retire'),
-        v.literal('agent-retire-conflict'),
-        v.literal('source-doc-cascade'),
-        v.literal('topic-cascade')
-      )
-    ),
     deletedAt: v.optional(v.number()),
-    prompt: v.string(),
-    revision: v.number(),
-    sourceDocIds: v.array(v.id('docs')),
-    topicId: v.id('topics')
+    deletedBy: v.optional(v.string()),
+    topicId: v.id('topics'),
+    userId: v.string()
   })
-    .index('by_topic', ['topicId'])
+    .index('by_user_topic', ['userId', 'topicId'])
     .index('by_topic_deletedAt', ['topicId', 'deletedAt'])
-    .index('by_deletedAt', ['deletedAt'])
-    .index('by_sourceDocIds', ['sourceDocIds']),
+    .index('by_user_deletedAt', ['userId', 'deletedAt']),
+  testAttempts: defineTable({
+    cancelledReason: v.optional(
+      v.union(v.literal('new-attempt-started'), v.literal('topic-deleted'), v.literal('assignment-cancelled'))
+    ),
+    durationMs: v.optional(v.number()),
+    finishedAt: v.optional(v.number()),
+    kind: v.union(v.literal('self'), v.literal('assigned')),
+    questionSnapshots: v.array(
+      v.object({
+        choicesShuffled: v.array(v.string()),
+        correctIndexShuffled: v.number(),
+        promptText: v.string(),
+        questionId: v.id('testQuestions'),
+        revision: v.number(),
+        sourceDocIds: v.array(v.id('docs')),
+        userAnswerIndex: v.optional(v.number())
+      })
+    ),
+    score: v.optional(v.number()),
+    startedAt: v.number(),
+    status: v.union(v.literal('in-progress'), v.literal('passed'), v.literal('failed'), v.literal('cancelled')),
+    topicId: v.id('topics'),
+    userId: v.string()
+  })
+    .index('by_user', ['userId'])
+    .index('by_user_topic', ['userId', 'topicId'])
+    .index('by_topic_status', ['topicId', 'status'])
+    .index('by_status_startedAt', ['status', 'startedAt']),
+  testPasses: defineTable({
+    attemptId: v.id('testAttempts'),
+    kind: v.union(v.literal('self'), v.literal('assigned')),
+    passedAt: v.number(),
+    topicId: v.id('topics'),
+    userId: v.string()
+  })
+    .index('by_user_topic_kind', ['userId', 'topicId', 'kind'])
+    .index('by_topic_kind_passedAt', ['topicId', 'kind', 'passedAt'])
+    .index('by_user', ['userId']),
   testQuestionSuggestions: defineTable({
     choices: v.optional(v.array(v.string())),
     correctIndex: v.optional(v.number()),
@@ -304,58 +286,71 @@ export default defineSchema({
     .index('by_pair', ['pairedWith'])
     .index('by_target', ['targetQuestionId'])
     .index('by_resolvedAt', ['resolvedAt']),
-  testAttempts: defineTable({
-    cancelledReason: v.optional(
-      v.union(v.literal('new-attempt-started'), v.literal('topic-deleted'), v.literal('assignment-cancelled'))
-    ),
-    durationMs: v.optional(v.number()),
-    finishedAt: v.optional(v.number()),
-    kind: v.union(v.literal('self'), v.literal('assigned')),
-    questionSnapshots: v.array(
-      v.object({
-        choicesShuffled: v.array(v.string()),
-        correctIndexShuffled: v.number(),
-        promptText: v.string(),
-        questionId: v.id('testQuestions'),
-        revision: v.number(),
-        sourceDocIds: v.array(v.id('docs')),
-        userAnswerIndex: v.optional(v.number())
-      })
-    ),
-    score: v.optional(v.number()),
-    startedAt: v.number(),
-    status: v.union(
-      v.literal('in-progress'),
-      v.literal('passed'),
-      v.literal('failed'),
-      v.literal('cancelled')
-    ),
-    topicId: v.id('topics'),
-    userId: v.string()
-  })
-    .index('by_user', ['userId'])
-    .index('by_user_topic', ['userId', 'topicId'])
-    .index('by_topic_status', ['topicId', 'status'])
-    .index('by_status_startedAt', ['status', 'startedAt']),
-  testAssignments: defineTable({
+  testQuestions: defineTable({
+    choices: v.array(v.string()),
+    correctIndex: v.number(),
     createdAt: v.number(),
     createdBy: v.string(),
+    deleteReason: v.optional(
+      v.union(
+        v.literal('admin-retire'),
+        v.literal('agent-retire-conflict'),
+        v.literal('source-doc-cascade'),
+        v.literal('topic-cascade')
+      )
+    ),
     deletedAt: v.optional(v.number()),
-    deletedBy: v.optional(v.string()),
-    topicId: v.id('topics'),
-    userId: v.string()
+    prompt: v.string(),
+    revision: v.number(),
+    sourceDocIds: v.array(v.id('docs')),
+    topicId: v.id('topics')
   })
-    .index('by_user_topic', ['userId', 'topicId'])
+    .index('by_topic', ['topicId'])
     .index('by_topic_deletedAt', ['topicId', 'deletedAt'])
-    .index('by_user_deletedAt', ['userId', 'deletedAt']),
-  testPasses: defineTable({
-    attemptId: v.id('testAttempts'),
-    kind: v.union(v.literal('self'), v.literal('assigned')),
-    passedAt: v.number(),
-    topicId: v.id('topics'),
+    .index('by_deletedAt', ['deletedAt'])
+    .index('by_sourceDocIds', ['sourceDocIds']),
+  topics: defineTable({
+    autoLabeled: v.boolean(),
+    centroid: v.optional(v.array(v.float64())),
+    createdAt: v.number(),
+    deletedAt: v.optional(v.number()),
+    lastSubstantiveUpdate: v.optional(v.number()),
+    name: v.string(),
+    poolCap: v.number()
+  })
+    .index('by_deletedAt', ['deletedAt'])
+    .index('by_name', ['name']),
+  userContexts: defineTable({
+    activeContextHeartbeatAt: v.optional(v.number()),
+    activeContextToken: v.optional(v.string()),
+    busyChatId: v.optional(v.id('chats')),
+    busyKind: v.optional(v.union(v.literal('agent'), v.literal('pipeline'))),
+    busyUntil: v.optional(v.number()),
+    userId: v.string()
+  }).index('by_user', ['userId']),
+  userProfiles: defineTable({
+    department: v.optional(v.union(v.literal('HR'), v.literal('Sales'), v.literal('IT'))),
+    role: v.union(v.literal('admin'), v.literal('user')),
+    updatedAt: v.number(),
+    updatedBy: v.string(),
     userId: v.string()
   })
-    .index('by_user_topic_kind', ['userId', 'topicId', 'kind'])
-    .index('by_topic_kind_passedAt', ['topicId', 'kind', 'passedAt'])
-    .index('by_user', ['userId'])
+    .index('by_userId', ['userId'])
+    .index('by_role', ['role']),
+  xTraces: defineTable({
+    args: v.string(),
+    command: v.string(),
+    durationMs: v.number(),
+    error: v.optional(v.string()),
+    expiresAt: v.number(),
+    inputsResolved: v.optional(v.string()),
+    mode: v.string(),
+    ok: v.boolean(),
+    owner: v.string(),
+    steps: v.optional(v.string()),
+    traceId: v.string()
+  })
+    .index('by_expires', ['expiresAt'])
+    .index('by_owner', ['owner'])
+    .index('by_trace', ['traceId'])
 })

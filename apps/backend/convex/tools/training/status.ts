@@ -17,11 +17,11 @@ const action = defineQuery({
         .query('testQuestions')
         .withIndex('by_topic_deletedAt', q => q.eq('topicId', t._id).eq('deletedAt', undefined))
         .take(6)
-      const pass = await ctx.db
+      const pass = ctx.db
         .query('testPasses')
         .withIndex('by_user_topic_kind', q => q.eq('userId', userId).eq('topicId', t._id).eq('kind', 'assigned'))
         .first()
-      const selfPass = await ctx.db
+      const selfPass = ctx.db
         .query('testPasses')
         .withIndex('by_user_topic_kind', q => q.eq('userId', userId).eq('topicId', t._id).eq('kind', 'self'))
         .first()

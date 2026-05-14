@@ -4,7 +4,7 @@
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential poll by design */
 /** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
+
 import { ConvexHttpClient } from 'convex/browser'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -44,7 +44,7 @@ console.log(`[smoke-agent-docs] target=${url} email=${bootstrapEmail}`)
 await client.mutation(api.testing.wipeDocs, { testSecret })
 console.log('[smoke-agent-docs] wiped docs')
 const seedDoc = async (filename: string, body: string): Promise<string> => {
-  const uploadUrl = (await client.mutation(api.testing.docsGenerateUploadUrl, { testSecret })) as string
+  const uploadUrl = await client.mutation(api.testing.docsGenerateUploadUrl, { testSecret })
   const res = await fetch(uploadUrl, {
     body: new Blob([body], { type: 'text/plain' }),
     headers: { 'Content-Type': 'text/plain' },

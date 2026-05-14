@@ -1,17 +1,17 @@
 import { v } from 'convex/values'
-import { internalAction, internalMutation, internalQuery, mutation, query } from './_generated/server'
 import { internal } from './_generated/api'
+import { internalAction, internalMutation, internalQuery, mutation, query } from './_generated/server'
 const AGENT_OWNER = 'agent'
 const POOL_MIN = 5
 const insertAuto = internalMutation({
   args: { topicId: v.id('topics'), userId: v.string() },
   handler: async (ctx, { topicId, userId }): Promise<{ inserted: boolean }> => {
-    const existingPass = await ctx.db
+    const existingPass = ctx.db
       .query('testPasses')
       .withIndex('by_user_topic_kind', q => q.eq('userId', userId).eq('topicId', topicId).eq('kind', 'assigned'))
       .first()
     if (existingPass) return { inserted: false }
-    const existingAssignment = await ctx.db
+    const existingAssignment = ctx.db
       .query('testAssignments')
       .withIndex('by_user_topic', q => q.eq('userId', userId).eq('topicId', topicId))
       .filter(q => q.eq(q.field('deletedAt'), undefined))
@@ -57,7 +57,7 @@ const listRoleUsers = internalQuery({
 const isAutoAssignEnabled = internalQuery({
   args: {},
   handler: async (ctx): Promise<boolean> => {
-    const row = await ctx.db
+    const row = ctx.db
       .query('settings')
       .withIndex('by_key', q => q.eq('key', 'agent_auto_assign_enabled'))
       .first()
@@ -72,12 +72,17 @@ const writeAuditRow = internalMutation({
 })
 const autoAssign = internalAction({
   args: {},
-  handler: async (ctx): Promise<{ assignmentsCreated: number; topicsProcessed: number; durationMs: number }> => {
+  handler: async (ctx): Promise<{ assignmentsCreated: number; durationMs: number; topicsProcessed: number }> => {
     const t0 = Date.now()
-    const enabled = (await ctx.runQuery(internal.training.isAutoAssignEnabled, {})) as boolean
+    const enabled = await ctx.runQuery(internal.training.isAutoAssignEnabled, {})
     if (!enabled) {
       await ctx.runMutation(internal.training.writeAuditRow, {
-        args: JSON.stringify({ assignmentsCreated: 0, durationMs: Date.now() - t0, reason: 'flag-disabled', topicsProcessed: 0 }),
+        args: JSON.stringify({
+          assignmentsCreated: 0,
+          durationMs: Date.now() - t0,
+          reason: 'flag-disabled',
+          topicsProcessed: 0
+        }),
         command: 'training.cron.run',
         mode: 'system',
         ok: true,
@@ -90,10 +95,10 @@ const autoAssign = internalAction({
     let created = 0
     for (const t of topics)
       for (const u of users) {
-        const r = (await ctx.runMutation(internal.training.insertAuto, {
+        const r = await ctx.runMutation(internal.training.insertAuto, {
           topicId: t._id as never,
           userId: u.userId
-        })) as { inserted: boolean }
+        })
         if (r.inserted) created += 1
       }
     const durationMs = Date.now() - t0
@@ -123,11 +128,11 @@ const listMyTopics = query({
         .query('testQuestions')
         .withIndex('by_topic_deletedAt', q => q.eq('topicId', t._id).eq('deletedAt', undefined))
         .take(POOL_MIN + 1)
-      const pass = await ctx.db
+      const pass = ctx.db
         .query('testPasses')
         .withIndex('by_user_topic_kind', q => q.eq('userId', userId).eq('topicId', t._id).eq('kind', 'assigned'))
         .first()
-      const selfPass = await ctx.db
+      const selfPass = ctx.db
         .query('testPasses')
         .withIndex('by_user_topic_kind', q => q.eq('userId', userId).eq('topicId', t._id).eq('kind', 'self'))
         .first()
@@ -140,9 +145,17 @@ const listMyTopics = query({
 const DEFAULT_POOL_CAP = 50
 const DUP_COSINE_THRESHOLD = 0.85
 const cosine = (a: number[], b: number[]): number => {
-  let dot = 0, na = 0, nb = 0
+  let dot = 0
+  let na = 0
+  let nb = 0
   const n = Math.min(a.length, b.length)
-  for (let i = 0; i < n; i += 1) { const x = a[i] ?? 0, y = b[i] ?? 0; dot += x * y; na += x * x; nb += y * y }
+  for (let i = 0; i < n; i += 1) {
+    const x = a[i] ?? 0
+    const y = b[i] ?? 0
+    dot += x * y
+    na += x * x
+    nb += y * y
+  }
   return na === 0 || nb === 0 ? 0 : dot / Math.sqrt(na * nb)
 }
 const persistSuggestionsWithEmbedding = internalMutation({
@@ -158,36 +171,46 @@ const persistSuggestionsWithEmbedding = internalMutation({
       })
     )
   },
-  handler: async (ctx, { docId, questions }): Promise<{ conflictsFlagged: number; suggestionsInserted: number; topicsCreated: number }> => {
+  handler: async (
+    ctx,
+    { docId, questions }
+  ): Promise<{ conflictsFlagged: number; suggestionsInserted: number; topicsCreated: number }> => {
     const topicCache = new Map<string, string>()
-    let topicsCreated = 0, suggestionsInserted = 0, conflictsFlagged = 0
+    let topicsCreated = 0
+    let suggestionsInserted = 0
+    let conflictsFlagged = 0
     for (const q of questions) {
       let topicId = topicCache.get(q.topicName)
       if (!topicId) {
-        const existing = await ctx.db
+        const existing = ctx.db
           .query('topics')
           .withIndex('by_name', x => x.eq('name', q.topicName))
           .first()
         if (existing) topicId = existing._id
         else {
-          topicId = await ctx.db.insert('topics', { autoLabeled: true, createdAt: Date.now(), name: q.topicName, poolCap: DEFAULT_POOL_CAP })
+          topicId = await ctx.db.insert('topics', {
+            autoLabeled: true,
+            createdAt: Date.now(),
+            name: q.topicName,
+            poolCap: DEFAULT_POOL_CAP
+          })
           topicsCreated += 1
         }
         topicCache.set(q.topicName, topicId)
       }
       let pairKind: 'cap-swap' | 'conflict' | undefined
-      let pairedWith: undefined | string
+      let pairedWith: string | undefined
       if (q.promptEmbedding.length > 0) {
         const existingQs = await ctx.db
           .query('testQuestions')
           .withIndex('by_topic_deletedAt', x => x.eq('topicId', topicId as never).eq('deletedAt', undefined))
           .take(200)
         for (const e of existingQs) {
-          const eq = await ctx.db
+          const eq = ctx.db
             .query('testQuestionSuggestions')
             .withIndex('by_target', x => x.eq('targetQuestionId', e._id))
             .first()
-          void eq
+          undefined
         }
       }
       const currentPool = await ctx.db
@@ -195,7 +218,7 @@ const persistSuggestionsWithEmbedding = internalMutation({
         .withIndex('by_topic_deletedAt', x => x.eq('topicId', topicId as never).eq('deletedAt', undefined))
         .take(DEFAULT_POOL_CAP + 1)
       if (currentPool.length >= DEFAULT_POOL_CAP) {
-        const oldest = currentPool.sort((a, b) => a.createdAt - b.createdAt)[0]
+        const oldest = currentPool.toSorted((a, b) => a.createdAt - b.createdAt)[0]
         if (oldest) {
           pairKind = 'cap-swap'
           pairedWith = oldest._id
@@ -208,8 +231,8 @@ const persistSuggestionsWithEmbedding = internalMutation({
         kind: 'new',
         pairKind,
         pairedWith: pairedWith as never,
-        promptEmbedding: q.promptEmbedding.length > 0 ? q.promptEmbedding : undefined,
         prompt: q.prompt,
+        promptEmbedding: q.promptEmbedding.length > 0 ? q.promptEmbedding : undefined,
         regenCount: 0,
         sourceDocIds: [docId],
         status: 'pending',
@@ -247,14 +270,14 @@ const persistSuggestions = internalMutation({
       })
     )
   },
-  handler: async (ctx, { docId, questions }): Promise<{ topicsCreated: number; suggestionsInserted: number }> => {
+  handler: async (ctx, { docId, questions }): Promise<{ suggestionsInserted: number; topicsCreated: number }> => {
     const topicCache = new Map<string, string>()
     let topicsCreated = 0
     let suggestionsInserted = 0
     for (const q of questions) {
       let topicId = topicCache.get(q.topicName)
       if (!topicId) {
-        const existing = await ctx.db
+        const existing = ctx.db
           .query('topics')
           .withIndex('by_name', x => x.eq('name', q.topicName))
           .first()
@@ -290,20 +313,22 @@ const listPendingSuggestionsForAdmin = query({
   handler: async (
     ctx,
     { limit }
-  ): Promise<{
-    _id: string
-    choices?: string[]
-    correctIndex?: number
-    pairKind?: 'cap-swap' | 'conflict'
-    pairedWith?: string
-    prompt?: string
-    topicId: string
-    topicName: string
-  }[]> => {
+  ): Promise<
+    {
+      _id: string
+      choices?: string[]
+      correctIndex?: number
+      pairedWith?: string
+      pairKind?: 'cap-swap' | 'conflict'
+      prompt?: string
+      topicId: string
+      topicName: string
+    }[]
+  > => {
     const identity = await ctx.auth.getUserIdentity()
     const email = identity?.email?.toLowerCase()
     if (!email) return []
-    const profile = await ctx.db
+    const profile = ctx.db
       .query('userProfiles')
       .withIndex('by_userId', q => q.eq('userId', email))
       .first()
@@ -318,8 +343,8 @@ const listPendingSuggestionsForAdmin = query({
       _id: string
       choices?: string[]
       correctIndex?: number
-      pairKind?: 'cap-swap' | 'conflict'
       pairedWith?: string
+      pairKind?: 'cap-swap' | 'conflict'
       prompt?: string
       topicId: string
       topicName: string
@@ -351,7 +376,7 @@ const listAttemptsForAdmin = query({
     const identity = await ctx.auth.getUserIdentity()
     const email = identity?.email?.toLowerCase()
     if (!email) return []
-    const profile = await ctx.db
+    const profile = ctx.db
       .query('userProfiles')
       .withIndex('by_userId', q => q.eq('userId', email))
       .first()
@@ -377,7 +402,7 @@ const rejectSuggestionPublic = mutation({
     const identity = await ctx.auth.getUserIdentity()
     const email = identity?.email?.toLowerCase()
     if (!email) throw new Error('not authenticated')
-    const profile = await ctx.db
+    const profile = ctx.db
       .query('userProfiles')
       .withIndex('by_userId', q => q.eq('userId', email))
       .first()
@@ -428,7 +453,7 @@ const approveSuggestionPublic = mutation({
     const identity = await ctx.auth.getUserIdentity()
     const email = identity?.email?.toLowerCase()
     if (!email) throw new Error('not authenticated')
-    const profile = await ctx.db
+    const profile = ctx.db
       .query('userProfiles')
       .withIndex('by_userId', q => q.eq('userId', email))
       .first()
@@ -464,7 +489,7 @@ const markTopicSubstantive = mutation({
     const identity = await ctx.auth.getUserIdentity()
     const email = identity?.email?.toLowerCase()
     if (!email) throw new Error('not authenticated')
-    const profile = await ctx.db
+    const profile = ctx.db
       .query('userProfiles')
       .withIndex('by_userId', q => q.eq('userId', email))
       .first()
@@ -481,7 +506,7 @@ const markTopicSubstantive = mutation({
     for (const p of stalePass) {
       await ctx.db.delete(p._id)
       passesRevoked += 1
-      const existingAssignment = await ctx.db
+      const existingAssignment = ctx.db
         .query('testAssignments')
         .withIndex('by_user_topic', q => q.eq('userId', p.userId).eq('topicId', topicId))
         .filter(q => q.eq(q.field('deletedAt'), undefined))

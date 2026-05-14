@@ -1,7 +1,7 @@
 /** biome-ignore-all lint/style/noProcessEnv: env loader site */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: KIMI vars */
 /** biome-ignore-all lint/suspicious/useAwait: fetch chain */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 'use node'
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
@@ -18,17 +18,17 @@ const SYSTEM_PROMPT =
 interface KimiResponse {
   content?: { text?: string; type?: string }[]
 }
-interface RawQuestion {
-  choices?: unknown
-  correctIndex?: unknown
-  prompt?: unknown
-  topicName?: unknown
-}
 interface ParsedQuestion {
   choices: string[]
   correctIndex: number
   prompt: string
   topicName: string
+}
+interface RawQuestion {
+  choices?: unknown
+  correctIndex?: unknown
+  prompt?: unknown
+  topicName?: unknown
 }
 const buildUserPrompt = (filename: string, text: string): string =>
   `Source document: ${filename}\n\n${text}\n\nGenerate ${TARGET_QUESTIONS} Vietnamese multiple-choice questions covering this document. Each item: {"topicName": "<short Vietnamese category>", "prompt": "<question Vietnamese>", "choices": ["A", "B", "C"], "correctIndex": 0|1|2}. Exactly 3 choices per question. Topic name is a short Vietnamese category that this question belongs to (e.g. "Bảo mật", "Triển khai", "Đánh giá rủi ro"). Output JSON array only.`
@@ -65,9 +65,10 @@ const parseQuestions = (raw: string): ParsedQuestion[] => {
       .map(x => {
         const choices =
           Array.isArray(x.choices) && x.choices.length === 3 && x.choices.every(c => typeof c === 'string')
-            ? (x.choices as string[])
+            ? x.choices
             : []
-        const correctIndex = typeof x.correctIndex === 'number' && x.correctIndex >= 0 && x.correctIndex <= 2 ? x.correctIndex : 0
+        const correctIndex =
+          typeof x.correctIndex === 'number' && x.correctIndex >= 0 && x.correctIndex <= 2 ? x.correctIndex : 0
         const prompt = typeof x.prompt === 'string' ? x.prompt.slice(0, 1000) : ''
         const topicName = typeof x.topicName === 'string' ? x.topicName.trim().slice(0, 80) : ''
         return { choices, correctIndex, prompt, topicName }
@@ -94,15 +95,36 @@ const generate = internalAction({
     }
     const parsed = parseQuestions(raw)
     if (parsed.length === 0) return { generated: 0, reason: 'parse-empty' }
-    const embedded: { choices: string[]; correctIndex: number; prompt: string; promptEmbedding: number[]; topicName: string }[] = []
+    const embedded: {
+      choices: string[]
+      correctIndex: number
+      prompt: string
+      promptEmbedding: number[]
+      topicName: string
+    }[] = []
     for (const q of parsed)
       try {
         const v = await embedQuery(q.prompt)
-        embedded.push({ choices: q.choices, correctIndex: q.correctIndex, prompt: q.prompt, promptEmbedding: v, topicName: q.topicName })
+        embedded.push({
+          choices: q.choices,
+          correctIndex: q.correctIndex,
+          prompt: q.prompt,
+          promptEmbedding: v,
+          topicName: q.topicName
+        })
       } catch {
-        embedded.push({ choices: q.choices, correctIndex: q.correctIndex, prompt: q.prompt, promptEmbedding: [], topicName: q.topicName })
+        embedded.push({
+          choices: q.choices,
+          correctIndex: q.correctIndex,
+          prompt: q.prompt,
+          promptEmbedding: [],
+          topicName: q.topicName
+        })
       }
-    const result = (await ctx.runMutation(internal.training.persistSuggestionsWithEmbedding, { docId, questions: embedded })) as { conflictsFlagged: number; topicsCreated: number; suggestionsInserted: number }
+    const result = await ctx.runMutation(internal.training.persistSuggestionsWithEmbedding, {
+      docId,
+      questions: embedded
+    })
     return { conflictsFlagged: result.conflictsFlagged, generated: parsed.length }
   }
 })

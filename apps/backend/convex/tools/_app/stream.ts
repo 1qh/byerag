@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unnecessary-condition */
 /* oxlint-disable unicorn/prefer-ternary */
 /** biome-ignore-all lint/suspicious/useAwait: Convex httpAction handler signature */
 /** biome-ignore-all lint/performance/noAwaitInLoops: polling + sequential delete loops are intentional */
@@ -197,15 +196,15 @@ const execStreamHttp = httpAction(async (ctx, req) => {
           Record<string, unknown>,
           WrappedResult
         >
-        if (entry.kind === 'action') result = (await ctx.runAction(fn as never, toolArgs as never)) as WrappedResult
-        else if (entry.kind === 'mutation') result = (await ctx.runMutation(fn as never, toolArgs as never)) as WrappedResult
-        else result = (await ctx.runQuery(fn as never, toolArgs as never)) as WrappedResult
+        if (entry.kind === 'action') result = await ctx.runAction(fn as never, toolArgs as never)
+        else if (entry.kind === 'mutation') result = await ctx.runMutation(fn as never, toolArgs as never)
+        else result = await ctx.runQuery(fn as never, toolArgs as never)
       } catch (error) {
         result = { error: toDispatchError(error), ok: false }
       }
       let terminal: Record<string, unknown>
-      if (result.ok) terminal = { kind: 'complete', result: result.result as unknown, runId }
-      else terminal = { error: result.error as unknown, kind: 'failed', runId }
+      if (result.ok) terminal = { kind: 'complete', result: result.result, runId }
+      else terminal = { error: result.error, kind: 'failed', runId }
       emit(terminal)
       controller.close()
     }
