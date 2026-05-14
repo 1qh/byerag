@@ -111,6 +111,25 @@ const docsGenerateUploadUrl = mutation({
     return ctx.storage.generateUploadUrl()
   }
 })
+const ensureChatRuntime = mutation({
+  args: { chatId: v.id('chats'), testSecret: v.string() },
+  handler: async (ctx, { chatId, testSecret }): Promise<void> => {
+    verifyTestSecret(testSecret)
+    const existing = await ctx.db
+      .query('chatRuntime')
+      .withIndex('by_chat', q => q.eq('chatId', chatId))
+      .first()
+    if (existing) await ctx.db.patch(existing._id, { proxyCallsThisTurn: 0, streamEventCount: 0 })
+    else await ctx.db.insert('chatRuntime', { chatId, proxyCallsThisTurn: 0, streamEventCount: 0 })
+  }
+})
+const consumeProxyBudgetProbe = action({
+  args: { chatId: v.id('chats'), testSecret: v.string() },
+  handler: async (ctx, { chatId, testSecret }): Promise<boolean> => {
+    verifyTestSecret(testSecret)
+    return ctx.runMutation(internal.chatRuntime.consumeProxyCallBudget, { chatId })
+  }
+})
 const requestReviewProbe = mutation({
   args: { docId: v.id('docs'), testSecret: v.string(), uploaderEmail: v.string() },
   handler: async (ctx, { docId, testSecret, uploaderEmail }): Promise<{ ok: boolean; reason?: string }> => {
@@ -356,6 +375,7 @@ const listSandboxIds = internalQuery({
 export {
   checkRateLimitProbe,
   clearStreamingFlagsInternal,
+  consumeProxyBudgetProbe,
   countAuditLogs,
   countCostRecords,
   countOwnerSpend,
@@ -363,6 +383,7 @@ export {
   docsFinalize,
   docsGenerateUploadUrl,
   downloadZip,
+  ensureChatRuntime,
   getChatStreaming,
   getDocRow,
   listChats,
