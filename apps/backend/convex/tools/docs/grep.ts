@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/only-throw-error -- fail() returns never (throws ToolError internally); rule misclassifies */
 import { arg, defineQuery, makeFail } from '../_api'
 const SCOPES = ['shared', 'mine', 'both'] as const
 const MAX_HITS = 200
@@ -19,7 +20,7 @@ const action = defineQuery({
     try {
       regex = new RegExp(args.pattern, 'gu')
     } catch (error) {
-      fail('INVALID_ARG', `invalid regex: ${String(error).slice(0, 80)}`)
+      throw fail('INVALID_ARG', `invalid regex: ${String(error).slice(0, 80)}`)
     }
     const wantShared = args.scope === 'shared' || args.scope === 'both'
     const wantMine = args.scope === 'mine' || args.scope === 'both'

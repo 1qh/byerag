@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/only-throw-error -- fail() returns never (throws ToolError internally); rule misclassifies */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { Id } from '../../_generated/dataModel'
 import { internal } from '../../_generated/api'
@@ -87,11 +88,11 @@ const action = defineTool({
   handler: async (ctx, args): Promise<unknown> => {
     const fail = makeFail('FORBIDDEN', 'NOT_FOUND', 'UPSTREAM_ERROR')
     const rowA = await ctx.runQuery(internal.docs.getForConflict, { docId: args.a as Id<'docs'> })
-    if (!rowA) fail('NOT_FOUND', `doc ${args.a} not found or no extracted text`)
-    if (!aclCheck(rowA, ctx.auth.owner)) fail('FORBIDDEN', 'doc A not in caller scope')
+    if (!rowA) throw fail('NOT_FOUND', `doc ${args.a} not found or no extracted text`)
+    if (!aclCheck(rowA, ctx.auth.owner)) throw fail('FORBIDDEN', 'doc A not in caller scope')
     const rowB = await ctx.runQuery(internal.docs.getForConflict, { docId: args.b as Id<'docs'> })
-    if (!rowB) fail('NOT_FOUND', `doc ${args.b} not found or no extracted text`)
-    if (!aclCheck(rowB, ctx.auth.owner)) fail('FORBIDDEN', 'doc B not in caller scope')
+    if (!rowB) throw fail('NOT_FOUND', `doc ${args.b} not found or no extracted text`)
+    if (!aclCheck(rowB, ctx.auth.owner)) throw fail('FORBIDDEN', 'doc B not in caller scope')
     const textA = rowA.extractedText.slice(0, MAX_DOC_CHARS)
     const textB = rowB.extractedText.slice(0, MAX_DOC_CHARS)
     let raw: string
@@ -101,7 +102,7 @@ const action = defineTool({
         buildUserPrompt({ filename: rowA.filename, text: textA }, { filename: rowB.filename, text: textB })
       )
     } catch (error) {
-      fail('UPSTREAM_ERROR', `kimi: ${String(error).slice(0, 120)}`)
+      throw fail('UPSTREAM_ERROR', `kimi: ${String(error).slice(0, 120)}`)
     }
     const parsed = parseConflicts(raw)
     const verified = parsed.filter(c => textA.includes(c.docA_excerpt) && textB.includes(c.docB_excerpt))
