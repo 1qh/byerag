@@ -249,6 +249,89 @@ const gradebookProbe = query({
     return { cells, topics: topicsWithPool, users }
   }
 })
+const startAttemptProbe = mutation({
+  args: { testSecret: v.string(), topicId: v.id('topics'), userId: v.string() },
+  handler: async (ctx, { userId, topicId, testSecret }): Promise<{ attemptId: string; kind: string }> => {
+    verifyTestSecret(testSecret)
+    const questions = await ctx.db
+      .query('testQuestions')
+      .withIndex('by_topic_deletedAt', q => q.eq('topicId', topicId).eq('deletedAt', undefined))
+      .take(50)
+    if (questions.length < 5) throw new Error('pool < 5')
+    const picked = questions.slice(0, 5)
+    const liveRows = await ctx.db
+      .query('testAssignments')
+      .withIndex('by_user_topic', q => q.eq('userId', userId).eq('topicId', topicId))
+      .filter(q => q.eq(q.field('deletedAt'), undefined))
+      .collect()
+    const kind = liveRows[0] ? 'assigned' : 'self'
+    const priorRows = await ctx.db
+      .query('testAttempts')
+      .withIndex('by_user_topic', q => q.eq('userId', userId).eq('topicId', topicId))
+      .collect()
+    const prior = priorRows[0]
+    if (prior) await ctx.db.patch(prior._id, { cancelledReason: 'new-attempt-started', status: 'cancelled' })
+    const snapshots = picked.map(q => ({
+      choicesShuffled: q.choices,
+      correctIndexShuffled: q.correctIndex,
+      promptText: q.prompt,
+      questionId: q._id,
+      revision: q.revision,
+      sourceDocIds: q.sourceDocIds
+    }))
+    const attemptId = await ctx.db.insert('testAttempts', {
+      kind,
+      questionSnapshots: snapshots,
+      startedAt: Date.now(),
+      status: 'in-progress',
+      topicId,
+      userId
+    })
+    return { attemptId, kind }
+  }
+})
+const submitAttemptProbe = mutation({
+  args: { answers: v.array(v.number()), attemptId: v.id('testAttempts'), testSecret: v.string() },
+  handler: async (ctx, { attemptId, answers, testSecret }): Promise<{ passed: boolean; score: number }> => {
+    verifyTestSecret(testSecret)
+    const attempt = await ctx.db.get(attemptId)
+    if (!attempt) throw new Error('attempt not found')
+    let score = 0
+    const snapshots = attempt.questionSnapshots.map((qs, i) => {
+      const ans = answers[i] ?? -1
+      if (ans === qs.correctIndexShuffled) score += 1
+      return { ...qs, userAnswerIndex: ans }
+    })
+    const passed = score === attempt.questionSnapshots.length
+    const finishedAt = Date.now()
+    await ctx.db.patch(attemptId, {
+      durationMs: finishedAt - attempt.startedAt,
+      finishedAt,
+      questionSnapshots: snapshots,
+      score,
+      status: passed ? 'passed' : 'failed'
+    })
+    if (passed) {
+      const passRows = await ctx.db
+        .query('testPasses')
+        .withIndex('by_user_topic_kind', q =>
+          q.eq('userId', attempt.userId).eq('topicId', attempt.topicId).eq('kind', attempt.kind)
+        )
+        .collect()
+      const priorPass = passRows[0]
+      if (priorPass) await ctx.db.patch(priorPass._id, { attemptId, passedAt: finishedAt })
+      else
+        await ctx.db.insert('testPasses', {
+          attemptId,
+          kind: attempt.kind,
+          passedAt: finishedAt,
+          topicId: attempt.topicId,
+          userId: attempt.userId
+        })
+    }
+    return { passed, score }
+  }
+})
 const seedAssignment = mutation({
   args: { createdBy: v.string(), testSecret: v.string(), topicId: v.id('topics'), userId: v.string() },
   handler: async (ctx, { userId, topicId, createdBy, testSecret }): Promise<void> => {
@@ -815,6 +898,8 @@ export {
   setSetting,
   setUserRoleProbe,
   softDeleteDocProbe,
+  startAttemptProbe,
+  submitAttemptProbe,
   topStripProbe,
   uploadFile,
   wipeAllForOwner,
