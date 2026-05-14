@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unnecessary-condition -- WrappedResult.ok is a discriminator; lint can't see the catch path */
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
 /** biome-ignore-all lint/suspicious/useAwait: Convex httpAction handler signature */
 /** biome-ignore-all lint/performance/noAwaitInLoops: polling + sequential delete loops are intentional */
 /** biome-ignore-all lint/style/noProcessEnv: ALLOW_DEV_TOKENS env gate */
