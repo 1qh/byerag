@@ -761,6 +761,65 @@ const seedTestPass = mutation({
     })
   }
 })
+const seedSuggestion = mutation({
+  args: {
+    choices: v.array(v.string()),
+    correctIndex: v.number(),
+    prompt: v.string(),
+    testSecret: v.string(),
+    topicId: v.id('topics')
+  },
+  handler: async (ctx, { topicId, prompt, choices, correctIndex, testSecret }): Promise<string> =>
+    (verifyTestSecret(testSecret),
+    ctx.db.insert('testQuestionSuggestions', {
+      choices,
+      correctIndex,
+      createdAt: Date.now(),
+      kind: 'new',
+      prompt,
+      regenCount: 0,
+      sourceDocIds: [],
+      status: 'pending',
+      topicId
+    }))
+})
+const approveSuggestionProbe = mutation({
+  args: { adminEmail: v.string(), suggestionId: v.id('testQuestionSuggestions'), testSecret: v.string() },
+  handler: async (ctx, { suggestionId, adminEmail, testSecret }): Promise<{ questionId: string }> => {
+    verifyTestSecret(testSecret)
+    const s = await ctx.db.get(suggestionId)
+    if (!s?.prompt || !s.choices || s.correctIndex === undefined) throw new Error('bad suggestion')
+    const qid = await ctx.db.insert('testQuestions', {
+      choices: s.choices,
+      correctIndex: s.correctIndex,
+      createdAt: Date.now(),
+      createdBy: adminEmail,
+      prompt: s.prompt,
+      revision: 1,
+      sourceDocIds: s.sourceDocIds,
+      topicId: s.topicId
+    })
+    await ctx.db.patch(suggestionId, {
+      resolvedAction: 'approve',
+      resolvedAt: Date.now(),
+      resolvedBy: adminEmail,
+      resolvedReason: 'admin-action',
+      status: 'resolved'
+    })
+    return { questionId: qid }
+  }
+})
+const countTopicQuestions = query({
+  args: { testSecret: v.string(), topicId: v.id('topics') },
+  handler: async (ctx, { topicId, testSecret }): Promise<number> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db
+      .query('testQuestions')
+      .withIndex('by_topic_deletedAt', q => q.eq('topicId', topicId).eq('deletedAt', undefined))
+      .take(500)
+    return rows.length
+  }
+})
 const seedTopicWithPool = mutation({
   args: { name: v.string(), poolSize: v.number(), testSecret: v.string() },
   handler: async (ctx, { name, poolSize, testSecret }): Promise<string> => {
@@ -1169,6 +1228,7 @@ export {
   adminDeleteTopicProbe,
   ageDocDeletedAt,
   ageQuarantineRow,
+  approveSuggestionProbe,
   assignAllForTopicProbe,
   attemptDetailProbe,
   checkRateLimitProbe,
@@ -1179,9 +1239,9 @@ export {
   countAssignmentsByCreator,
   countAuditLogs,
   countChunksForDoc,
-  countTestPasses,
   countCostRecords,
   countOwnerSpend,
+  countTestPasses,
   countTestSuggestions,
   docsFinalize,
   docsGenerateUploadUrl,
@@ -1202,9 +1262,9 @@ export {
   listFiles,
   listMessages,
   listQuestionsForTopic,
-  markTopicSubstantiveProbe,
   listSandboxIds,
   listStreamEvents,
+  markTopicSubstantiveProbe,
   readFile,
   removeChat,
   requestReviewProbe,
