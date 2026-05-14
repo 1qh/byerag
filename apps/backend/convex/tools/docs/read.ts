@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/only-throw-error -- fail() returns never (throws ToolError internally); rule misclassifies */
 import { arg, defineQuery, makeFail } from '../_api'
 const MAX_BYTES = 2_000_000
 const action = defineQuery({
@@ -15,9 +16,9 @@ const action = defineQuery({
     const cap = Math.min(args.bytes, MAX_BYTES)
     type DocRow = { _id: string; extractedText?: string; filename: string; lang?: string; mime: string; owner?: string; scope: 'mine' | 'shared'; version: number }
     const row = (await ctx.db.get(args.id as never)) as DocRow | null
-    if (!row) fail('NOT_FOUND', `doc ${args.id} not found`)
+    if (!row) throw fail('NOT_FOUND', `doc ${args.id} not found`)
     if (row.scope === 'mine' && row.owner !== ctx.auth.owner)
-      fail('FORBIDDEN', 'doc not in caller scope')
+      throw fail('FORBIDDEN', 'doc not in caller scope')
     const text = row.extractedText ?? ''
     return {
       _id: row._id,

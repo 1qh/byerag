@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/only-throw-error -- fail() returns never (throws ToolError internally); rule misclassifies */
 import { arg, defineQuery, makeFail } from '../_api'
 const CONTEXT_LINES = 3
 const aclCheck = (row: { owner?: string; scope: 'mine' | 'shared' }, caller: string): boolean =>
@@ -43,11 +44,11 @@ const action = defineQuery({
     const fail = makeFail('FORBIDDEN', 'NOT_FOUND')
     type DocRow = { _id: string; extractedText?: string; filename: string; owner?: string; scope: 'mine' | 'shared' }
     const rowA = (await ctx.db.get(args.a as never)) as DocRow | null
-    if (!rowA) fail('NOT_FOUND', `doc ${args.a} not found`)
-    if (!aclCheck(rowA, ctx.auth.owner)) fail('FORBIDDEN', 'doc A not in caller scope')
+    if (!rowA) throw fail('NOT_FOUND', `doc ${args.a} not found`)
+    if (!aclCheck(rowA, ctx.auth.owner)) throw fail('FORBIDDEN', 'doc A not in caller scope')
     const rowB = (await ctx.db.get(args.b as never)) as DocRow | null
-    if (!rowB) fail('NOT_FOUND', `doc ${args.b} not found`)
-    if (!aclCheck(rowB, ctx.auth.owner)) fail('FORBIDDEN', 'doc B not in caller scope')
+    if (!rowB) throw fail('NOT_FOUND', `doc ${args.b} not found`)
+    if (!aclCheck(rowB, ctx.auth.owner)) throw fail('FORBIDDEN', 'doc B not in caller scope')
     const linesA = (rowA.extractedText ?? '').split('\n')
     const linesB = (rowB.extractedText ?? '').split('\n')
     return {
