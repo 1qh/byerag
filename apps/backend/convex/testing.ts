@@ -437,6 +437,34 @@ const submitAttemptProbe = mutation({
     return { passed, score }
   }
 })
+const claimContextProbe = mutation({
+  args: { testSecret: v.string(), token: v.string(), userId: v.string() },
+  handler: async (ctx, { userId, token, testSecret }): Promise<void> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db
+      .query('userContexts')
+      .withIndex('by_user', q => q.eq('userId', userId))
+      .collect()
+    const existing = rows[0]
+    const now = Date.now()
+    if (existing) await ctx.db.patch(existing._id, { activeContextHeartbeatAt: now, activeContextToken: token })
+    else await ctx.db.insert('userContexts', { activeContextHeartbeatAt: now, activeContextToken: token, userId })
+  }
+})
+const heartbeatProbe = mutation({
+  args: { testSecret: v.string(), token: v.string(), userId: v.string() },
+  handler: async (ctx, { userId, token, testSecret }): Promise<boolean> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db
+      .query('userContexts')
+      .withIndex('by_user', q => q.eq('userId', userId))
+      .collect()
+    const existing = rows[0]
+    if (existing?.activeContextToken !== token) return false
+    await ctx.db.patch(existing._id, { activeContextHeartbeatAt: Date.now() })
+    return true
+  }
+})
 const seedAssignment = mutation({
   args: { createdBy: v.string(), testSecret: v.string(), topicId: v.id('topics'), userId: v.string() },
   handler: async (ctx, { userId, topicId, createdBy, testSecret }): Promise<void> => {
@@ -1363,6 +1391,7 @@ export {
   assignAllForTopicProbe,
   attemptDetailProbe,
   checkRateLimitProbe,
+  claimContextProbe,
   clearStreamingFlagsInternal,
   consumeProxyBudgetProbe,
   costCyclePivotProbe,
@@ -1389,6 +1418,7 @@ export {
   getUserProfile,
   gradebookProbe,
   gradebookWithDeptProbe,
+  heartbeatProbe,
   insertStreamEventProbe,
   listChats,
   listDocsByOwner,
