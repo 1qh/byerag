@@ -249,6 +249,35 @@ const gradebookProbe = query({
     return { cells, topics: topicsWithPool, users }
   }
 })
+const attemptDetailProbe = query({
+  args: { attemptId: v.id('testAttempts'), callerUserId: v.string(), testSecret: v.string() },
+  handler: async (
+    ctx,
+    { attemptId, callerUserId, testSecret }
+  ): Promise<null | {
+    _id: string
+    kind: string
+    questionSnapshots?: unknown[]
+    score?: number
+    status: string
+    topicId: string
+    total?: number
+  }> => {
+    verifyTestSecret(testSecret)
+    const row = await ctx.db.get(attemptId)
+    if (!row) return null
+    if (row.userId !== callerUserId) throw new Error('forbidden')
+    if (row.status === 'passed') return row
+    return {
+      _id: row._id,
+      kind: row.kind,
+      score: row.score ?? 0,
+      status: row.status,
+      topicId: row.topicId,
+      total: row.questionSnapshots.length
+    }
+  }
+})
 const startAttemptProbe = mutation({
   args: { testSecret: v.string(), topicId: v.id('topics'), userId: v.string() },
   handler: async (ctx, { userId, topicId, testSecret }): Promise<{ attemptId: string; kind: string }> => {
@@ -854,6 +883,7 @@ const listSandboxIds = internalQuery({
 export {
   ageDocDeletedAt,
   ageQuarantineRow,
+  attemptDetailProbe,
   checkRateLimitProbe,
   clearStreamingFlagsInternal,
   consumeProxyBudgetProbe,

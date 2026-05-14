@@ -3,7 +3,6 @@
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
 /** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
-
 import { ConvexHttpClient } from 'convex/browser'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -85,15 +84,23 @@ check('assigned-attempt kind=assigned', a3.kind === 'assigned', `kind=${a3.kind}
 console.log('[attempt] seed shallow topic poolSize=3 → start must reject')
 await c.mutation(api.testing.wipeTrainingTables, { testSecret })
 await c.mutation(api.testing.seedUserProfile, { role: 'user', testSecret, userId: U })
-const shallowTopic = (await c.mutation(api.testing.seedTopicWithPool, { name: 'Shallow', poolSize: 3, testSecret })) as string
+const shallowTopic = await c.mutation(api.testing.seedTopicWithPool, {
+  name: 'Shallow',
+  poolSize: 3,
+  testSecret
+})
 let rejected = false
 let rejectMsg = ''
 try {
   await c.mutation(api.testing.startAttemptProbe, { testSecret, topicId: shallowTopic as never, userId: U })
-} catch (err) {
+} catch (error) {
   rejected = true
-  rejectMsg = String(err)
+  rejectMsg = String(error)
 }
-check('shallow pool start rejected (pool < 5)', rejected && rejectMsg.includes('pool < 5'), `rejected=${rejected} msg=${rejectMsg.slice(0, 80)}`)
+check(
+  'shallow pool start rejected (pool < 5)',
+  rejected && rejectMsg.includes('pool < 5'),
+  `rejected=${rejected} msg=${rejectMsg.slice(0, 80)}`
+)
 console.log(`\n[attempt] SUMMARY pass=${pass} fail=${fail} total=5`)
 if (fail > 0) process.exit(1)
