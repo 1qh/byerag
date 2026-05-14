@@ -23,10 +23,10 @@ const { auth, isAuthenticated, signIn, signOut, store } = convexAuth({
           : undefined
       const rawImage = typeof profile.image === 'string' ? profile.image : ''
       const safeImage = rawImage.startsWith('https://') && rawImage.length <= 2000 ? rawImage : undefined
-      const dup = ctx.db
+      const dup = (await ctx.db
         .query('users')
         .filter(q => q.eq(q.field('email'), email))
-        .first() as null | { _id: string; email?: string }
+        .first()) as null | { _id: string; email?: string }
       const userId = dup
         ? (dup._id as never)
         : await ctx.db.insert('users', {
