@@ -330,6 +330,40 @@ const listShared = query({
     }))
   }
 })
+const PURGE_TTL_MS = 30 * 24 * 60 * 60 * 1000
+const purgeSoftDeleted = internalMutation({
+  args: {},
+  handler: async (ctx): Promise<{ blobsPurged: number; chunksPurged: number }> => {
+    const cutoff = Date.now() - PURGE_TTL_MS
+    const candidates = await ctx.db
+      .query('docs')
+      .withIndex('by_deletedAt')
+      .filter(q => q.and(q.neq(q.field('deletedAt'), undefined), q.lt(q.field('deletedAt'), cutoff)))
+      .take(200)
+    let blobsPurged = 0
+    let chunksPurged = 0
+    for (const doc of candidates) {
+      if (doc.storageId) {
+        try {
+          await ctx.storage.delete(doc.storageId)
+          blobsPurged += 1
+        } catch {
+          // already gone
+        }
+        await ctx.db.patch(doc._id, { storageId: undefined })
+      }
+      const chunks = await ctx.db
+        .query('docChunks')
+        .withIndex('by_doc', q => q.eq('docId', doc._id))
+        .take(500)
+      for (const c of chunks) {
+        await ctx.db.delete(c._id)
+        chunksPurged += 1
+      }
+    }
+    return { blobsPurged, chunksPurged }
+  }
+})
 export {
   findByFilename,
   findBySha256,
@@ -343,6 +377,7 @@ export {
   listMine,
   listShared,
   persistChunks,
+  purgeSoftDeleted,
   setExtracted,
   setPolicy,
   upload

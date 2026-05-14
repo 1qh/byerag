@@ -5,7 +5,7 @@
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import type { QueryCtx } from './_generated/server'
-import { internalMutation, internalQuery, query } from './_generated/server'
+import { internalMutation, internalQuery, mutation, query } from './_generated/server'
 const RE_CONTROL_ASCII = /[\u0000-\u0009\u000B\u000C\u000E-\u001F\u007F]/gu
 const RE_NEWLINES = /[\n\r\u0085\u2028\u2029]/gu
 const RE_HTML_TAGS = /<[^>]*>/gu
@@ -141,6 +141,71 @@ const requireAdminEmail = async (ctx: QueryCtx): Promise<null | string> => {
     .first()
   return profile?.role === 'admin' ? email : null
 }
+const listUserProfilesForAdmin = query({
+  args: {},
+  handler: async (ctx) => {
+    const adminEmail = await requireAdminEmail(ctx)
+    if (!adminEmail) return []
+    const rows = await ctx.db.query('userProfiles').take(2000)
+    return rows.map(r => ({
+      _id: r._id,
+      department: r.department,
+      role: r.role,
+      updatedAt: r.updatedAt,
+      updatedBy: r.updatedBy,
+      userId: r.userId
+    }))
+  }
+})
+const setUserDepartment = mutation({
+  args: { department: v.optional(v.union(v.literal('HR'), v.literal('Sales'), v.literal('IT'))), userId: v.string() },
+  handler: async (ctx, { userId, department }): Promise<void> => {
+    const adminEmail = await requireAdminEmail(ctx)
+    if (!adminEmail) throw new Error('admin only')
+    const row = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', userId))
+      .first()
+    if (!row) throw new Error(`userProfiles row not found for ${userId}`)
+    await ctx.db.patch(row._id, { department, updatedAt: Date.now(), updatedBy: adminEmail })
+    await ctx.db.insert('auditLogs', {
+      args: JSON.stringify({ department, userId }),
+      command: 'userProfiles.setDepartment',
+      mode: 'session',
+      ok: true,
+      owner: adminEmail,
+      severity: 'low'
+    })
+  }
+})
+const setUserRole = mutation({
+  args: { role: v.union(v.literal('admin'), v.literal('user')), userId: v.string() },
+  handler: async (ctx, { userId, role }): Promise<void> => {
+    const adminEmail = await requireAdminEmail(ctx)
+    if (!adminEmail) throw new Error('admin only')
+    const row = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', userId))
+      .first()
+    if (!row) throw new Error(`userProfiles row not found for ${userId}`)
+    if (row.role === 'admin' && role === 'user') {
+      const otherAdmins = await ctx.db
+        .query('userProfiles')
+        .withIndex('by_role', q => q.eq('role', 'admin'))
+        .take(50)
+      if (otherAdmins.filter(a => a.userId !== userId).length === 0) throw new Error('cannot demote last admin')
+    }
+    await ctx.db.patch(row._id, { role, updatedAt: Date.now(), updatedBy: adminEmail })
+    await ctx.db.insert('auditLogs', {
+      args: JSON.stringify({ role, userId }),
+      command: 'userProfiles.setRole',
+      mode: 'session',
+      ok: true,
+      owner: adminEmail,
+      severity: 'medium'
+    })
+  }
+})
 const listAuditLogsForAdmin = query({
   args: { limit: v.optional(v.number()), ownerFilter: v.optional(v.string()) },
   handler: async (ctx, { ownerFilter, limit }) => {
@@ -188,6 +253,9 @@ export {
   insertAuditLog,
   listAuditLogsForAdmin,
   listCostRecordsForAdmin,
+  listUserProfilesForAdmin,
+  setUserDepartment,
+  setUserRole,
   pruneAuditLogs,
   pruneStaleRateLimits,
   sanitizeExternal,
