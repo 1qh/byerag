@@ -491,6 +491,68 @@ const seedCostRecord = mutation({
     })
   }
 })
+const getTopicPoolCap = query({
+  args: { testSecret: v.string(), topicId: v.id('topics') },
+  handler: async (ctx, { topicId, testSecret }): Promise<null | { poolCap: number }> => {
+    verifyTestSecret(testSecret)
+    const t = await ctx.db.get(topicId)
+    return t ? { poolCap: t.poolCap } : null
+  }
+})
+const setTopicPoolCap = mutation({
+  args: { poolCap: v.number(), testSecret: v.string(), topicId: v.id('topics') },
+  handler: async (ctx, { topicId, poolCap, testSecret }): Promise<void> => {
+    verifyTestSecret(testSecret)
+    await ctx.db.patch(topicId, { poolCap })
+  }
+})
+const markTopicSubstantiveProbe = mutation({
+  args: { adminEmail: v.string(), testSecret: v.string(), topicId: v.id('topics') },
+  handler: async (
+    ctx,
+    { topicId, adminEmail, testSecret }
+  ): Promise<{ assignmentsCreated: number; passesRevoked: number }> => {
+    verifyTestSecret(testSecret)
+    const now = Date.now()
+    await ctx.db.patch(topicId, { lastSubstantiveUpdate: now })
+    const stalePass = await ctx.db
+      .query('testPasses')
+      .withIndex('by_topic_kind_passedAt', q => q.eq('topicId', topicId).eq('kind', 'assigned'))
+      .filter(q => q.lt(q.field('passedAt'), now))
+      .take(2000)
+    let revoked = 0
+    let created = 0
+    for (const p of stalePass) {
+      await ctx.db.delete(p._id)
+      revoked += 1
+      const existingRows = await ctx.db
+        .query('testAssignments')
+        .withIndex('by_user_topic', q => q.eq('userId', p.userId).eq('topicId', topicId))
+        .filter(q => q.eq(q.field('deletedAt'), undefined))
+        .collect()
+      if (!existingRows[0]) {
+        await ctx.db.insert('testAssignments', { createdAt: now, createdBy: adminEmail, topicId, userId: p.userId })
+        created += 1
+      }
+    }
+    return { assignmentsCreated: created, passesRevoked: revoked }
+  }
+})
+const countTestPasses = query({
+  args: { testSecret: v.string(), topicId: v.id('topics') },
+  handler: async (ctx, { topicId, testSecret }): Promise<{ assignedKind: number; selfKind: number }> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db
+      .query('testPasses')
+      .withIndex('by_topic_kind_passedAt', q => q.eq('topicId', topicId).eq('kind', 'assigned'))
+      .take(2000)
+    const self = await ctx.db
+      .query('testPasses')
+      .withIndex('by_topic_kind_passedAt', q => q.eq('topicId', topicId).eq('kind', 'self'))
+      .take(2000)
+    return { assignedKind: rows.length, selfKind: self.length }
+  }
+})
 const editQuestionProbe = mutation({
   args: {
     choices: v.array(v.string()),
@@ -1117,6 +1179,7 @@ export {
   countAssignmentsByCreator,
   countAuditLogs,
   countChunksForDoc,
+  countTestPasses,
   countCostRecords,
   countOwnerSpend,
   countTestSuggestions,
@@ -1128,6 +1191,7 @@ export {
   getChatStreaming,
   getDocRow,
   getQuestionRow,
+  getTopicPoolCap,
   getTopicRow,
   getUserProfile,
   gradebookProbe,
@@ -1138,6 +1202,7 @@ export {
   listFiles,
   listMessages,
   listQuestionsForTopic,
+  markTopicSubstantiveProbe,
   listSandboxIds,
   listStreamEvents,
   readFile,
@@ -1158,6 +1223,7 @@ export {
   send,
   setChatStreaming,
   setSetting,
+  setTopicPoolCap,
   setUserDepartmentProbe,
   setUserRoleProbe,
   softDeleteDocProbe,
