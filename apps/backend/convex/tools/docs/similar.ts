@@ -3,6 +3,12 @@ import { internal } from '../../_generated/api'
 import { embedQuery, matryoshkaTruncate } from '../../docsEmbed'
 import { arg, defineTool } from '../_api'
 const SCOPES = ['shared', 'mine', 'both'] as const
+interface ChunkRow {
+  _id: Id<'docChunks'>
+  docId: Id<'docs'>
+  seq: number
+  text: string
+}
 interface SnippetRow {
   _id: Id<'docs'>
   filename: string
@@ -12,6 +18,7 @@ interface SnippetRow {
 const action = defineTool({
   args: {
     dim: arg.enum(['256', '512', '768'], { default: '768', description: 'Matryoshka prefix dim' }),
+    granular: arg.bool({ default: false, description: 'Return chunk-level (docId, chunkSeq, snippet, score)' }),
     limit: arg.number({ default: 10, description: 'Max hits (cap 50)' }),
     query: arg.string({ description: 'Natural-language query text' }),
     scope: arg.enum(SCOPES, { description: 'Visibility scope' })
@@ -26,6 +33,47 @@ const action = defineTool({
     const vec = matryoshkaTruncate(full, Number.parseInt(args.dim, 10))
     const wantShared = args.scope === 'shared' || args.scope === 'both'
     const wantMine = args.scope === 'mine' || args.scope === 'both'
+    if (args.granular) {
+      const docHits: { _id: Id<'docs'>; _score: number }[] = []
+      if (wantShared) {
+        const r = await ctx.vectorSearch('docs', 'by_embedding', {
+          filter: q => q.eq('scope', 'shared'),
+          limit: cap,
+          vector: vec
+        })
+        docHits.push(...r.map(h => ({ _id: h._id, _score: h._score })))
+      }
+      if (wantMine) {
+        const r = await ctx.vectorSearch('docs', 'by_embedding', {
+          filter: q => q.eq('owner', ctx.auth.owner),
+          limit: cap,
+          vector: vec
+        })
+        docHits.push(...r.map(h => ({ _id: h._id, _score: h._score })))
+      }
+      const docIds = [...new Set(docHits.map(h => h._id))]
+      const chunkHits: { _id: Id<'docChunks'>; _score: number }[] = []
+      for (const docId of docIds) {
+        const r = await ctx.vectorSearch('docChunks', 'by_embedding', {
+          filter: q => q.eq('docId', docId),
+          limit: cap,
+          vector: vec
+        })
+        chunkHits.push(...r.map(h => ({ _id: h._id, _score: h._score })))
+      }
+      const topChunks = chunkHits.toSorted((a, b) => b._score - a._score).slice(0, cap)
+      const chunks = (await ctx.runQuery(internal.docs.getChunkRows, {
+        ids: topChunks.map(h => h._id)
+      })) as ChunkRow[]
+      const byChunkId = new Map(chunks.map(c => [c._id, c]))
+      return topChunks
+        .map(h => {
+          const row = byChunkId.get(h._id)
+          if (!row) return null
+          return { _score: h._score, chunkSeq: row.seq, docId: row.docId, snippet: row.text.slice(0, 200) }
+        })
+        .filter((x): x is { _score: number; chunkSeq: number; docId: Id<'docs'>; snippet: string } => x !== null)
+    }
     const hits: { _id: Id<'docs'>; _score: number }[] = []
     if (wantShared) {
       const r = await ctx.vectorSearch('docs', 'by_embedding', {
