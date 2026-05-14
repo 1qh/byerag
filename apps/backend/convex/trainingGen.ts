@@ -6,6 +6,7 @@
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import { internalAction } from './_generated/server'
+import { embedQuery } from './docsEmbed'
 import { env } from './env'
 const KIMI_TIMEOUT_MS = 60_000
 const KIMI_MAX_TOKENS = 4000
@@ -78,7 +79,7 @@ const parseQuestions = (raw: string): ParsedQuestion[] => {
 }
 const generate = internalAction({
   args: { docId: v.id('docs') },
-  handler: async (ctx, { docId }): Promise<{ generated: number; reason?: string }> => {
+  handler: async (ctx, { docId }): Promise<{ conflictsFlagged?: number; generated: number; reason?: string }> => {
     const doc = (await ctx.runQuery(internal.docs.getForConflict, { docId })) as null | {
       extractedText: string
       filename: string
@@ -93,8 +94,16 @@ const generate = internalAction({
     }
     const parsed = parseQuestions(raw)
     if (parsed.length === 0) return { generated: 0, reason: 'parse-empty' }
-    await ctx.runMutation(internal.training.persistSuggestions, { docId, questions: parsed })
-    return { generated: parsed.length }
+    const embedded: { choices: string[]; correctIndex: number; prompt: string; promptEmbedding: number[]; topicName: string }[] = []
+    for (const q of parsed)
+      try {
+        const v = await embedQuery(q.prompt)
+        embedded.push({ choices: q.choices, correctIndex: q.correctIndex, prompt: q.prompt, promptEmbedding: v, topicName: q.topicName })
+      } catch {
+        embedded.push({ choices: q.choices, correctIndex: q.correctIndex, prompt: q.prompt, promptEmbedding: [], topicName: q.topicName })
+      }
+    const result = (await ctx.runMutation(internal.training.persistSuggestionsWithEmbedding, { docId, questions: embedded })) as { conflictsFlagged: number; topicsCreated: number; suggestionsInserted: number }
+    return { conflictsFlagged: result.conflictsFlagged, generated: parsed.length }
   }
 })
 export { generate }

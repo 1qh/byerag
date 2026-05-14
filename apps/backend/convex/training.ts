@@ -138,6 +138,92 @@ const listMyTopics = query({
   }
 })
 const DEFAULT_POOL_CAP = 50
+const DUP_COSINE_THRESHOLD = 0.85
+const cosine = (a: number[], b: number[]): number => {
+  let dot = 0, na = 0, nb = 0
+  const n = Math.min(a.length, b.length)
+  for (let i = 0; i < n; i += 1) { const x = a[i] ?? 0, y = b[i] ?? 0; dot += x * y; na += x * x; nb += y * y }
+  return na === 0 || nb === 0 ? 0 : dot / Math.sqrt(na * nb)
+}
+const persistSuggestionsWithEmbedding = internalMutation({
+  args: {
+    docId: v.id('docs'),
+    questions: v.array(
+      v.object({
+        choices: v.array(v.string()),
+        correctIndex: v.number(),
+        prompt: v.string(),
+        promptEmbedding: v.array(v.float64()),
+        topicName: v.string()
+      })
+    )
+  },
+  handler: async (ctx, { docId, questions }): Promise<{ conflictsFlagged: number; suggestionsInserted: number; topicsCreated: number }> => {
+    const topicCache = new Map<string, string>()
+    let topicsCreated = 0, suggestionsInserted = 0, conflictsFlagged = 0
+    for (const q of questions) {
+      let topicId = topicCache.get(q.topicName)
+      if (!topicId) {
+        const existing = await ctx.db
+          .query('topics')
+          .withIndex('by_name', x => x.eq('name', q.topicName))
+          .first()
+        if (existing) topicId = existing._id
+        else {
+          topicId = await ctx.db.insert('topics', { autoLabeled: true, createdAt: Date.now(), name: q.topicName, poolCap: DEFAULT_POOL_CAP })
+          topicsCreated += 1
+        }
+        topicCache.set(q.topicName, topicId)
+      }
+      let pairKind: 'conflict' | undefined
+      let pairedWith: undefined | string
+      if (q.promptEmbedding.length > 0) {
+        const existingQs = await ctx.db
+          .query('testQuestions')
+          .withIndex('by_topic_deletedAt', x => x.eq('topicId', topicId as never).eq('deletedAt', undefined))
+          .take(200)
+        for (const e of existingQs) {
+          const eq = await ctx.db
+            .query('testQuestionSuggestions')
+            .withIndex('by_target', x => x.eq('targetQuestionId', e._id))
+            .first()
+          void eq
+        }
+      }
+      const sid = await ctx.db.insert('testQuestionSuggestions', {
+        choices: q.choices,
+        correctIndex: q.correctIndex,
+        createdAt: Date.now(),
+        kind: 'new',
+        pairKind,
+        pairedWith: pairedWith as never,
+        promptEmbedding: q.promptEmbedding.length > 0 ? q.promptEmbedding : undefined,
+        prompt: q.prompt,
+        regenCount: 0,
+        sourceDocIds: [docId],
+        status: 'pending',
+        topicId: topicId as never
+      })
+      if (q.promptEmbedding.length > 0) {
+        const peers = await ctx.db
+          .query('testQuestionSuggestions')
+          .withIndex('by_topic_status', x => x.eq('topicId', topicId as never).eq('status', 'pending'))
+          .take(500)
+        for (const p of peers) {
+          if (p._id === sid || !p.promptEmbedding || p.promptEmbedding.length === 0) continue
+          const c = cosine(p.promptEmbedding, q.promptEmbedding)
+          if (c >= DUP_COSINE_THRESHOLD) {
+            await ctx.db.patch(sid, { pairKind: 'conflict', pairedWith: p._id })
+            conflictsFlagged += 1
+            break
+          }
+        }
+      }
+      suggestionsInserted += 1
+    }
+    return { conflictsFlagged, suggestionsInserted, topicsCreated }
+  }
+})
 const persistSuggestions = internalMutation({
   args: {
     docId: v.id('docs'),
@@ -336,5 +422,6 @@ export {
   listRoleUsers,
   markTopicSubstantive,
   persistSuggestions,
+  persistSuggestionsWithEmbedding,
   writeAuditRow
 }
