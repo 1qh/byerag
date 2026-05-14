@@ -67,6 +67,9 @@ import type * as tools_generated_registry from "../tools/generated/registry.js";
 import type * as tools_generated_toolCallers from "../tools/generated/toolCallers.js";
 import type * as tools_generated_toolTypes from "../tools/generated/toolTypes.js";
 import type * as training from "../training.js";
+import type * as trainingAssignments from "../trainingAssignments.js";
+import type * as trainingAttempts from "../trainingAttempts.js";
+import type * as trainingGen from "../trainingGen.js";
 import type * as userContexts from "../userContexts.js";
 import type * as utils from "../utils.js";
 
@@ -136,6 +139,9 @@ declare const fullApi: ApiFromModules<{
   "tools/generated/toolCallers": typeof tools_generated_toolCallers;
   "tools/generated/toolTypes": typeof tools_generated_toolTypes;
   training: typeof training;
+  trainingAssignments: typeof trainingAssignments;
+  trainingAttempts: typeof trainingAttempts;
+  trainingGen: typeof trainingGen;
   userContexts: typeof userContexts;
   utils: typeof utils;
 }>;

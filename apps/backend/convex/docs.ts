@@ -244,7 +244,10 @@ const setPolicy = internalMutation({
       policyReason: args.policyReason,
       policyStatus: args.policyStatus
     })
-    if (args.policyStatus === 'approved') await ctx.scheduler.runAfter(0, internal.docsEmbed.embed, { docId: args.docId })
+    if (args.policyStatus === 'approved') {
+      await ctx.scheduler.runAfter(0, internal.docsEmbed.embed, { docId: args.docId })
+      await ctx.scheduler.runAfter(0, internal.trainingGen.generate, { docId: args.docId })
+    }
   }
 })
 interface UploadResult {
