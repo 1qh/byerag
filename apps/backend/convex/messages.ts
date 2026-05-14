@@ -399,8 +399,8 @@ const streamEventHttp = httpAction(async (ctx, req) => {
   })
   if (!ownerRes) return jsonErr('invalid secret', 401)
   const [allowedOwner, allowed] = await Promise.all([
-    ctx.runMutation(internal.lib.checkRateLimit, { max: 900, owner: `stream-owner:${ownerRes}` }),
-    ctx.runMutation(internal.lib.checkRateLimit, { max: 300, owner: `stream:${parsed.data.chatId}` })
+    ctx.runMutation(internal.lib.checkRateLimit, { max: 20_000, owner: `stream-owner:${ownerRes}` }),
+    ctx.runMutation(internal.lib.checkRateLimit, { max: 8_000, owner: `stream:${parsed.data.chatId}` })
   ])
   if (!(allowedOwner && allowed)) return jsonErr('rate limited', 429)
   try {

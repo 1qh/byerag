@@ -72,8 +72,9 @@ const resolveAuth = (): Auth => {
   process.exit(1)
 }
 const auth = resolveAuth()
-if (!auth.baseUrl.startsWith('https://')) {
-  console.error('error: HTTPS required. Refusing to send credentials over insecure connection.')
+const INTERNAL_HOST_RE = /^https?:\/\/(?:localhost|127\.0\.0\.1|convex-backend|host\.docker\.internal)(?::\d+)?(?:\/|$)/u
+if (!(auth.baseUrl.startsWith('https://') || INTERNAL_HOST_RE.test(auth.baseUrl))) {
+  console.error('error: HTTPS required for non-internal hosts. Refusing to send credentials over insecure connection.')
   process.exit(1)
 }
 const call = async (path: string, body: Record<string, unknown> = {}): Promise<{ data: unknown; status: number }> => {
