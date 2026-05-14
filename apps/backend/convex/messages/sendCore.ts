@@ -134,6 +134,25 @@ const sendCore = async (
   })
   await ctx.db.patch(cid, { timeoutFunctionId })
   await ctx.scheduler.runAfter(0, internal.agent.run, { chatId: cid, email, secret })
+  const d = new Date()
+  const dayKey = `${d.getUTCFullYear()}-${(d.getUTCMonth() + 1).toString().padStart(2, '0')}-${d.getUTCDate().toString().padStart(2, '0')}`
+  const existing = ctx.db
+    .query('costRecords')
+    .withIndex('by_owner_model_dayKey', q => q.eq('owner', email).eq('model', 'kimi-for-coding').eq('dayKey', dayKey))
+    .first()
+  if (existing) await ctx.db.patch(existing._id, { callCount: existing.callCount + 1 })
+  else
+    await ctx.db.insert('costRecords', {
+      cacheCreationInputTokens: 0,
+      cacheReadInputTokens: 0,
+      callCount: 1,
+      cents: 0,
+      dayKey,
+      inputTokens: 0,
+      model: 'kimi-for-coding',
+      outputTokens: 0,
+      owner: email
+    })
   return { chatId: cid, secret }
 }
 export { sanitizeTitle, sendCore, sessionMessage, VALID_SESSION_ID, verifySecret }

@@ -648,6 +648,15 @@ const anthropicProxy = httpAction(async (ctx, req) => {
           reservedCents,
           reservedDayKey
         })
+        await ctx.scheduler.runAfter(0, internal.costRecords.upsert, {
+          cacheCreationInputTokens: 0,
+          cacheReadInputTokens: 0,
+          cents: actual,
+          inputTokens: 0,
+          model: modelName ?? 'kimi-for-coding',
+          outputTokens: 0,
+          owner
+        })
       } catch (settleError) {
         log('error', 'proxy.settle.failed', {
           actual,
@@ -658,18 +667,52 @@ const anthropicProxy = httpAction(async (ctx, req) => {
       }
     }
     const settled = async (u: UsageReport): Promise<void> => {
+      log('info', 'proxy.settled.enter', { hasUsage: u.inputTokens > 0 || u.outputTokens > 0, owner, settledDoneOuter, u })
       if (settledDoneOuter) return
       settledDoneOuter = true
-      await postSettle(computeActualCents(u), 'sse-flush')
+      const actualCents = computeActualCents(u)
+      await postSettle(actualCents, 'sse-flush')
+      try {
+        await ctx.scheduler.runAfter(0, internal.costRecords.upsert, {
+          cacheCreationInputTokens: u.cacheCreationInputTokens,
+          cacheReadInputTokens: u.cacheReadInputTokens,
+          cents: actualCents,
+          inputTokens: u.inputTokens,
+          model: modelName ?? 'unknown',
+          outputTokens: u.outputTokens,
+          owner
+        })
+      } catch (error) {
+        log('error', 'costRecords.upsert.failed', { error: error instanceof Error ? error.message : 'unknown', owner })
+      }
     }
     let getSseUsage: (() => UsageReport) | null = null
     let hasSseUsage: (() => boolean) | null = null
     const settleOrRefund = async (cause: string): Promise<void> => {
       if (settledDoneOuter) return
       settledDoneOuter = true
-      await (hasSseUsage?.() && getSseUsage
-        ? postSettle(computeActualCents(getSseUsage()), cause)
-        : refundReservation(cause))
+      if (hasSseUsage?.() && getSseUsage) {
+        const u = getSseUsage()
+        const actualCents = computeActualCents(u)
+        await postSettle(actualCents, cause)
+        try {
+          await ctx.scheduler.runAfter(0, internal.costRecords.upsert, {
+            cacheCreationInputTokens: u.cacheCreationInputTokens,
+            cacheReadInputTokens: u.cacheReadInputTokens,
+            cents: actualCents,
+            inputTokens: u.inputTokens,
+            model: modelName ?? 'unknown',
+            outputTokens: u.outputTokens,
+            owner
+          })
+        } catch (error) {
+          log('error', 'costRecords.upsert.failed', {
+            cause,
+            error: error instanceof Error ? error.message : 'unknown',
+            owner
+          })
+        }
+      } else await refundReservation(cause)
     }
     const settleOrRefundFireForget = (cause: string): void => {
       settleOrRefund(cause)
