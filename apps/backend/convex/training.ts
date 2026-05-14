@@ -280,6 +280,50 @@ const approveSuggestionPublic = mutation({
     return { questionId }
   }
 })
+const markTopicSubstantive = mutation({
+  args: { topicId: v.id('topics') },
+  handler: async (ctx, { topicId }): Promise<{ assignmentsCreated: number; passesRevoked: number }> => {
+    const identity = await ctx.auth.getUserIdentity()
+    const email = identity?.email?.toLowerCase()
+    if (!email) throw new Error('not authenticated')
+    const profile = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', email))
+      .first()
+    if (profile?.role !== 'admin') throw new Error('admin only')
+    const now = Date.now()
+    await ctx.db.patch(topicId, { lastSubstantiveUpdate: now })
+    const stalePass = await ctx.db
+      .query('testPasses')
+      .withIndex('by_topic_kind_passedAt', q => q.eq('topicId', topicId).eq('kind', 'assigned'))
+      .filter(q => q.lt(q.field('passedAt'), now))
+      .take(2000)
+    let passesRevoked = 0
+    let assignmentsCreated = 0
+    for (const p of stalePass) {
+      await ctx.db.delete(p._id)
+      passesRevoked += 1
+      const existingAssignment = await ctx.db
+        .query('testAssignments')
+        .withIndex('by_user_topic', q => q.eq('userId', p.userId).eq('topicId', topicId))
+        .filter(q => q.eq(q.field('deletedAt'), undefined))
+        .first()
+      if (!existingAssignment) {
+        await ctx.db.insert('testAssignments', { createdAt: now, createdBy: email, topicId, userId: p.userId })
+        assignmentsCreated += 1
+      }
+    }
+    await ctx.db.insert('auditLogs', {
+      args: JSON.stringify({ assignmentsCreated, passesRevoked, topicId }),
+      command: 'training.assignment.rearm',
+      mode: 'session',
+      ok: true,
+      owner: email,
+      severity: 'medium'
+    })
+    return { assignmentsCreated, passesRevoked }
+  }
+})
 export {
   approveSuggestion,
   approveSuggestionPublic,
@@ -290,6 +334,7 @@ export {
   listMyTopics,
   listPendingSuggestionsForAdmin,
   listRoleUsers,
+  markTopicSubstantive,
   persistSuggestions,
   writeAuditRow
 }
