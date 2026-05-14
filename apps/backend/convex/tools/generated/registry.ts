@@ -3,14 +3,20 @@ import type { FunctionReference } from 'convex/server'
 import type { ArgSpecs, ProviderMeta, RegistryEntry, ToolMeta } from '@a/cli'
 import { internal } from '../../_generated/api'
 import docs_provider from '../docs/_provider'
+import training_provider from '../training/_provider'
 import { action as docsConflict_mod } from '../docs/conflict'
 import { action as docsDiff_mod } from '../docs/diff'
 import { action as docsGrep_mod } from '../docs/grep'
 import { action as docsList_mod } from '../docs/list'
 import { action as docsRead_mod } from '../docs/read'
 import { action as docsSimilar_mod } from '../docs/similar'
+import { action as trainingAttemptDetail_mod } from '../training/attemptDetail'
+import { action as trainingAttempts_mod } from '../training/attempts'
+import { action as trainingStatus_mod } from '../training/status'
+import { action as trainingTopics_mod } from '../training/topics'
 const PROVIDERS: Record<string, ProviderMeta> = {
   "docs": docs_provider,
+  "training": training_provider,
 }
 const REGISTRY: Record<string, RegistryEntry<'admin' | 'user'>> = {
   "docs.conflict": {
@@ -71,6 +77,46 @@ const REGISTRY: Record<string, RegistryEntry<'admin' | 'user'>> = {
     kind: 'action',
     meta: (docsSimilar_mod as unknown as { meta: ToolMeta }).meta,
     path: ["docs","similar"],
+    tier: "user"
+  },
+  "training.attempt-detail": {
+    argSpecs: (trainingAttemptDetail_mod as unknown as { argSpecs: ArgSpecs }).argSpecs,
+    fn: internal.tools.training.attemptDetail.action as FunctionReference<'query', 'internal'>,
+    inferredDescription: null,
+    inferredSchema: {"kind":"object","shape":{"_id":{"optional":false,"schema":{"kind":"string"}},"kind":{"optional":false,"schema":{"kind":"string"}},"questionSnapshots":{"optional":true,"schema":{"element":{"kind":"object","shape":{"choicesShuffled":{"optional":false,"schema":{"element":{"kind":"string"},"kind":"array"}},"correctIndexShuffled":{"optional":false,"schema":{"kind":"number"}},"promptText":{"optional":false,"schema":{"kind":"string"}},"sourceDocIds":{"optional":false,"schema":{"element":{"kind":"string"},"kind":"array"}}}},"kind":"array"}},"score":{"optional":true,"schema":{"kind":"number"}},"status":{"optional":false,"schema":{"kind":"string"}},"topicId":{"optional":false,"schema":{"kind":"string"}},"userId":{"optional":true,"schema":{"kind":"string"}},"total":{"optional":true,"schema":{"kind":"number"}}}},
+    kind: 'query',
+    meta: (trainingAttemptDetail_mod as unknown as { meta: ToolMeta }).meta,
+    path: ["training","attempt-detail"],
+    tier: "user"
+  },
+  "training.attempts": {
+    argSpecs: (trainingAttempts_mod as unknown as { argSpecs: ArgSpecs }).argSpecs,
+    fn: internal.tools.training.attempts.action as FunctionReference<'query', 'internal'>,
+    inferredDescription: null,
+    inferredSchema: {"kind":"object","shape":{"attempts":{"optional":false,"schema":{"element":{"kind":"object","shape":{"_id":{"optional":false,"schema":{"kind":"unknown","text":"Id<\"testAttempts\">"}},"finishedAt":{"optional":true,"schema":{"kind":"number"}},"kind":{"optional":false,"schema":{"kind":"enum","values":["assigned","self"]}},"score":{"optional":true,"schema":{"kind":"number"}},"startedAt":{"optional":false,"schema":{"kind":"number"}},"status":{"optional":false,"schema":{"kind":"enum","values":["cancelled","failed","in-progress","passed"]}},"topicId":{"optional":false,"schema":{"kind":"unknown","text":"Id<\"topics\">"}}}},"kind":"array"}}}},
+    kind: 'query',
+    meta: (trainingAttempts_mod as unknown as { meta: ToolMeta }).meta,
+    path: ["training","attempts"],
+    tier: "user"
+  },
+  "training.status": {
+    argSpecs: (trainingStatus_mod as unknown as { argSpecs: ArgSpecs }).argSpecs,
+    fn: internal.tools.training.status.action as FunctionReference<'query', 'internal'>,
+    inferredDescription: null,
+    inferredSchema: {"kind":"object","shape":{"topics":{"optional":false,"schema":{"element":{"kind":"object","shape":{"_id":{"optional":false,"schema":{"kind":"string"}},"myStatus":{"optional":false,"schema":{"kind":"string"}},"name":{"optional":false,"schema":{"kind":"string"}},"poolSize":{"optional":false,"schema":{"kind":"number"}}}},"kind":"array"}}}},
+    kind: 'query',
+    meta: (trainingStatus_mod as unknown as { meta: ToolMeta }).meta,
+    path: ["training","status"],
+    tier: "user"
+  },
+  "training.topics": {
+    argSpecs: (trainingTopics_mod as unknown as { argSpecs: ArgSpecs }).argSpecs,
+    fn: internal.tools.training.topics.action as FunctionReference<'query', 'internal'>,
+    inferredDescription: null,
+    inferredSchema: {"kind":"object","shape":{"topics":{"optional":false,"schema":{"element":{"kind":"object","shape":{"_id":{"optional":false,"schema":{"kind":"string"}},"name":{"optional":false,"schema":{"kind":"string"}},"poolSize":{"optional":false,"schema":{"kind":"number"}}}},"kind":"array"}}}},
+    kind: 'query',
+    meta: (trainingTopics_mod as unknown as { meta: ToolMeta }).meta,
+    path: ["training","topics"],
     tier: "user"
   },
 }

@@ -87,4 +87,57 @@ interface DocsSimilarResult {
   snippet: string
 }[]
 
-export type { DocsConflictArgs, DocsConflictResult, DocsDiffArgs, DocsDiffResult, DocsGrepArgs, DocsGrepResult, DocsListArgs, DocsListResult, DocsReadArgs, DocsReadResult, DocsSimilarArgs, DocsSimilarResult }
+interface TrainingAttemptDetailArgs {
+  id: string
+}
+
+interface TrainingAttemptDetailResult {
+  _id: string
+  kind: string
+  questionSnapshots?: {
+    choicesShuffled: string[]
+    correctIndexShuffled: number
+    promptText: string
+    sourceDocIds: string[]
+  }[]
+  score?: number
+  status: string
+  topicId: string
+  userId?: string
+  total?: number
+}
+
+interface TrainingAttemptsArgs {
+  limit: number
+}
+
+interface TrainingAttemptsResult {
+  attempts: {
+    _id: unknown
+    finishedAt?: number
+    kind: "assigned" | "self"
+    score?: number
+    startedAt: number
+    status: "cancelled" | "failed" | "in-progress" | "passed"
+    topicId: unknown
+  }[]
+}
+
+interface TrainingStatusResult {
+  topics: {
+    _id: string
+    myStatus: string
+    name: string
+    poolSize: number
+  }[]
+}
+
+interface TrainingTopicsResult {
+  topics: {
+    _id: string
+    name: string
+    poolSize: number
+  }[]
+}
+
+export type { DocsConflictArgs, DocsConflictResult, DocsDiffArgs, DocsDiffResult, DocsGrepArgs, DocsGrepResult, DocsListArgs, DocsListResult, DocsReadArgs, DocsReadResult, DocsSimilarArgs, DocsSimilarResult, TrainingAttemptDetailArgs, TrainingAttemptDetailResult, TrainingAttemptsArgs, TrainingAttemptsResult, TrainingStatusResult, TrainingTopicsResult }
