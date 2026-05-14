@@ -212,6 +212,17 @@ const setSetting = mutation({
     else await ctx.db.insert('settings', { key, updatedAt: Date.now(), updatedBy: 'test', value })
   }
 })
+const gradebookWithDeptProbe = query({
+  args: { testSecret: v.string() },
+  handler: async (ctx, { testSecret }): Promise<{ users: { department?: string; userId: string }[] }> => {
+    verifyTestSecret(testSecret)
+    const userRows = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_role', q => q.eq('role', 'user'))
+      .take(2000)
+    return { users: userRows.map(u => ({ department: u.department, userId: u.userId })) }
+  }
+})
 const gradebookProbe = query({
   args: { testSecret: v.string() },
   handler: async (
@@ -1120,6 +1131,7 @@ export {
   getTopicRow,
   getUserProfile,
   gradebookProbe,
+  gradebookWithDeptProbe,
   insertStreamEventProbe,
   listChats,
   listDocsByOwner,
