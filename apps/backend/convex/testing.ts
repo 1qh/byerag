@@ -18,6 +18,18 @@ const verifyTestSecret = (secret: string) => {
   if (!expected) throw new Error('testing endpoints disabled (TEST_SECRET unset)')
   if (!constantTimeEqual(secret, expected)) throw new Error('invalid test secret')
 }
+const sendWithSecret = mutation({
+  args: {
+    app: v.string(),
+    content: v.string(),
+    email: v.string(),
+    testSecret: v.string()
+  },
+  handler: async (ctx, { app, testSecret, email, content }): Promise<{ chatId: Id<'chats'>; secret: string }> => {
+    verifyTestSecret(testSecret)
+    return ctx.runMutation(internal.messages.sendInternal, { app, content, email })
+  }
+})
 const send = mutation({
   args: {
     app: v.string(),
@@ -1405,6 +1417,7 @@ export {
   seedTopicWithPool,
   seedUserProfile,
   send,
+  sendWithSecret,
   setChatStreaming,
   setSetting,
   setTopicPoolCap,
