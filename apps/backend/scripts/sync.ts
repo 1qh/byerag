@@ -11,28 +11,28 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { APPS } from '../convex/apps/manifest'
 const APP_TARGET_VARS = Object.values(APPS).flatMap(a => a.syncTargetKeys)
 const REQUIRED = [
-  'ALLOWED_EMAILS',
-  'ANTHROPIC_API_KEY',
   'AUTH_GOOGLE_ID',
   'AUTH_GOOGLE_SECRET',
+  'BOOTSTRAP_ADMIN_EMAIL',
   'CONVEX_SELF_HOSTED_ADMIN_KEY',
   'CONVEX_SELF_HOSTED_URL',
   'CONVEX_SITE_URL',
-  'E2B_API_KEY',
+  'KIMI_API_KEY',
+  'KIMI_BASE_URL',
   'NEXT_PUBLIC_CONVEX_URL',
-  'SITE_URL',
-  'TEMPLATE_ID'
+  'SANDBOX_IMAGE',
+  'SITE_URL'
 ] as const
 const PLATFORM_TARGET_VARS = [
   'ALLOW_DEV_TOKENS',
-  'ALLOWED_EMAILS',
-  'ANTHROPIC_API_KEY',
   'AUTH_GOOGLE_ID',
   'AUTH_GOOGLE_SECRET',
+  'BOOTSTRAP_ADMIN_EMAIL',
   'CONVEX_SELF_HOSTED_URL',
-  'E2B_API_KEY',
+  'KIMI_API_KEY',
+  'KIMI_BASE_URL',
+  'SANDBOX_IMAGE',
   'SITE_URL',
-  'TEMPLATE_ID',
   'TEST_SECRET'
 ] as const
 const die = (msg: string): never => {
@@ -95,8 +95,8 @@ const loadEnvOrDie = async (): Promise<{ adminKey: string; selfHostedUrl: string
   const adminKey = vars.CONVEX_SELF_HOSTED_ADMIN_KEY ?? die('unreachable')
   if (vars.NEXT_PUBLIC_CONVEX_URL !== selfHostedUrl)
     die(`NEXT_PUBLIC_CONVEX_URL (${vars.NEXT_PUBLIC_CONVEX_URL}) must equal CONVEX_SELF_HOSTED_URL (${selfHostedUrl})`)
-  if (!vars.ANTHROPIC_API_KEY?.startsWith('sk-ant-api'))
-    die('ANTHROPIC_API_KEY must be a paid API key (sk-ant-api*) — subscription OAuth tokens no longer supported')
+  if (!vars.KIMI_API_KEY) die('KIMI_API_KEY must be set')
+  if (!vars.KIMI_BASE_URL?.startsWith('https://')) die('KIMI_BASE_URL must be https://')
   return { adminKey, selfHostedUrl, vars }
 }
 const writeKeyInEnv = (key: string, value: string): void => {
@@ -166,7 +166,7 @@ const ensureAuthKeys = async (
 }
 const runSyncOnce = async (): Promise<void> => {
   const { adminKey, selfHostedUrl, vars } = await loadEnvOrDie()
-  console.log(`Using ANTHROPIC_API_KEY from .env (${vars.ANTHROPIC_API_KEY?.slice(0, 14) ?? ''}...)`)
+  console.log(`Using KIMI_API_KEY from .env (${vars.KIMI_API_KEY?.slice(0, 12) ?? ''}...)`)
   const setVar = makeSetVar(selfHostedUrl, adminKey)
   console.log(
     `Syncing ${PLATFORM_TARGET_VARS.length} platform + ${APP_TARGET_VARS.length} per-app env vars to Convex...\n`
