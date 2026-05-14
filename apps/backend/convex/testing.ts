@@ -181,6 +181,45 @@ const setSetting = mutation({
     else await ctx.db.insert('settings', { key, updatedAt: Date.now(), updatedBy: 'test', value })
   }
 })
+const costCyclePivotProbe = query({
+  args: { testSecret: v.string() },
+  handler: async (
+    ctx,
+    { testSecret }
+  ): Promise<{ cents: number; inputTokens: number; model: string; outputTokens: number; owner: string }[]> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db.query('costRecords').take(10_000)
+    const agg = new Map<
+      string,
+      { cents: number; inputTokens: number; model: string; outputTokens: number; owner: string }
+    >()
+    for (const r of rows) {
+      const key = `${r.owner}|${r.model}`
+      const e = agg.get(key)
+      if (e) {
+        e.cents += r.cents
+        e.inputTokens += r.inputTokens
+        e.outputTokens += r.outputTokens
+      } else
+        agg.set(key, {
+          cents: r.cents,
+          inputTokens: r.inputTokens,
+          model: r.model,
+          outputTokens: r.outputTokens,
+          owner: r.owner
+        })
+    }
+    return [...agg.values()].toSorted((a, b) => b.cents - a.cents)
+  }
+})
+const wipeCostRecords = mutation({
+  args: { testSecret: v.string() },
+  handler: async (ctx, { testSecret }): Promise<void> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db.query('costRecords').collect()
+    for (const r of rows) await ctx.db.delete(r._id)
+  }
+})
 const topStripProbe = query({
   args: { testSecret: v.string() },
   handler: async (ctx, { testSecret }): Promise<{ cycleCents: number; docsInCorpus: number; totalUsers: number }> => {
@@ -660,6 +699,7 @@ export {
   checkRateLimitProbe,
   clearStreamingFlagsInternal,
   consumeProxyBudgetProbe,
+  costCyclePivotProbe,
   countAdmins,
   countAssignmentsByCreator,
   countAuditLogs,
@@ -701,6 +741,7 @@ export {
   topStripProbe,
   uploadFile,
   wipeAllForOwner,
+  wipeCostRecords,
   wipeDocs,
   wipeTrainingTables,
   wipeUserProfiles
