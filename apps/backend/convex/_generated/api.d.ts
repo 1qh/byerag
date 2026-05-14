@@ -21,6 +21,7 @@ import type * as cliScript from "../cliScript.js";
 import type * as constants from "../constants.js";
 import type * as costRecords from "../costRecords.js";
 import type * as crons from "../crons.js";
+import type * as dashboard from "../dashboard.js";
 import type * as docs from "../docs.js";
 import type * as docsEmbed from "../docsEmbed.js";
 import type * as docsExtract from "../docsExtract.js";
@@ -93,6 +94,7 @@ declare const fullApi: ApiFromModules<{
   constants: typeof constants;
   costRecords: typeof costRecords;
   crons: typeof crons;
+  dashboard: typeof dashboard;
   docs: typeof docs;
   docsEmbed: typeof docsEmbed;
   docsExtract: typeof docsExtract;
