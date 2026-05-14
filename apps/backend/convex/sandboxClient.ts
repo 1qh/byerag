@@ -129,8 +129,8 @@ const tarHeader = (name: string, size: number): Buffer => {
   buf.write(`${sum.toString(8).padStart(6, '0')}\0 `, 148, 8, 'utf8')
   return buf
 }
-const tarOne = (name: string, content: string): Buffer => {
-  const payload = Buffer.from(content, 'utf8')
+const tarOne = (name: string, content: Buffer | string): Buffer => {
+  const payload = typeof content === 'string' ? Buffer.from(content, 'utf8') : content
   const pad = (POSIX_HEADER_SIZE - (payload.length % POSIX_HEADER_SIZE)) % POSIX_HEADER_SIZE
   return Buffer.concat([tarHeader(name, payload.length), payload, Buffer.alloc(pad), Buffer.alloc(POSIX_HEADER_SIZE * 2)])
 }
@@ -172,11 +172,9 @@ const execInside = async (id: string, cmd: string, opts: RunOpts): Promise<RunRe
 const writeInside = async (id: string, path: string, content: ArrayBuffer | string | Uint8Array): Promise<void> => {
   const dir = dirname(path)
   const name = path.slice(dir.length + 1)
-  const asString =
-    typeof content === 'string'
-      ? content
-      : Buffer.from(content instanceof ArrayBuffer ? new Uint8Array(content) : content).toString('binary')
-  const archive = tarOne(name, asString)
+  const payload: Buffer | string =
+    typeof content === 'string' ? content : Buffer.from(content instanceof ArrayBuffer ? new Uint8Array(content) : content)
+  const archive = tarOne(name, payload)
   const res = await dockerRequest({
     body: archive,
     contentType: 'application/x-tar',

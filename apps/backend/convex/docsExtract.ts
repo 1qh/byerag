@@ -48,8 +48,7 @@ const extract = internalAction({
     try {
       const ext = target.filename.split('.').pop()?.toLowerCase() ?? 'bin'
       const inputPath = `/tmp/extract-${docId}.${ext}`
-      const asString = Buffer.from(bytes).toString('binary')
-      await sandbox.files.write(inputPath, asString)
+      await sandbox.files.write(inputPath, bytes)
       let text = ''
       if (target.mime === 'application/pdf') {
         const r = await sandbox.commands.run(`pdftotext -layout -nopgbrk '${inputPath}' -`, { timeoutMs: PDF_TIMEOUT_MS })
