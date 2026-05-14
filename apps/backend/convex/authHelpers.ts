@@ -19,7 +19,7 @@ const getOwnerEmailOrNull = async (ctx: MutationCtx | QueryCtx): Promise<null | 
   const user = await getAuthUser(ctx)
   return user?.email ?? null
 }
-const requireOwnerEmail = async (ctx: MutationCtx): Promise<string> => {
+const requireOwnerEmail = async (ctx: MutationCtx | QueryCtx): Promise<string> => {
   const user = await getAuthUser(ctx)
   if (!user?.email) throw new Error('not authenticated')
   return user.email
