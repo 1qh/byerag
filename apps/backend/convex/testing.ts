@@ -111,6 +111,16 @@ const docsGenerateUploadUrl = mutation({
     return ctx.storage.generateUploadUrl()
   }
 })
+const reserveBudgetProbe = action({
+  args: { cents: v.number(), owner: v.string(), testSecret: v.string() },
+  handler: async (
+    ctx,
+    { cents, owner, testSecret }
+  ): Promise<{ centsToday: number; dayKey: string; ok: boolean; reason?: string }> => {
+    verifyTestSecret(testSecret)
+    return ctx.runMutation(internal.ownerSpend.reserveBudget, { cents, owner })
+  }
+})
 const listDocsByOwner = query({
   args: { owner: v.string(), testSecret: v.string() },
   handler: async (
@@ -314,6 +324,7 @@ export {
   listStreamEvents,
   readFile,
   removeChat,
+  reserveBudgetProbe,
   send,
   uploadFile,
   wipeAllForOwner,
