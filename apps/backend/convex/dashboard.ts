@@ -160,12 +160,12 @@ const gradebook = query({
           .withIndex('by_user_topic', q => q.eq('userId', u.userId).eq('topicId', t._id as never))
           .filter(q => q.eq(q.field('deletedAt'), undefined))
           .collect()
-        const assignment = assignmentRows[0]
-        if (!assignment) {
+        if (assignmentRows.length === 0) {
           cells.push({ glyph: '·', topicId: t._id, userId: u.userId })
           continue
         }
-        cells.push({ glyph: assignment.createdBy === 'agent' ? 'ⓐ' : '✗', topicId: t._id, userId: u.userId })
+        const adminRow = assignmentRows.find(r => r.createdBy !== 'agent')
+        cells.push({ glyph: adminRow ? '✗' : 'ⓐ', topicId: t._id, userId: u.userId })
       }
     return { cells, topics: topicsWithPool, users }
   }
