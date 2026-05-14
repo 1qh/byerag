@@ -18,7 +18,7 @@ interface SnippetRow {
 const action = defineTool({
   args: {
     dim: arg.enum(['256', '512', '768'], { default: '768', description: 'Matryoshka prefix dim' }),
-    granular: arg.bool({ default: false, description: 'Return chunk-level (docId, chunkSeq, snippet, score)' }),
+    granular: arg.bool({ description: 'Return chunk-level (docId, chunkSeq, snippet, score)', optional: true }),
     limit: arg.number({ default: 10, description: 'Max hits (cap 50)' }),
     query: arg.string({ description: 'Natural-language query text' }),
     scope: arg.enum(SCOPES, { description: 'Visibility scope' })

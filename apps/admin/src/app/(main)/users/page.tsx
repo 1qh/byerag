@@ -1,6 +1,7 @@
 'use client'
 import { api } from 'backend/convex/_generated/api'
 import { useMutation, useQuery } from 'convex/react'
+import { toast } from 'sonner'
 const DEPARTMENTS = ['HR', 'Sales', 'IT'] as const
 const UsersPage = (): React.ReactElement => {
   const rows = useQuery(api.lib.listUserProfilesForAdmin, {})
@@ -29,7 +30,7 @@ const UsersPage = (): React.ReactElement => {
                   className='rounded border px-2 py-1'
                   onChange={e => {
                     setRole({ role: e.target.value as 'admin' | 'user', userId: r.userId }).catch((error: unknown) => {
-                      alert(String(error))
+                      toast.error(String(error))
                     })
                   }}
                   value={r.role}>
@@ -45,7 +46,7 @@ const UsersPage = (): React.ReactElement => {
                       department: (e.target.value || undefined) as 'HR' | 'IT' | 'Sales' | undefined,
                       userId: r.userId
                     }).catch((error: unknown) => {
-                      alert(String(error))
+                      toast.error(String(error))
                     })
                   }}
                   value={r.department ?? ''}>

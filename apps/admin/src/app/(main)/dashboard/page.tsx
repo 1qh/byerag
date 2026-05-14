@@ -2,6 +2,7 @@
 import { api } from 'backend/convex/_generated/api'
 import { useMutation, useQuery } from 'convex/react'
 import { useState } from 'react'
+import { toast } from 'sonner'
 const fmtCents = (cents: number): string => `$${(cents / 100).toFixed(2)}`
 const DashboardPage = (): React.ReactElement => {
   const top = useQuery(api.dashboard.topStrip)
@@ -15,14 +16,16 @@ const DashboardPage = (): React.ReactElement => {
     setBusy(p => new Set(p).add(`${topicId}|${kind}`))
     const fn = kind === 'assign' ? assignAll : kind === 'unassign' ? unassignAll : rearm
     fn({ topicId: topicId as never })
-      .catch((error: unknown) => alert(String(error)))
-      .finally(() =>
+      .catch((error: unknown) => {
+        toast.error(String(error))
+      })
+      .finally(() => {
         setBusy(p => {
           const n = new Set(p)
           n.delete(`${topicId}|${kind}`)
           return n
         })
-      )
+      })
   }
   if (top === undefined || pivot === undefined || grade === undefined) return <div className='p-6'>Loading…</div>
   if (top === null || grade === null) return <div className='p-6 text-destructive'>Admin role required.</div>

@@ -2,6 +2,7 @@
 import { api } from 'backend/convex/_generated/api'
 import { useMutation, useQuery } from 'convex/react'
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 const PolicyPage = (): React.ReactElement => {
   const current = useQuery(api.settings.getForAdmin, { key: 'corpus_policy' })
   const save = useMutation(api.settings.setForAdmin)
@@ -14,8 +15,12 @@ const PolicyPage = (): React.ReactElement => {
   const onSave = (): void => {
     setSaving(true)
     save({ key: 'corpus_policy', value: text })
-      .catch((error: unknown) => alert(String(error)))
-      .finally(() => setSaving(false))
+      .catch((error: unknown) => {
+        toast.error(String(error))
+      })
+      .finally(() => {
+        setSaving(false)
+      })
   }
   return (
     <div className='space-y-3 p-6'>

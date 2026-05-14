@@ -2,6 +2,7 @@
 import { api } from 'backend/convex/_generated/api'
 import { useMutation, useQuery } from 'convex/react'
 import { useState } from 'react'
+import { toast } from 'sonner'
 const TestQuestionsPage = (): React.ReactElement => {
   const rows = useQuery(api.training.listPendingSuggestionsForAdmin, {})
   const approve = useMutation(api.training.approveSuggestionPublic)
@@ -11,14 +12,16 @@ const TestQuestionsPage = (): React.ReactElement => {
     setPending(p => new Set(p).add(id))
     const fn = kind === 'approve' ? approve : reject
     fn({ suggestionId: id as never })
-      .catch((error: unknown) => alert(String(error)))
-      .finally(() =>
+      .catch((error: unknown) => {
+        toast.error(String(error))
+      })
+      .finally(() => {
         setPending(p => {
           const n = new Set(p)
           n.delete(id)
           return n
         })
-      )
+      })
   }
   if (rows === undefined) return <div className='p-6'>Loading…</div>
   if (rows.length === 0) return <div className='p-6 text-muted-foreground'>No pending suggestions.</div>
