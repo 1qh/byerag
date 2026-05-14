@@ -170,7 +170,7 @@ const docsFinalize = action({
     testSecret: v.string(),
     uploaderEmail: v.string()
   },
-  handler: async (ctx, { testSecret, ...args }) => {
+  handler: async (ctx, { testSecret, ...args }): Promise<unknown> => {
     verifyTestSecret(testSecret)
     return ctx.runAction(internal.docsUpload.finalize, args)
   }
