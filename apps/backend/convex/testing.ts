@@ -111,6 +111,28 @@ const docsGenerateUploadUrl = mutation({
     return ctx.storage.generateUploadUrl()
   }
 })
+const requestReviewProbe = mutation({
+  args: { docId: v.id('docs'), testSecret: v.string(), uploaderEmail: v.string() },
+  handler: async (ctx, { docId, testSecret, uploaderEmail }): Promise<{ ok: boolean; reason?: string }> => {
+    verifyTestSecret(testSecret)
+    const doc = await ctx.db.get(docId)
+    if (!doc) return { ok: false, reason: 'not-found' }
+    if (doc.uploadedBy !== uploaderEmail) return { ok: false, reason: 'not-uploader' }
+    if (doc.policyStatus !== 'rejected') return { ok: false, reason: 'not-rejected' }
+    const last = doc.policyReviewRequestedAt ?? 0
+    if (Date.now() - last < 86_400_000) return { ok: false, reason: 'rate-limited' }
+    await ctx.db.patch(docId, { policyReviewRequestedAt: Date.now() })
+    await ctx.db.insert('auditLogs', {
+      args: JSON.stringify({ docId, filename: doc.filename }),
+      command: 'docs.requestReview',
+      mode: 'session',
+      ok: true,
+      owner: uploaderEmail,
+      severity: 'low'
+    })
+    return { ok: true }
+  }
+})
 const scanOverrideProbe = mutation({
   args: { adminEmail: v.string(), docId: v.id('docs'), testSecret: v.string() },
   handler: async (ctx, { adminEmail, docId, testSecret }): Promise<void> => {
@@ -351,6 +373,7 @@ export {
   listStreamEvents,
   readFile,
   removeChat,
+  requestReviewProbe,
   reserveBudgetProbe,
   scanOverrideProbe,
   send,
