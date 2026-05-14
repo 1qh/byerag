@@ -489,6 +489,65 @@ const approveSuggestionPublic = mutation({
     return { questionId }
   }
 })
+const adminEditQuestion = mutation({
+  args: {
+    choices: v.array(v.string()),
+    correctIndex: v.number(),
+    prompt: v.string(),
+    questionId: v.id('testQuestions')
+  },
+  handler: async (ctx, { questionId, prompt, choices, correctIndex }): Promise<{ revision: number }> => {
+    const identity = await ctx.auth.getUserIdentity()
+    const email = identity?.email?.toLowerCase()
+    if (!email) throw new Error('not authenticated')
+    const profileRows = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', email))
+      .collect()
+    const profile = profileRows[0]
+    if (profile?.role !== 'admin') throw new Error('admin only')
+    const q = await ctx.db.get(questionId)
+    if (!q) throw new Error('question not found')
+    if (q.deletedAt) throw new Error('question is retired')
+    const nextRevision = q.revision + 1
+    await ctx.db.patch(questionId, { choices, correctIndex, prompt, revision: nextRevision })
+    await ctx.db.insert('auditLogs', {
+      args: JSON.stringify({ questionId, revision: nextRevision }),
+      command: 'training.question.edit',
+      mode: 'session',
+      ok: true,
+      owner: email,
+      severity: 'low'
+    })
+    return { revision: nextRevision }
+  }
+})
+const adminRetireQuestion = mutation({
+  args: { questionId: v.id('testQuestions') },
+  handler: async (ctx, { questionId }): Promise<void> => {
+    const identity = await ctx.auth.getUserIdentity()
+    const email = identity?.email?.toLowerCase()
+    if (!email) throw new Error('not authenticated')
+    const profileRows = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', email))
+      .collect()
+    const profile = profileRows[0]
+    if (profile?.role !== 'admin') throw new Error('admin only')
+    const q = await ctx.db.get(questionId)
+    if (!q) throw new Error('question not found')
+    if (q.deletedAt) throw new Error('already retired')
+    await ctx.db.patch(questionId, { deleteReason: 'admin-retire', deletedAt: Date.now() })
+    await ctx.db.insert('auditLogs', {
+      args: JSON.stringify({ questionId }),
+      command: 'training.question.retire',
+      mode: 'session',
+      ok: true,
+      owner: email,
+      severity: 'medium'
+    })
+  }
+})
 const adminDeleteTopic = mutation({
   args: { topicId: v.id('topics') },
   handler: async (
@@ -607,6 +666,8 @@ const markTopicSubstantive = mutation({
 })
 export {
   adminDeleteTopic,
+  adminEditQuestion,
+  adminRetireQuestion,
   approveSuggestion,
   approveSuggestionPublic,
   autoAssign,
