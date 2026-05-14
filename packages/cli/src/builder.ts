@@ -12,6 +12,7 @@ interface ArgStringFn {
 }
 interface StringOptsBase<A extends readonly string[]> {
   aliases?: A
+  default?: string
   description: string
   maxLength?: number
   minLength?: number
@@ -41,6 +42,7 @@ interface ArgNumberFn {
 }
 interface NumberOptsBase<A extends readonly string[]> {
   aliases?: A
+  default?: number
   description: string
   integer?: boolean
   max?: number
@@ -88,16 +90,16 @@ const argBool = argBoolImpl as ArgBoolFn
 interface ArgEnumFn {
   <const Vals extends readonly [string, ...string[]], const A extends readonly string[] = readonly []>(
     values: Vals,
-    opts: { aliases?: A; description: string; optional?: false }
+    opts: { aliases?: A; default?: Vals[number]; description: string; optional?: false }
   ): ArgSpec<Validator<Vals[number]>, false, A>
   <const Vals extends readonly [string, ...string[]], const A extends readonly string[] = readonly []>(
     values: Vals,
-    opts: { aliases?: A; description: string; optional: true }
+    opts: { aliases?: A; default?: Vals[number]; description: string; optional: true }
   ): ArgSpec<Validator<Vals[number]>, true, A>
 }
 const argEnumImpl = <const Vals extends readonly [string, ...string[]], const A extends readonly string[] = readonly []>(
   values: Vals,
-  opts: { aliases?: A; description: string; optional?: boolean }
+  opts: { aliases?: A; default?: Vals[number]; description: string; optional?: boolean }
 ): ArgSpec<Validator<Vals[number]>, boolean, A> => {
   const lits = values.map(vv => v.literal(vv)) as [ReturnType<typeof v.literal>, ...ReturnType<typeof v.literal>[]]
   const union = v.union(...lits) as unknown as Validator<Vals[number]>
