@@ -204,6 +204,23 @@ const getRowsSnippet = internalQuery({
     return out
   }
 })
+interface ChunkRow {
+  _id: Id<'docChunks'>
+  docId: Id<'docs'>
+  seq: number
+  text: string
+}
+const getChunkRows = internalQuery({
+  args: { ids: v.array(v.id('docChunks')) },
+  handler: async (ctx, { ids }): Promise<ChunkRow[]> => {
+    const out: ChunkRow[] = []
+    for (const id of ids) {
+      const row = await ctx.db.get(id)
+      if (row) out.push({ _id: row._id, docId: row.docId, seq: row.seq, text: row.text })
+    }
+    return out
+  }
+})
 interface ConflictDoc {
   _id: Id<'docs'>
   extractedText: string
@@ -669,6 +686,7 @@ export {
   adminScanOverride,
   findByFilename,
   findBySha256,
+  getChunkRows,
   getCitationBadge,
   getForClassify,
   getForConflict,
