@@ -480,6 +480,67 @@ const seedCostRecord = mutation({
     })
   }
 })
+const editQuestionProbe = mutation({
+  args: {
+    choices: v.array(v.string()),
+    correctIndex: v.number(),
+    prompt: v.string(),
+    questionId: v.id('testQuestions'),
+    testSecret: v.string()
+  },
+  handler: async (ctx, { questionId, prompt, choices, correctIndex, testSecret }): Promise<{ revision: number }> => {
+    verifyTestSecret(testSecret)
+    const q = await ctx.db.get(questionId)
+    if (!q) throw new Error('not found')
+    const nextRevision = q.revision + 1
+    await ctx.db.patch(questionId, { choices, correctIndex, prompt, revision: nextRevision })
+    return { revision: nextRevision }
+  }
+})
+const retireQuestionProbe = mutation({
+  args: { questionId: v.id('testQuestions'), testSecret: v.string() },
+  handler: async (ctx, { questionId, testSecret }): Promise<void> => {
+    verifyTestSecret(testSecret)
+    await ctx.db.patch(questionId, { deleteReason: 'admin-retire', deletedAt: Date.now() })
+  }
+})
+const getQuestionRow = query({
+  args: { questionId: v.id('testQuestions'), testSecret: v.string() },
+  handler: async (
+    ctx,
+    { questionId, testSecret }
+  ): Promise<null | {
+    choices: string[]
+    correctIndex: number
+    deletedAt?: number
+    deleteReason?: string
+    prompt: string
+    revision: number
+  }> => {
+    verifyTestSecret(testSecret)
+    const q = await ctx.db.get(questionId)
+    if (!q) return null
+    return {
+      choices: q.choices,
+      correctIndex: q.correctIndex,
+      deleteReason: q.deleteReason,
+      deletedAt: q.deletedAt,
+      prompt: q.prompt,
+      revision: q.revision
+    }
+  }
+})
+const listQuestionsForTopic = query({
+  args: { testSecret: v.string(), topicId: v.id('topics') },
+  handler: async (ctx, { topicId, testSecret }): Promise<{ _id: string }[]> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db
+      .query('testQuestions')
+      .withIndex('by_topic_deletedAt', q => q.eq('topicId', topicId).eq('deletedAt', undefined))
+      .take(100)
+    return rows.map(r => ({ _id: r._id }))
+  }
+})
 const assignAllForTopicProbe = mutation({
   args: { adminEmail: v.string(), testSecret: v.string(), topicId: v.id('topics') },
   handler: async (ctx, { topicId, adminEmail, testSecret }): Promise<{ assignmentsCreated: number }> => {
@@ -1051,9 +1112,11 @@ export {
   docsFinalize,
   docsGenerateUploadUrl,
   downloadZip,
+  editQuestionProbe,
   ensureChatRuntime,
   getChatStreaming,
   getDocRow,
+  getQuestionRow,
   getTopicRow,
   getUserProfile,
   gradebookProbe,
@@ -1062,6 +1125,7 @@ export {
   listDocsByOwner,
   listFiles,
   listMessages,
+  listQuestionsForTopic,
   listSandboxIds,
   listStreamEvents,
   readFile,
@@ -1069,6 +1133,7 @@ export {
   requestReviewProbe,
   reserveBudgetProbe,
   resetPolicyPending,
+  retireQuestionProbe,
   runAutoAssign,
   runPurgeSoftDeleted,
   runQuarantinePurge,
