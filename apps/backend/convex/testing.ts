@@ -140,6 +140,21 @@ const countOwnerSpend = query({
     return { count: rows.length, totalCents: total }
   }
 })
+const countTestSuggestions = query({
+  args: { testSecret: v.string() },
+  handler: async (ctx, { testSecret }): Promise<{ count: number; topicNames: string[] }> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db.query('testQuestionSuggestions').take(200)
+    const topicIds = new Set<string>()
+    for (const r of rows) topicIds.add(r.topicId)
+    const names: string[] = []
+    for (const tid of topicIds) {
+      const t = await ctx.db.get(tid as never)
+      if (t && 'name' in t) names.push((t as { name: string }).name)
+    }
+    return { count: rows.length, topicNames: names.slice(0, 10) }
+  }
+})
 const countCostRecords = query({
   args: { testSecret: v.string() },
   handler: async (ctx, { testSecret }): Promise<{ count: number; sampleOwners: string[] }> => {
@@ -270,6 +285,7 @@ export {
   countAuditLogs,
   countCostRecords,
   countOwnerSpend,
+  countTestSuggestions,
   docsFinalize,
   docsGenerateUploadUrl,
   downloadZip,

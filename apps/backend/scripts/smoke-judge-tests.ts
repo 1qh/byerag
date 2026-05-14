@@ -132,6 +132,13 @@ try {
 } catch (error) {
   record('I.audit-logs', 'auditLogs has rows', false, String(error).slice(0, 200))
 }
+console.log('\n[judge] G — Assessment generation pipeline')
+try {
+  const gen = await convexFetch<{ count: number; topicNames: string[] }>('testing:countTestSuggestions', { testSecret })
+  record('G.suggestions', `testQuestionSuggestions has rows (got ${gen.count})`, gen.count > 0, `count=${gen.count} topics=${gen.topicNames.slice(0, 3).join(',')}`)
+} catch (error) {
+  record('G.suggestions', 'testQuestionSuggestions has rows', false, String(error).slice(0, 200))
+}
 console.log('\n[judge] J — Test corpus + Kimi probe')
 const probeLogPath = join(import.meta.dir, '..', 'test-fixtures', 'probe-log.jsonl')
 let probeAccepted = 0
