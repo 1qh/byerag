@@ -307,6 +307,40 @@ const listMine = query({
     }))
   }
 })
+const listForQuarantine = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity()
+    const email = identity?.email?.toLowerCase()
+    if (!email) return []
+    // biome-ignore lint/nursery/noPlaywrightUselessAwait: Convex .first() returns thenable
+    const profile = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', email))
+      .first()
+    if (profile?.role !== 'admin') return []
+    const rejected = await ctx.db
+      .query('docs')
+      .withIndex('by_policyStatus', q => q.eq('policyStatus', 'rejected'))
+      .filter(q => q.eq(q.field('deletedAt'), undefined))
+      .take(200)
+    const quarantined = await ctx.db
+      .query('docs')
+      .filter(q => q.and(q.eq(q.field('scanStatus'), 'quarantined'), q.eq(q.field('deletedAt'), undefined)))
+      .take(200)
+    return [...rejected, ...quarantined].map(r => ({
+      _id: r._id,
+      filename: r.filename,
+      owner: r.owner,
+      policyCategory: r.policyCategory,
+      policyReason: r.policyReason,
+      policyStatus: r.policyStatus,
+      scanOverrideSignature: r.scanOverrideSignature,
+      scanStatus: r.scanStatus,
+      uploadedAt: r.uploadedAt
+    }))
+  }
+})
 const listShared = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, { limit }): Promise<DocListItem[]> => {
@@ -374,6 +408,7 @@ export {
   getRowsSnippet,
   insertQuarantined,
   insertRow,
+  listForQuarantine,
   listMine,
   listShared,
   persistChunks,
