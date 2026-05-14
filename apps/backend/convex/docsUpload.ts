@@ -70,9 +70,27 @@ interface UploadResult {
   reason?: string
   signature?: string
 }
+const SUFFIX_RE = /^(?<stem>.+?)(?:\.(?<ext>[^.]+))?$/u
+const buildKeepBothFilename = async (
+  base: string,
+  scope: 'mine' | 'shared',
+  owner: string | undefined,
+  findByFilename: (filename: string) => Promise<unknown>
+): Promise<string> => {
+  const m = SUFFIX_RE.exec(base)
+  const stem = m?.groups?.stem ?? base
+  const ext = m?.groups?.ext ? `.${m.groups.ext}` : ''
+  for (let n = 2; n <= 99; n += 1) {
+    const cand = `${stem} (${n})${ext}`
+    const hit = await findByFilename(cand)
+    if (!hit) return cand
+  }
+  throw new Error('keep-both suffix exhausted')
+}
 const finalize = internalAction({
   args: {
     filename: v.string(),
+    keepBoth: v.optional(v.boolean()),
     mime: v.string(),
     replace: v.optional(v.boolean()),
     scope: v.union(v.literal('shared'), v.literal('mine')),
@@ -100,12 +118,19 @@ const finalize = internalAction({
         reason: 'duplicate'
       }
     }
+    let effectiveFilename = args.filename
     const conflictRaw = await ctx.runQuery(internal.docs.findByFilename, {
       filename: args.filename,
       owner,
       scope: args.scope
     })
-    const conflict = conflictRaw
+    let conflict = conflictRaw
+    if (conflict && args.keepBoth) {
+      effectiveFilename = await buildKeepBothFilename(args.filename, args.scope, owner, async fn =>
+        ctx.runQuery(internal.docs.findByFilename, { filename: fn, owner, scope: args.scope })
+      )
+      conflict = null
+    }
     if (conflict && !args.replace) {
       await ctx.storage.delete(args.storageId)
       return {
@@ -120,7 +145,7 @@ const finalize = internalAction({
     if (!scan.ok) {
       const idRaw = await ctx.runMutation(internal.docs.insertQuarantined, {
         fileSize: bytes.byteLength,
-        filename: args.filename,
+        filename: effectiveFilename,
         mime: args.mime,
         owner,
         scope: args.scope,
@@ -135,7 +160,7 @@ const finalize = internalAction({
     const version = conflict ? (conflict.version ?? 1) + 1 : 1
     const docIdRaw = await ctx.runMutation(internal.docs.insertRow, {
       fileSize: bytes.byteLength,
-      filename: args.filename,
+      filename: effectiveFilename,
       mime: args.mime,
       owner,
       scope: args.scope,
