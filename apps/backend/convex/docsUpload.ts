@@ -139,6 +139,15 @@ const finalize = internalAction({
         reason: 'filename-conflict'
       }
     }
+    const recentQ = await ctx.runQuery(internal.docs.countRecentQuarantines, {
+      sha256,
+      sinceMs: 60 * 60 * 1000,
+      uploadedBy
+    })
+    if (recentQ >= 3) {
+      await ctx.storage.delete(args.storageId)
+      throw new Error('too many rejected uploads')
+    }
     const scan: ScanResult = await scanBytes(bytes).catch(
       (error: unknown) => ({ ok: false, signature: `clamav-error:${String(error)}` }) satisfies ScanResult
     )
