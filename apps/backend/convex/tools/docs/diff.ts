@@ -42,11 +42,11 @@ const action = defineQuery({
   handler: async (ctx, args) => {
     const fail = makeFail('docs.diff')
     const rowA = await ctx.db.get(args.a as never)
-    if (!rowA) throw fail({ code: 'NOT_FOUND', message: `doc ${args.a} not found` })
-    if (!aclCheck(rowA, ctx.auth.owner)) throw fail({ code: 'FORBIDDEN', message: 'doc A not in caller scope' })
+    if (!rowA) throw fail('NOT_FOUND', `doc ${args.a} not found`)
+    if (!aclCheck(rowA, ctx.auth.owner)) throw fail('FORBIDDEN', 'doc A not in caller scope')
     const rowB = await ctx.db.get(args.b as never)
-    if (!rowB) throw fail({ code: 'NOT_FOUND', message: `doc ${args.b} not found` })
-    if (!aclCheck(rowB, ctx.auth.owner)) throw fail({ code: 'FORBIDDEN', message: 'doc B not in caller scope' })
+    if (!rowB) throw fail('NOT_FOUND', `doc ${args.b} not found`)
+    if (!aclCheck(rowB, ctx.auth.owner)) throw fail('FORBIDDEN', 'doc B not in caller scope')
     const linesA = (rowA.extractedText ?? '').split('\n')
     const linesB = (rowB.extractedText ?? '').split('\n')
     return {

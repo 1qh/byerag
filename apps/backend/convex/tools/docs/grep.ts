@@ -19,7 +19,7 @@ const action = defineQuery({
     try {
       regex = new RegExp(args.pattern, 'gu')
     } catch (error) {
-      throw fail({ code: 'INVALID_ARG', message: `invalid regex: ${String(error).slice(0, 80)}` })
+      throw fail('INVALID_ARG', `invalid regex: ${String(error).slice(0, 80)}`)
     }
     const wantShared = args.scope === 'shared' || args.scope === 'both'
     const wantMine = args.scope === 'mine' || args.scope === 'both'
