@@ -202,9 +202,9 @@ const execStreamHttp = httpAction(async (ctx, req) => {
       } catch (error) {
         result = { error: toDispatchError(error), ok: false }
       }
-      const terminal: Record<string, unknown> = result.ok
-        ? { kind: 'complete', result: result.result as unknown, runId }
-        : { error: result.error as unknown, kind: 'failed', runId }
+      let terminal: Record<string, unknown>
+      if (result.ok) terminal = { kind: 'complete', result: result.result as unknown, runId }
+      else terminal = { error: result.error as unknown, kind: 'failed', runId }
       emit(terminal)
       controller.close()
     }
