@@ -194,6 +194,21 @@ const getRowsSnippet = internalQuery({
     return out
   }
 })
+interface ConflictDoc {
+  _id: Id<'docs'>
+  extractedText: string
+  filename: string
+  owner?: string
+  scope: 'mine' | 'shared'
+}
+const getForConflict = internalQuery({
+  args: { docId: v.id('docs') },
+  handler: async (ctx, { docId }): Promise<ConflictDoc | null> => {
+    const row = await ctx.db.get(docId)
+    if (!row?.extractedText) return null
+    return { _id: row._id, extractedText: row.extractedText, filename: row.filename, owner: row.owner, scope: row.scope }
+  }
+})
 const getForClassify = internalQuery({
   args: { docId: v.id('docs') },
   handler: async (ctx, { docId }): Promise<ClassifyDoc | null> => {
@@ -307,6 +322,7 @@ export {
   findByFilename,
   findBySha256,
   getForClassify,
+  getForConflict,
   getForEmbed,
   getForExtract,
   getRowsSnippet,
@@ -319,4 +335,4 @@ export {
   setPolicy,
   upload
 }
-export type { DocListItem, DocRow, ExtractTarget, RowSnippet, UploadResult }
+export type { ConflictDoc, DocListItem, DocRow, ExtractTarget, RowSnippet, UploadResult }
