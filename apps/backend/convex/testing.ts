@@ -970,6 +970,34 @@ const seedTestPass = mutation({
     })
   }
 })
+const createOrUpdateUserProbe = mutation({
+  args: { bootstrapAdmins: v.array(v.string()), email: v.string(), testSecret: v.string() },
+  handler: async (ctx, { email, bootstrapAdmins, testSecret }): Promise<{ role: string; userId: string }> => {
+    verifyTestSecret(testSecret)
+    const dupRows = await ctx.db
+      .query('users')
+      .filter(q => q.eq(q.field('email'), email))
+      .collect()
+    const dup = dupRows[0] ?? null
+    const userId = dup ? (dup._id as string) : ((await ctx.db.insert('users', { email })) as string)
+    const profileRows = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', email))
+      .collect()
+    const existingProfile = profileRows[0] ?? null
+    let role: string = existingProfile?.role ?? 'user'
+    if (!existingProfile) {
+      role = bootstrapAdmins.includes(email) ? 'admin' : 'user'
+      await ctx.db.insert('userProfiles', {
+        role: role as 'admin' | 'user',
+        updatedAt: Date.now(),
+        updatedBy: 'self',
+        userId: email
+      })
+    }
+    return { role, userId }
+  }
+})
 const listMyTopicsProbe = query({
   args: { testSecret: v.string(), userId: v.string() },
   handler: async (ctx, { testSecret, userId }): Promise<{ _id: string; name: string; poolSize: number }[]> => {
@@ -1484,6 +1512,7 @@ export {
   countTestPasses,
   countTestSuggestions,
   countTopicQuestions,
+  createOrUpdateUserProbe,
   docsFinalize,
   docsGenerateUploadUrl,
   downloadZip,
