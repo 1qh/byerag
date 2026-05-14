@@ -1,7 +1,9 @@
 /** biome-ignore-all lint/nursery/noPlaywrightUselessAwait: Convex .first() is thenable */
 import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
-import { internalMutation, internalQuery } from './_generated/server'
+import { internal } from './_generated/api'
+import { action, internalMutation, internalQuery, query } from './_generated/server'
+import { requireOwnerEmail } from './authHelpers'
 interface DocRow {
   _id: Id<'docs'>
   filename: string
@@ -101,5 +103,83 @@ const insertQuarantined = internalMutation({
       version: 1
     })
 })
-export { findByFilename, findBySha256, insertQuarantined, insertRow }
-export type { DocRow }
+interface UploadResult {
+  docId?: Id<'docs'>
+  duplicate?: { existingId: Id<'docs'>; filename: string; uploadedAt: number }
+  filenameConflict?: { existingId: Id<'docs'>; filename: string }
+  ok: boolean
+  reason?: string
+  signature?: string
+}
+const upload = action({
+  args: {
+    filename: v.string(),
+    mime: v.string(),
+    replace: v.optional(v.boolean()),
+    scope: v.union(v.literal('shared'), v.literal('mine')),
+    storageId: v.id('_storage')
+  },
+  handler: async (ctx, args): Promise<UploadResult> => {
+    const uploaderEmail = await requireOwnerEmail(ctx)
+    return ctx.runAction(internal.docsUpload.finalize, { ...args, uploaderEmail })
+  }
+})
+interface DocListItem {
+  _id: Id<'docs'>
+  filename: string
+  fileSize: number
+  mime: string
+  policyStatus: 'approved' | 'pending' | 'rejected'
+  scanStatus: 'clean' | 'pending' | 'quarantined'
+  scope: 'mine' | 'shared'
+  uploadedAt: number
+  version: number
+}
+const listMine = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, { limit }): Promise<DocListItem[]> => {
+    const email = await requireOwnerEmail(ctx)
+    const rows = await ctx.db
+      .query('docs')
+      .withIndex('by_scope_uploadedAt', q => q.eq('scope', 'mine'))
+      .filter(q => q.and(q.eq(q.field('owner'), email), q.eq(q.field('deletedAt'), undefined)))
+      .order('desc')
+      .take(limit ?? 50)
+    return rows.map(r => ({
+      _id: r._id,
+      fileSize: r.fileSize,
+      filename: r.filename,
+      mime: r.mime,
+      policyStatus: r.policyStatus,
+      scanStatus: r.scanStatus,
+      scope: r.scope,
+      uploadedAt: r.uploadedAt,
+      version: r.version
+    }))
+  }
+})
+const listShared = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, { limit }): Promise<DocListItem[]> => {
+    await requireOwnerEmail(ctx)
+    const rows = await ctx.db
+      .query('docs')
+      .withIndex('by_scope_uploadedAt', q => q.eq('scope', 'shared'))
+      .filter(q => q.eq(q.field('deletedAt'), undefined))
+      .order('desc')
+      .take(limit ?? 50)
+    return rows.map(r => ({
+      _id: r._id,
+      fileSize: r.fileSize,
+      filename: r.filename,
+      mime: r.mime,
+      policyStatus: r.policyStatus,
+      scanStatus: r.scanStatus,
+      scope: r.scope,
+      uploadedAt: r.uploadedAt,
+      version: r.version
+    }))
+  }
+})
+export { findByFilename, findBySha256, insertQuarantined, insertRow, listMine, listShared, upload }
+export type { DocListItem, DocRow, UploadResult }

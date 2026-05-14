@@ -1,14 +1,11 @@
 /** biome-ignore-all lint/style/noProcessEnv: clamav host env */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: CLAMAV_HOST optional */
 /** biome-ignore-all lint/suspicious/useAwait: scanBytes wraps net.Socket callback in Promise */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 'use node'
-import type { FunctionReference } from 'convex/server'
 import { v } from 'convex/values'
 import { Buffer } from 'node:buffer'
 import { connect } from 'node:net'
 import type { Id } from './_generated/dataModel'
-import type { DocRow } from './docs'
 import { internal } from './_generated/api'
 import { internalAction } from './_generated/server'
 import { canonicalizeEmail } from './authHelpers'
@@ -65,42 +62,6 @@ const sha256Hex = async (bytes: Uint8Array): Promise<string> => {
   const digest = await crypto.subtle.digest('SHA-256', bytes)
   return [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('')
 }
-interface FindByFilenameArgs {
-  filename: string
-  owner?: string
-  scope: 'mine' | 'shared'
-}
-type FindByFilenameRef = FunctionReference<'query', 'internal', FindByFilenameArgs, DocRow | null>
-interface FindByShaArgs {
-  owner?: string
-  scope: 'mine' | 'shared'
-  sha256: string
-}
-type FindByShaRef = FunctionReference<'query', 'internal', FindByShaArgs, DocRow | null>
-interface InsertQuarantinedArgs {
-  filename: string
-  fileSize: number
-  mime: string
-  owner?: string
-  scope: 'mine' | 'shared'
-  sha256: string
-  signature: string
-  uploadedBy: string
-}
-type InsertQuarantinedRef = FunctionReference<'mutation', 'internal', InsertQuarantinedArgs, Id<'docs'>>
-interface InsertRowArgs {
-  filename: string
-  fileSize: number
-  mime: string
-  owner?: string
-  scope: 'mine' | 'shared'
-  sha256: string
-  storageId: Id<'_storage'>
-  supersedes?: Id<'docs'>
-  uploadedBy: string
-  version: number
-}
-type InsertRowRef = FunctionReference<'mutation', 'internal', InsertRowArgs, Id<'docs'>>
 interface UploadResult {
   docId?: Id<'docs'>
   duplicate?: { existingId: Id<'docs'>; filename: string; uploadedAt: number }
@@ -125,7 +86,7 @@ const finalize = internalAction({
     const uploadedBy = canonicalizeEmail(args.uploaderEmail)
     const owner = args.scope === 'mine' ? uploadedBy : undefined
     const sha256 = await sha256Hex(bytes)
-    const dupRaw = await ctx.runQuery(internal.docs.findBySha256 as FindByShaRef, {
+    const dupRaw = await ctx.runQuery(internal.docs.findBySha256, {
       owner,
       scope: args.scope,
       sha256
@@ -139,7 +100,7 @@ const finalize = internalAction({
         reason: 'duplicate'
       }
     }
-    const conflictRaw = await ctx.runQuery(internal.docs.findByFilename as FindByFilenameRef, {
+    const conflictRaw = await ctx.runQuery(internal.docs.findByFilename, {
       filename: args.filename,
       owner,
       scope: args.scope
@@ -158,7 +119,7 @@ const finalize = internalAction({
     )
     if (!scan.ok) {
       await ctx.storage.delete(args.storageId)
-      const idRaw = await ctx.runMutation(internal.docs.insertQuarantined as InsertQuarantinedRef, {
+      const idRaw = await ctx.runMutation(internal.docs.insertQuarantined, {
         fileSize: bytes.byteLength,
         filename: args.filename,
         mime: args.mime,
@@ -172,7 +133,7 @@ const finalize = internalAction({
       return { docId: id, ok: false, reason: 'quarantined', signature: scan.signature }
     }
     const version = conflict ? (conflict.version ?? 1) + 1 : 1
-    const docIdRaw = await ctx.runMutation(internal.docs.insertRow as InsertRowRef, {
+    const docIdRaw = await ctx.runMutation(internal.docs.insertRow, {
       fileSize: bytes.byteLength,
       filename: args.filename,
       mime: args.mime,

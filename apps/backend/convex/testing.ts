@@ -104,6 +104,21 @@ const readFile = action({
     return ctx.runAction(internal.files.read, { email, path })
   }
 })
+const docsFinalize = action({
+  args: {
+    filename: v.string(),
+    mime: v.string(),
+    replace: v.optional(v.boolean()),
+    scope: v.union(v.literal('shared'), v.literal('mine')),
+    storageId: v.id('_storage'),
+    testSecret: v.string(),
+    uploaderEmail: v.string()
+  },
+  handler: async (ctx, { testSecret, ...args }) => {
+    verifyTestSecret(testSecret)
+    return ctx.runAction(internal.docsUpload.finalize, args)
+  }
+})
 const uploadFile = action({
   args: {
     binary: v.optional(v.boolean()),
@@ -196,6 +211,7 @@ const listSandboxIds = internalQuery({
 })
 export {
   clearStreamingFlagsInternal,
+  docsFinalize,
   downloadZip,
   getChatStreaming,
   listChats,
