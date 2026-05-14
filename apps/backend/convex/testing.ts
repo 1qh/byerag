@@ -123,6 +123,13 @@ const wipeDocs = mutation({
     return rows.length
   }
 })
+const getDocRow = query({
+  args: { docId: v.id('docs'), testSecret: v.string() },
+  handler: async (ctx, { docId, testSecret }) => {
+    verifyTestSecret(testSecret)
+    return ctx.db.get(docId)
+  }
+})
 const docsFinalize = action({
   args: {
     filename: v.string(),
@@ -234,6 +241,7 @@ export {
   docsGenerateUploadUrl,
   downloadZip,
   getChatStreaming,
+  getDocRow,
   listChats,
   listFiles,
   listMessages,
