@@ -18,7 +18,7 @@ import {
   MAX_UPLOAD_SIZE,
   WORKSPACE_PATH
 } from './constants'
-import { connectSandbox as e2bConnect } from './sandboxClient'
+import { connectSandbox } from './sandboxClient'
 import { log } from './utils'
 const MULTI_SLASH_RE = /\/+/gu
 const TRAILING_SLASH_RE = /\/$/u
@@ -29,10 +29,10 @@ interface FileEntry {
   size?: number
   type: string
 }
-const connectSandbox = async (ctx: Ctx, email: string): Promise<Sandbox> => {
+const connectForOwner = async (ctx: Ctx, email: string): Promise<Sandbox> => {
   const doc = await ctx.runQuery(internal.sandboxes.getByOwner, { owner: email })
   if (!doc) throw new Error('no sandbox')
-  return e2bConnect(doc.sandboxId)
+  return connectSandbox(doc.sandboxId)
 }
 const validatePath = (path: string): string => {
   const resolved = path.replaceAll(MULTI_SLASH_RE, '/').replace(TRAILING_SLASH_RE, '')
@@ -49,7 +49,7 @@ const withSandbox = async <T>(
   fn: (sandbox: Sandbox, safePath: string) => Promise<T>
 ): Promise<T> => {
   const safePath = validatePath(path)
-  const sandbox = await connectSandbox(ctx, email)
+  const sandbox = await connectForOwner(ctx, email)
   const realpath: CommandResult = await sandbox.commands.run(`realpath '${safePath}' 2>/dev/null`, {
     timeoutMs: 5000
   })
@@ -167,7 +167,7 @@ const cleanupChatDirs = internalAction({
       return
     }
     try {
-      const sandbox = await connectSandbox(ctx, email)
+      const sandbox = await connectForOwner(ctx, email)
       await sandbox.commands.run(`rm -rf '${CLAUDE_SESSIONS_PATH}/${chatId}' '${CLAUDE_TMP_PATH}/${chatId}'`, {
         timeoutMs: 10_000
       })

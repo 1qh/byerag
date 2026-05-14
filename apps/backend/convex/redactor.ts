@@ -2,7 +2,6 @@ const COMBINED_RE = new RegExp(
   [
     'sk-ant-[A-Za-z0-9_-]{8,}',
     'eyJ[A-Za-z0-9._-]{20,}',
-    String.raw`\be2b_[A-Za-z0-9_-]{8,}`,
     String.raw`\bsk-[A-Za-z0-9_-]{20,}`,
     String.raw`\bAKIA[0-9A-Z]{16}\b`,
     String.raw`\bgh[opsu]_[A-Za-z0-9]{36,}`,

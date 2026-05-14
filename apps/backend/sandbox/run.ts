@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/style/noProcessEnv: E2B sandbox runtime env access */
+/** biome-ignore-all lint/style/noProcessEnv: sandbox runtime env access */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: secrets scrubbed post-parse */
 /** biome-ignore-all lint/suspicious/noEmptyBlockStatements: intentional empty catch blocks */
 /** biome-ignore-all lint/complexity/useLiteralKeys: env key access */
@@ -17,7 +17,7 @@ const envSchema = z.object({
   CHAT_APP: z.string().min(1),
   CHAT_ID: z.string().min(1),
   CHAT_SECRET: z.string().min(1),
-  CONVEX_SITE_URL: z.url().startsWith('https://'),
+  CONVEX_SITE_URL: z.url().startsWith('http'),
   EFFORT: z.enum(['low', 'medium', 'high']),
   MAX_BUDGET_USD: z.coerce.number().min(0).max(100).catch(1).default(1),
   MAX_TURNS: z.coerce.number().int().min(1).max(500).catch(50).default(50),
@@ -34,6 +34,7 @@ delete process.env.SYSTEM_PROMPT
 delete process.env.USER_TEXT
 delete process.env.ANTHROPIC_AUTH_TOKEN
 delete process.env.ANTHROPIC_API_KEY
+delete process.env.KIMI_API_KEY
 if (config.PGID_FILE)
   try {
     const pgid = execSync(`ps -o pgid= -p ${process.pid}`).toString().trim()
@@ -43,6 +44,7 @@ if (config.PGID_FILE)
   }
 const cleanEnv = { ...process.env }
 delete cleanEnv.ANTHROPIC_API_KEY
+delete cleanEnv.KIMI_API_KEY
 delete cleanEnv.CHAT_SECRET
 delete cleanEnv.CLI_SESSION_SECRET
 delete cleanEnv.SYSTEM_PROMPT
@@ -53,7 +55,7 @@ cleanEnv.CLAUDE_CODE_INCLUDE_PARTIAL_MESSAGES = '1'
 cleanEnv.ANTHROPIC_AUTH_TOKEN = `sk-ant-oat01-proxy_${config.CHAT_ID}_${config.CHAT_SECRET.replaceAll('-', '')}`
 cleanEnv.CLI_SESSION_ID = config.CHAT_ID
 cleanEnv.CLI_SESSION_SECRET = config.CHAT_SECRET
-const SKILLS_DIR = '/home/user/workspace/.claude/skills'
+const SKILLS_DIR = '/home/agent/workspace/.claude/skills'
 const skillNames: string[] = []
 const appSkills = AGENT_SKILLS_BY_APP[config.CHAT_APP] ?? {}
 for (const [name, content] of Object.entries(appSkills)) {
@@ -62,10 +64,10 @@ for (const [name, content] of Object.entries(appSkills)) {
   writeFileSync(`${dir}/SKILL.md`, content)
   skillNames.push(name)
 }
-process.chdir('/home/user/workspace')
+process.chdir('/home/agent/workspace')
 const opts = {
   allowDangerouslySkipPermissions: true,
-  cwd: '/home/user/workspace',
+  cwd: '/home/agent/workspace',
   effort: config.EFFORT,
   env: cleanEnv,
   maxBudgetUsd: config.MAX_BUDGET_USD,
@@ -149,12 +151,12 @@ try {
       error: String(error)
         .slice(-500)
         .replaceAll(/sk-ant-[^\s"]*/gu, '[REDACTED]')
+        .replaceAll(/sk-kimi-[^\s"]*/gu, '[REDACTED]')
         .replaceAll(/eyJ[A-Za-z0-9._-]{20,}/gu, '[REDACTED]')
-        .replaceAll(/e2b_[^\s"]*/gu, '[REDACTED]')
         .replaceAll(new RegExp(config.CHAT_SECRET.replaceAll(/[.*+?^${}()|[\]\\]/gu, String.raw`\$&`), 'gu'), '[REDACTED]')
         .replaceAll(/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/gu, '[IP]')
         .replaceAll(/at\s+\S+\s+\([^)]+\)/gu, '')
-        .replaceAll(/\/home\/user\/[^\s'"]*/gu, '[PATH]'),
+        .replaceAll(/\/home\/agent\/[^\s'"]*/gu, '[PATH]'),
       type: 'error'
     }),
     secret: config.CHAT_SECRET,
