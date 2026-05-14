@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/only-throw-error -- fail() returns never (throws ToolError internally); rule misclassifies */
 import { arg, defineQuery, makeFail } from '../_api'
 const action = defineQuery({
   args: { id: arg.string({ description: 'testAttempts._id' }) },
