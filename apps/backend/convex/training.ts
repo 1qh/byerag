@@ -279,7 +279,16 @@ const listPendingSuggestionsForAdmin = query({
   handler: async (
     ctx,
     { limit }
-  ): Promise<{ _id: string; choices?: string[]; correctIndex?: number; prompt?: string; topicId: string }[]> => {
+  ): Promise<{
+    _id: string
+    choices?: string[]
+    correctIndex?: number
+    pairKind?: 'cap-swap' | 'conflict'
+    pairedWith?: string
+    prompt?: string
+    topicId: string
+    topicName: string
+  }[]> => {
     const identity = await ctx.auth.getUserIdentity()
     const email = identity?.email?.toLowerCase()
     if (!email) return []
@@ -293,13 +302,59 @@ const listPendingSuggestionsForAdmin = query({
       .filter(q => q.eq(q.field('status'), 'pending'))
       .order('desc')
       .take(Math.min(limit ?? 100, 500))
-    return rows.map(r => ({
-      _id: r._id,
-      choices: r.choices,
-      correctIndex: r.correctIndex,
-      prompt: r.prompt,
-      topicId: r.topicId
-    }))
+    const topicCache = new Map<string, string>()
+    const out: {
+      _id: string
+      choices?: string[]
+      correctIndex?: number
+      pairKind?: 'cap-swap' | 'conflict'
+      pairedWith?: string
+      prompt?: string
+      topicId: string
+      topicName: string
+    }[] = []
+    for (const r of rows) {
+      let topicName = topicCache.get(r.topicId)
+      if (!topicName) {
+        const t = await ctx.db.get(r.topicId)
+        topicName = t?.name ?? '?'
+        topicCache.set(r.topicId, topicName)
+      }
+      out.push({
+        _id: r._id,
+        choices: r.choices,
+        correctIndex: r.correctIndex,
+        pairKind: r.pairKind,
+        pairedWith: r.pairedWith,
+        prompt: r.prompt,
+        topicId: r.topicId,
+        topicName
+      })
+    }
+    return out
+  }
+})
+const rejectSuggestionPublic = mutation({
+  args: { suggestionId: v.id('testQuestionSuggestions') },
+  handler: async (ctx, { suggestionId }): Promise<void> => {
+    const identity = await ctx.auth.getUserIdentity()
+    const email = identity?.email?.toLowerCase()
+    if (!email) throw new Error('not authenticated')
+    const profile = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', email))
+      .first()
+    if (profile?.role !== 'admin') throw new Error('admin only')
+    const s = await ctx.db.get(suggestionId)
+    if (!s) throw new Error('suggestion not found')
+    if (s.status !== 'pending') throw new Error('already resolved')
+    await ctx.db.patch(suggestionId, {
+      resolvedAction: 'reject',
+      resolvedAt: Date.now(),
+      resolvedBy: email,
+      resolvedReason: 'admin-action',
+      status: 'resolved'
+    })
   }
 })
 const approveSuggestion = internalMutation({
@@ -423,5 +478,6 @@ export {
   markTopicSubstantive,
   persistSuggestions,
   persistSuggestionsWithEmbedding,
+  rejectSuggestionPublic,
   writeAuditRow
 }
