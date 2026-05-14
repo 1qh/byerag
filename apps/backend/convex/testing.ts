@@ -168,6 +168,79 @@ const countAdmins = query({
     return rows.length
   }
 })
+const setSetting = mutation({
+  args: { key: v.string(), testSecret: v.string(), value: v.string() },
+  handler: async (ctx, { key, value, testSecret }): Promise<void> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db
+      .query('settings')
+      .withIndex('by_key', q => q.eq('key', key))
+      .collect()
+    const existing = rows[0]
+    if (existing) await ctx.db.patch(existing._id, { updatedAt: Date.now(), updatedBy: 'test', value })
+    else await ctx.db.insert('settings', { key, updatedAt: Date.now(), updatedBy: 'test', value })
+  }
+})
+const seedTopicWithPool = mutation({
+  args: { name: v.string(), poolSize: v.number(), testSecret: v.string() },
+  handler: async (ctx, { name, poolSize, testSecret }): Promise<string> => {
+    verifyTestSecret(testSecret)
+    const topicId = await ctx.db.insert('topics', {
+      autoLabeled: true,
+      createdAt: Date.now(),
+      name,
+      poolCap: 50
+    })
+    for (let i = 0; i < poolSize; i += 1)
+      await ctx.db.insert('testQuestions', {
+        choices: ['A', 'B', 'C'],
+        correctIndex: 0,
+        createdAt: Date.now(),
+        createdBy: 'test',
+        prompt: `Q${i}`,
+        revision: 1,
+        sourceDocIds: [],
+        topicId
+      })
+
+    return topicId
+  }
+})
+const runAutoAssign = action({
+  args: { testSecret: v.string() },
+  handler: async (
+    ctx,
+    { testSecret }
+  ): Promise<{ assignmentsCreated: number; durationMs: number; topicsProcessed: number }> => {
+    verifyTestSecret(testSecret)
+    return ctx.runAction(internal.training.autoAssign, {})
+  }
+})
+const countAssignmentsByCreator = query({
+  args: { createdBy: v.string(), testSecret: v.string() },
+  handler: async (ctx, { createdBy, testSecret }): Promise<number> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db.query('testAssignments').collect()
+    return rows.filter(r => r.createdBy === createdBy && r.deletedAt === undefined).length
+  }
+})
+const wipeTrainingTables = mutation({
+  args: { testSecret: v.string() },
+  handler: async (ctx, { testSecret }): Promise<void> => {
+    verifyTestSecret(testSecret)
+    for (const tbl of [
+      'testAssignments',
+      'testPasses',
+      'testAttempts',
+      'testQuestions',
+      'testQuestionSuggestions',
+      'topics'
+    ] as const) {
+      const rows = await ctx.db.query(tbl).collect()
+      for (const r of rows) await ctx.db.delete(r._id)
+    }
+  }
+})
 const softDeleteDocProbe = mutation({
   args: { docId: v.id('docs'), testSecret: v.string() },
   handler: async (ctx, { docId, testSecret }): Promise<void> => {
@@ -520,6 +593,7 @@ export {
   clearStreamingFlagsInternal,
   consumeProxyBudgetProbe,
   countAdmins,
+  countAssignmentsByCreator,
   countAuditLogs,
   countChunksForDoc,
   countCostRecords,
@@ -543,16 +617,20 @@ export {
   requestReviewProbe,
   reserveBudgetProbe,
   resetPolicyPending,
+  runAutoAssign,
   runPurgeSoftDeleted,
   runQuarantinePurge,
   scanOverrideProbe,
+  seedTopicWithPool,
   seedUserProfile,
   send,
   setChatStreaming,
+  setSetting,
   setUserRoleProbe,
   softDeleteDocProbe,
   uploadFile,
   wipeAllForOwner,
   wipeDocs,
+  wipeTrainingTables,
   wipeUserProfiles
 }
