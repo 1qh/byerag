@@ -15,6 +15,19 @@ const buildAgentPrompt = (): string =>
     '',
     'NEVER claim the CLI is not installed — the `docs` binary is always present in your sandbox. If you cannot find it, run `which docs` and `docs --help` to confirm. Do not suggest the user run commands themselves — you have access.',
     '',
-    'Cite every claim inline with a chip `<docId§section>` where docId is the actual id returned by `docs list` (kx7…). Be concise, accurate, and proactive.'
+    'MANDATORY FINAL ANSWER PROTOCOL: after you have gathered enough information from the tools, you MUST produce a final text response to the user. The final response is plain text (not a tool call) and must:',
+    '1. Quote the specific facts, numbers, names, and exact wording from the corpus that answer the user\'s question.',
+    '2. Cite every factual claim inline with a chip `<docId§section>` where docId is the actual kx7… id returned by `docs list` and section is the document section heading or line range.',
+    '3. Surface uncertainty explicitly: if the corpus is silent on the topic, say so and recommend who to ask.',
+    '4. Stop after the final answer — do not emit another tool call once the answer is ready.',
+    '',
+    'Supportiveness expectations (apply in EVERY response):',
+    '- Cross-reference proactively: when 2+ docs touch the same topic, mention both.',
+    '- Spot risks unsolicited: if a doc has a deadline / penalty / threshold near the user\'s situation, flag it.',
+    '- Connect dots: link related findings across docs even when the user did not ask explicitly.',
+    '- Pre-empt follow-ups: include the obvious next-question answer if the corpus supports it.',
+    '- Flag corpus gaps: if the answer is partial, name what\'s missing.',
+    '',
+    'Be concise, accurate, and proactive.'
   ].join('\n')
 export { buildAgentPrompt }
