@@ -661,6 +661,20 @@ const adminDeleteTopic = mutation({
     }
   }
 })
+const inferBatchSubstantive = query({
+  args: { suggestionIds: v.array(v.id('testQuestionSuggestions')) },
+  handler: async (ctx, { suggestionIds }): Promise<'cosmetic' | 'substantive'> => {
+    const kinds = new Set<string>()
+    for (const id of suggestionIds) {
+      const row = await ctx.db.get(id)
+      if (row) kinds.add(row.kind)
+    }
+    if (kinds.has('retire')) return 'substantive'
+    if (kinds.has('revision') && !kinds.has('new')) return 'substantive'
+    if (kinds.has('new') && !kinds.has('revision') && !kinds.has('retire')) return 'cosmetic'
+    return 'cosmetic'
+  }
+})
 const markTopicSubstantive = mutation({
   args: { topicId: v.id('topics') },
   handler: async (ctx, { topicId }): Promise<{ assignmentsCreated: number; passesRevoked: number }> => {
@@ -714,6 +728,7 @@ export {
   approveSuggestion,
   approveSuggestionPublic,
   autoAssign,
+  inferBatchSubstantive,
   insertAuto,
   isAutoAssignEnabled,
   listAttemptsForAdmin,

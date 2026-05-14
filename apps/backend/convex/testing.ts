@@ -1024,6 +1024,27 @@ const getSuggestionRow = query({
     return ctx.db.get(suggestionId)
   }
 })
+const seedSuggestionWithKind = mutation({
+  args: {
+    kind: v.union(v.literal('new'), v.literal('revision'), v.literal('retire')),
+    testSecret: v.string(),
+    topicId: v.id('topics')
+  },
+  handler: async (ctx, { topicId, kind, testSecret }): Promise<string> => {
+    verifyTestSecret(testSecret)
+    return ctx.db.insert('testQuestionSuggestions', {
+      choices: kind === 'retire' ? undefined : ['A', 'B', 'C'],
+      correctIndex: kind === 'retire' ? undefined : 0,
+      createdAt: Date.now(),
+      kind,
+      prompt: kind === 'retire' ? undefined : 'q',
+      regenCount: 0,
+      sourceDocIds: [],
+      status: 'pending',
+      topicId
+    })
+  }
+})
 const seedSuggestion = mutation({
   args: {
     choices: v.array(v.string()),
@@ -1555,6 +1576,7 @@ export {
   seedQuestionWithDoc,
   seedSuggestion,
   seedSuggestionWithDoc,
+  seedSuggestionWithKind,
   seedTestPass,
   seedTopicWithPool,
   seedUserProfile,
