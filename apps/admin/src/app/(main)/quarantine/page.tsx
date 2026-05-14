@@ -1,8 +1,19 @@
 'use client'
-import { useQuery } from 'convex/react'
+import { useMutation, useQuery } from 'convex/react'
 import { api } from 'backend/convex/_generated/api'
+import { useState } from 'react'
 const QuarantinePage = (): React.ReactElement => {
   const rows = useQuery(api.docs.listForQuarantine, {})
+  const approve = useMutation(api.docs.adminApproveReview)
+  const reject = useMutation(api.docs.adminConfirmReject)
+  const [busy, setBusy] = useState<Set<string>>(new Set())
+  const act = (id: string, kind: 'approve' | 'reject'): void => {
+    setBusy(p => new Set(p).add(id))
+    const fn = kind === 'approve' ? approve : reject
+    fn({ docId: id as never })
+      .catch((e: unknown) => alert(String(e)))
+      .finally(() => setBusy(p => { const n = new Set(p); n.delete(id); return n }))
+  }
   if (rows === undefined) return <div className="p-6">Loading…</div>
   if (rows.length === 0) return <div className="p-6 text-muted-foreground">No docs awaiting review.</div>
   return (
@@ -16,6 +27,7 @@ const QuarantinePage = (): React.ReactElement => {
             <th>Status</th>
             <th>Category</th>
             <th>Reason</th>
+            <th className="text-right">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -26,6 +38,18 @@ const QuarantinePage = (): React.ReactElement => {
               <td>{r.policyStatus} / {r.scanStatus}</td>
               <td>{r.policyCategory ?? '—'}</td>
               <td className="max-w-md truncate text-xs">{r.policyReason ?? r.scanOverrideSignature ?? ''}</td>
+              <td className="text-right space-x-2">
+                <button
+                  type="button"
+                  className="rounded-md border bg-primary px-3 py-1 text-primary-foreground text-xs disabled:opacity-50"
+                  disabled={busy.has(r._id)}
+                  onClick={() => act(r._id, 'approve')}>Approve</button>
+                <button
+                  type="button"
+                  className="rounded-md border bg-destructive px-3 py-1 text-destructive-foreground text-xs disabled:opacity-50"
+                  disabled={busy.has(r._id)}
+                  onClick={() => act(r._id, 'reject')}>Confirm reject</button>
+              </td>
             </tr>
           ))}
         </tbody>

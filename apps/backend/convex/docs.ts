@@ -9,7 +9,7 @@
 import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
 import { internal } from './_generated/api'
-import { action, internalMutation, internalQuery, query } from './_generated/server'
+import { action, internalMutation, internalQuery, mutation, query } from './_generated/server'
 import { requireOwnerEmail } from './authHelpers'
 interface DocRow {
   _id: Id<'docs'>
@@ -307,6 +307,86 @@ const listMine = query({
     }))
   }
 })
+const requestReview = mutation({
+  args: { docId: v.id('docs') },
+  handler: async (ctx, { docId }): Promise<void> => {
+    const identity = await ctx.auth.getUserIdentity()
+    const email = identity?.email?.toLowerCase()
+    if (!email) throw new Error('not authenticated')
+    const doc = await ctx.db.get(docId)
+    if (!doc) throw new Error('doc not found')
+    if (doc.uploadedBy !== email) throw new Error('only uploader can request review')
+    if (doc.policyStatus !== 'rejected') throw new Error('only rejected docs can request review')
+    const last = doc.policyReviewRequestedAt ?? 0
+    if (Date.now() - last < 86_400_000) throw new Error('review already requested today; try again in 24h')
+    await ctx.db.patch(docId, { policyReviewRequestedAt: Date.now() })
+    await ctx.db.insert('auditLogs', {
+      args: JSON.stringify({ docId, filename: doc.filename }),
+      command: 'docs.requestReview',
+      mode: 'session',
+      ok: true,
+      owner: email,
+      severity: 'low'
+    })
+  }
+})
+const adminApproveReview = mutation({
+  args: { docId: v.id('docs') },
+  handler: async (ctx, { docId }): Promise<void> => {
+    const identity = await ctx.auth.getUserIdentity()
+    const email = identity?.email?.toLowerCase()
+    if (!email) throw new Error('not authenticated')
+    const profile = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', email))
+      .first()
+    if (profile?.role !== 'admin') throw new Error('admin only')
+    const doc = await ctx.db.get(docId)
+    if (!doc) throw new Error('doc not found')
+    await ctx.db.patch(docId, { policyOverriddenBy: email, policyStatus: 'approved' })
+    await ctx.scheduler.runAfter(0, internal.docsEmbed.embed, { docId })
+    await ctx.scheduler.runAfter(0, internal.trainingGen.generate, { docId })
+    await ctx.db.insert('auditLogs', {
+      args: JSON.stringify({ docId, filename: doc.filename }),
+      command: 'docs.policyOverride.approve',
+      mode: 'session',
+      ok: true,
+      owner: email,
+      severity: 'medium'
+    })
+  }
+})
+const adminConfirmReject = mutation({
+  args: { docId: v.id('docs') },
+  handler: async (ctx, { docId }): Promise<void> => {
+    const identity = await ctx.auth.getUserIdentity()
+    const email = identity?.email?.toLowerCase()
+    if (!email) throw new Error('not authenticated')
+    const profile = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', email))
+      .first()
+    if (profile?.role !== 'admin') throw new Error('admin only')
+    const doc = await ctx.db.get(docId)
+    if (!doc) throw new Error('doc not found')
+    if (doc.storageId) {
+      try {
+        await ctx.storage.delete(doc.storageId)
+      } catch {
+        // already gone
+      }
+      await ctx.db.patch(docId, { policyOverriddenBy: email, storageId: undefined })
+    }
+    await ctx.db.insert('auditLogs', {
+      args: JSON.stringify({ docId, filename: doc.filename }),
+      command: 'docs.policyOverride.confirmReject',
+      mode: 'session',
+      ok: true,
+      owner: email,
+      severity: 'medium'
+    })
+  }
+})
 const listForQuarantine = query({
   args: {},
   handler: async (ctx) => {
@@ -406,10 +486,13 @@ export {
   getForEmbed,
   getForExtract,
   getRowsSnippet,
+  adminApproveReview,
+  adminConfirmReject,
   insertQuarantined,
   insertRow,
   listForQuarantine,
   listMine,
+  requestReview,
   listShared,
   persistChunks,
   purgeSoftDeleted,
