@@ -489,6 +489,48 @@ const approveSuggestionPublic = mutation({
     return { questionId }
   }
 })
+const adminRegenerateQuestion = mutation({
+  args: { hint: v.optional(v.string()), questionId: v.id('testQuestions') },
+  handler: async (ctx, { questionId, hint }): Promise<{ regenCount: number; suggestionId: string }> => {
+    const identity = await ctx.auth.getUserIdentity()
+    const email = identity?.email?.toLowerCase()
+    if (!email) throw new Error('not authenticated')
+    const profileRows = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', email))
+      .collect()
+    const profile = profileRows[0]
+    if (profile?.role !== 'admin') throw new Error('admin only')
+    const q = await ctx.db.get(questionId)
+    if (!q) throw new Error('question not found')
+    const priorSuggestions = await ctx.db
+      .query('testQuestionSuggestions')
+      .withIndex('by_target', x => x.eq('targetQuestionId', questionId))
+      .collect()
+    const lastRegen = priorSuggestions.reduce((acc, s) => Math.max(acc, s.regenCount ?? 0), 0)
+    if (lastRegen >= 5) throw new Error('regenCount cap reached (5)')
+    const regenCount = lastRegen + 1
+    const sid = await ctx.db.insert('testQuestionSuggestions', {
+      createdAt: Date.now(),
+      hint,
+      kind: 'revision',
+      regenCount,
+      sourceDocIds: q.sourceDocIds,
+      status: 'pending',
+      targetQuestionId: questionId,
+      topicId: q.topicId
+    })
+    await ctx.db.insert('auditLogs', {
+      args: JSON.stringify({ hint: hint?.slice(0, 80), questionId, regenCount }),
+      command: 'training.question.regenerate',
+      mode: 'session',
+      ok: true,
+      owner: email,
+      severity: 'medium'
+    })
+    return { regenCount, suggestionId: sid }
+  }
+})
 const adminEditQuestion = mutation({
   args: {
     choices: v.array(v.string()),
@@ -667,6 +709,7 @@ const markTopicSubstantive = mutation({
 export {
   adminDeleteTopic,
   adminEditQuestion,
+  adminRegenerateQuestion,
   adminRetireQuestion,
   approveSuggestion,
   approveSuggestionPublic,

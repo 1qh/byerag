@@ -7,6 +7,7 @@
  * To regenerate, run `npx convex dev`.
  * @module
  */
+
 import {
   ActionBuilder,
   HttpActionBuilder,
@@ -19,6 +20,7 @@ import {
   GenericDatabaseWriter,
 } from "convex/server";
 import type { DataModel } from "./dataModel.js";
+
 /**
  * Define a query in this Convex app's public API.
  *
@@ -28,6 +30,7 @@ import type { DataModel } from "./dataModel.js";
  * @returns The wrapped query. Include this as an `export` to name it and make it accessible.
  */
 export declare const query: QueryBuilder<DataModel, "public">;
+
 /**
  * Define a query that is only accessible from other Convex functions (but not from the client).
  *
@@ -37,6 +40,7 @@ export declare const query: QueryBuilder<DataModel, "public">;
  * @returns The wrapped query. Include this as an `export` to name it and make it accessible.
  */
 export declare const internalQuery: QueryBuilder<DataModel, "internal">;
+
 /**
  * Define a mutation in this Convex app's public API.
  *
@@ -46,6 +50,7 @@ export declare const internalQuery: QueryBuilder<DataModel, "internal">;
  * @returns The wrapped mutation. Include this as an `export` to name it and make it accessible.
  */
 export declare const mutation: MutationBuilder<DataModel, "public">;
+
 /**
  * Define a mutation that is only accessible from other Convex functions (but not from the client).
  *
@@ -55,6 +60,7 @@ export declare const mutation: MutationBuilder<DataModel, "public">;
  * @returns The wrapped mutation. Include this as an `export` to name it and make it accessible.
  */
 export declare const internalMutation: MutationBuilder<DataModel, "internal">;
+
 /**
  * Define an action in this Convex app's public API.
  *
@@ -67,6 +73,7 @@ export declare const internalMutation: MutationBuilder<DataModel, "internal">;
  * @returns The wrapped action. Include this as an `export` to name it and make it accessible.
  */
 export declare const action: ActionBuilder<DataModel, "public">;
+
 /**
  * Define an action that is only accessible from other Convex functions (but not from the client).
  *
@@ -74,6 +81,7 @@ export declare const action: ActionBuilder<DataModel, "public">;
  * @returns The wrapped function. Include this as an `export` to name it and make it accessible.
  */
 export declare const internalAction: ActionBuilder<DataModel, "internal">;
+
 /**
  * Define an HTTP action.
  *
@@ -86,6 +94,7 @@ export declare const internalAction: ActionBuilder<DataModel, "internal">;
  * @returns The wrapped function. Import this function from `convex/http.js` and route it to hook it up.
  */
 export declare const httpAction: HttpActionBuilder;
+
 /**
  * A set of services for use within Convex query functions.
  *
@@ -96,6 +105,7 @@ export declare const httpAction: HttpActionBuilder;
  * read-only.
  */
 export type QueryCtx = GenericQueryCtx<DataModel>;
+
 /**
  * A set of services for use within Convex mutation functions.
  *
@@ -103,6 +113,7 @@ export type QueryCtx = GenericQueryCtx<DataModel>;
  * function run on the server.
  */
 export type MutationCtx = GenericMutationCtx<DataModel>;
+
 /**
  * A set of services for use within Convex action functions.
  *
@@ -110,6 +121,7 @@ export type MutationCtx = GenericMutationCtx<DataModel>;
  * function run on the server.
  */
 export type ActionCtx = GenericActionCtx<DataModel>;
+
 /**
  * An interface to read from the database within Convex query functions.
  *
@@ -118,6 +130,7 @@ export type ActionCtx = GenericActionCtx<DataModel>;
  * building a query.
  */
 export type DatabaseReader = GenericDatabaseReader<DataModel>;
+
 /**
  * An interface to read from and write to the database within Convex mutation
  * functions.

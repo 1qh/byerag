@@ -615,6 +615,48 @@ const countTestPasses = query({
     return { assignedKind: rows.length, selfKind: self.length }
   }
 })
+const regenerateQuestionProbe = mutation({
+  args: {
+    adminEmail: v.string(),
+    hint: v.optional(v.string()),
+    questionId: v.id('testQuestions'),
+    testSecret: v.string()
+  },
+  handler: async (
+    ctx,
+    { questionId, hint, adminEmail, testSecret }
+  ): Promise<{ regenCount: number; suggestionId: string }> => {
+    verifyTestSecret(testSecret)
+    const q = await ctx.db.get(questionId)
+    if (!q) throw new Error('not found')
+    const prior = await ctx.db
+      .query('testQuestionSuggestions')
+      .withIndex('by_target', x => x.eq('targetQuestionId', questionId))
+      .collect()
+    const lastRegen = prior.reduce((acc, s) => Math.max(acc, s.regenCount ?? 0), 0)
+    if (lastRegen >= 5) throw new Error('regenCount cap reached (5)')
+    const regenCount = lastRegen + 1
+    const sid = await ctx.db.insert('testQuestionSuggestions', {
+      createdAt: Date.now(),
+      hint,
+      kind: 'revision',
+      regenCount,
+      sourceDocIds: q.sourceDocIds,
+      status: 'pending',
+      targetQuestionId: questionId,
+      topicId: q.topicId
+    })
+    await ctx.db.insert('auditLogs', {
+      args: JSON.stringify({ hint: hint?.slice(0, 80), questionId, regenCount }),
+      command: 'training.question.regenerate',
+      mode: 'session',
+      ok: true,
+      owner: adminEmail,
+      severity: 'medium'
+    })
+    return { regenCount, suggestionId: sid }
+  }
+})
 const editQuestionProbe = mutation({
   args: {
     choices: v.array(v.string()),
@@ -1429,6 +1471,7 @@ export {
   listStreamEvents,
   markTopicSubstantiveProbe,
   readFile,
+  regenerateQuestionProbe,
   removeChat,
   requestReviewProbe,
   reserveBudgetProbe,
