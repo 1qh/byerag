@@ -34,10 +34,10 @@ const { auth, isAuthenticated, signIn, signOut, store } = convexAuth({
             ...(safeName ? { name: safeName } : {}),
             ...(safeImage ? { image: safeImage } : {})
           })
-      const existingProfile = ctx.db
+      const existingProfile = (await ctx.db
         .query('userProfiles')
         .withIndex('by_userId', q => q.eq('userId', email))
-        .first() as null | { _id: string }
+        .first()) as null | { _id: string }
       if (!existingProfile) {
         const role = BOOTSTRAP_ADMIN_EMAILS.has(email) ? 'admin' : 'user'
         await ctx.db.insert('userProfiles', {
