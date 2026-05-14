@@ -6,17 +6,17 @@ const POOL_MIN = 5
 const insertAuto = internalMutation({
   args: { topicId: v.id('topics'), userId: v.string() },
   handler: async (ctx, { topicId, userId }): Promise<{ inserted: boolean }> => {
-    const existingPass = ctx.db
+    const passRows = await ctx.db
       .query('testPasses')
       .withIndex('by_user_topic_kind', q => q.eq('userId', userId).eq('topicId', topicId).eq('kind', 'assigned'))
-      .first()
-    if (existingPass) return { inserted: false }
-    const existingAssignment = ctx.db
+      .collect()
+    if (passRows[0]) return { inserted: false }
+    const assignRows = await ctx.db
       .query('testAssignments')
       .withIndex('by_user_topic', q => q.eq('userId', userId).eq('topicId', topicId))
       .filter(q => q.eq(q.field('deletedAt'), undefined))
-      .first()
-    if (existingAssignment) return { inserted: false }
+      .collect()
+    if (assignRows[0]) return { inserted: false }
     await ctx.db.insert('testAssignments', {
       createdAt: Date.now(),
       createdBy: AGENT_OWNER,
@@ -57,11 +57,11 @@ const listRoleUsers = internalQuery({
 const isAutoAssignEnabled = internalQuery({
   args: {},
   handler: async (ctx): Promise<boolean> => {
-    const row = ctx.db
+    const rows = await ctx.db
       .query('settings')
       .withIndex('by_key', q => q.eq('key', 'agent_auto_assign_enabled'))
-      .first()
-    return row?.value === 'true'
+      .collect()
+    return rows[0]?.value === 'true'
   }
 })
 const writeAuditRow = internalMutation({
@@ -128,15 +128,15 @@ const listMyTopics = query({
         .query('testQuestions')
         .withIndex('by_topic_deletedAt', q => q.eq('topicId', t._id).eq('deletedAt', undefined))
         .take(POOL_MIN + 1)
-      const pass = ctx.db
+      const passRows = await ctx.db
         .query('testPasses')
         .withIndex('by_user_topic_kind', q => q.eq('userId', userId).eq('topicId', t._id).eq('kind', 'assigned'))
-        .first()
-      const selfPass = ctx.db
+        .collect()
+      const selfPassRows = await ctx.db
         .query('testPasses')
         .withIndex('by_user_topic_kind', q => q.eq('userId', userId).eq('topicId', t._id).eq('kind', 'self'))
-        .first()
-      const myStatus = pass ? 'passed-assigned' : selfPass ? 'passed-self' : 'not-attempted'
+        .collect()
+      const myStatus = passRows[0] ? 'passed-assigned' : selfPassRows[0] ? 'passed-self' : 'not-attempted'
       out.push({ _id: t._id, myStatus, name: t.name, poolSize: pool.length })
     }
     return out
