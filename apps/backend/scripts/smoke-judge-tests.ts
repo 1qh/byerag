@@ -36,7 +36,25 @@ const url = env.CONVEX_SELF_HOSTED_URL ?? 'http://localhost:3210'
 const adminPort = '3001'
 const userPort = '3003'
 const ollamaPort = '11434'
-console.log('[judge] B — Local Docker stack')
+console.log('[judge] A — Repos public on GitHub')
+const ghRepo = async (slug: string): Promise<{ defaultBranchRef?: { name?: string }; visibility?: string }> => {
+  try {
+    const out = await $`gh repo view ${slug} --json visibility,defaultBranchRef`.quiet().text()
+    return JSON.parse(out) as { defaultBranchRef?: { name?: string }; visibility?: string }
+  } catch {
+    return {}
+  }
+}
+for (const slug of ['1qh/byerag', '1qh/byerag-docs']) {
+  const r = await ghRepo(slug)
+  record(
+    `A.repo-${slug.split('/')[1]}`,
+    `${slug} PUBLIC + default=main`,
+    r.visibility === 'PUBLIC' && r.defaultBranchRef?.name === 'main',
+    `visibility=${r.visibility ?? '?'} default=${r.defaultBranchRef?.name ?? '?'}`
+  )
+}
+console.log('\n[judge] B — Local Docker stack')
 const dockerPs = await $`docker ps --filter name=byerag --format '{{.Names}}'`.text()
 const services = dockerPs.split('\n').filter(Boolean)
 const expected = ['postgres', 'convex-backend', 'clamav']
@@ -89,7 +107,7 @@ const ledgerPath = join(import.meta.dir, '..', '..', '..', '..', 'byerag-docs', 
 let promiseFound = false
 try {
   const ledgerTail = readFileSync(ledgerPath, 'utf8').split('\n').filter(Boolean).at(-1) ?? ''
-  promiseFound = ledgerTail.includes('BYERAG SHIPPED')
+  promiseFound = ledgerTail.includes('<promise>BYERAG SHIPPED') && ledgerTail.includes('</promise>')
 } catch {
   // Ledger missing
 }
