@@ -181,6 +181,48 @@ const setSetting = mutation({
     else await ctx.db.insert('settings', { key, updatedAt: Date.now(), updatedBy: 'test', value })
   }
 })
+const topStripProbe = query({
+  args: { testSecret: v.string() },
+  handler: async (ctx, { testSecret }): Promise<{ cycleCents: number; docsInCorpus: number; totalUsers: number }> => {
+    verifyTestSecret(testSecret)
+    const usersRows = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_role', q => q.eq('role', 'user'))
+      .take(2000)
+    const docs = await ctx.db
+      .query('docs')
+      .withIndex('by_scope_uploadedAt', q => q.eq('scope', 'shared'))
+      .filter(q =>
+        q.and(
+          q.eq(q.field('deletedAt'), undefined),
+          q.eq(q.field('policyStatus'), 'approved'),
+          q.eq(q.field('scanStatus'), 'clean')
+        )
+      )
+      .take(5000)
+    const costRows = await ctx.db.query('costRecords').take(5000)
+    let cycleCents = 0
+    for (const r of costRows) cycleCents += r.cents
+    return { cycleCents, docsInCorpus: docs.length, totalUsers: usersRows.length }
+  }
+})
+const seedCostRecord = mutation({
+  args: { cents: v.number(), dayKey: v.string(), model: v.string(), owner: v.string(), testSecret: v.string() },
+  handler: async (ctx, { owner, model, dayKey, cents, testSecret }): Promise<void> => {
+    verifyTestSecret(testSecret)
+    await ctx.db.insert('costRecords', {
+      cacheCreationInputTokens: 0,
+      cacheReadInputTokens: 0,
+      callCount: 1,
+      cents,
+      dayKey,
+      inputTokens: 100,
+      model,
+      outputTokens: 50,
+      owner
+    })
+  }
+})
 const seedTestPass = mutation({
   args: {
     kind: v.union(v.literal('self'), v.literal('assigned')),
@@ -647,6 +689,7 @@ export {
   runPurgeSoftDeleted,
   runQuarantinePurge,
   scanOverrideProbe,
+  seedCostRecord,
   seedTestPass,
   seedTopicWithPool,
   seedUserProfile,
@@ -655,6 +698,7 @@ export {
   setSetting,
   setUserRoleProbe,
   softDeleteDocProbe,
+  topStripProbe,
   uploadFile,
   wipeAllForOwner,
   wipeDocs,
