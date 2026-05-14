@@ -93,6 +93,7 @@ const insertQuarantined = internalMutation({
     scope: v.union(v.literal('shared'), v.literal('mine')),
     sha256: v.string(),
     signature: v.string(),
+    storageId: v.optional(v.id('_storage')),
     uploadedBy: v.string()
   },
   handler: async (ctx, args): Promise<Id<'docs'>> =>
@@ -106,6 +107,7 @@ const insertQuarantined = internalMutation({
       scanStatus: 'quarantined',
       scope: args.scope,
       sha256: args.sha256,
+      storageId: args.storageId,
       uploadedAt: Date.now(),
       uploadedBy: args.uploadedBy,
       version: 1
@@ -435,6 +437,68 @@ const adminConfirmReject = mutation({
     })
   }
 })
+const adminScanOverride = mutation({
+  args: { docId: v.id('docs') },
+  handler: async (ctx, { docId }): Promise<void> => {
+    const identity = await ctx.auth.getUserIdentity()
+    const email = identity?.email?.toLowerCase()
+    if (!email) throw new Error('not authenticated')
+    const profile = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', email))
+      .first()
+    if (profile?.role !== 'admin') throw new Error('admin only')
+    const doc = await ctx.db.get(docId)
+    if (!doc) throw new Error('doc not found')
+    if (doc.scanStatus !== 'quarantined') throw new Error('not quarantined')
+    if (!doc.storageId) throw new Error('staging blob already purged')
+    await ctx.db.patch(docId, {
+      scanOverriddenAt: Date.now(),
+      scanOverriddenBy: email,
+      scanStatus: 'clean'
+    })
+    await ctx.scheduler.runAfter(0, internal.docsExtract.extract, { docId })
+    await ctx.db.insert('auditLogs', {
+      args: JSON.stringify({ docId, filename: doc.filename, signature: doc.scanOverrideSignature }),
+      command: 'docs.scanOverride',
+      mode: 'session',
+      ok: true,
+      owner: email,
+      severity: 'high'
+    })
+  }
+})
+const adminScanCancel = mutation({
+  args: { docId: v.id('docs') },
+  handler: async (ctx, { docId }): Promise<void> => {
+    const identity = await ctx.auth.getUserIdentity()
+    const email = identity?.email?.toLowerCase()
+    if (!email) throw new Error('not authenticated')
+    const profile = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', email))
+      .first()
+    if (profile?.role !== 'admin') throw new Error('admin only')
+    const doc = await ctx.db.get(docId)
+    if (!doc) throw new Error('doc not found')
+    if (doc.storageId)
+      try {
+        await ctx.storage.delete(doc.storageId)
+      } catch {
+        // Already gone
+      }
+
+    await ctx.db.patch(docId, { scanCancelledAt: Date.now(), storageId: undefined })
+    await ctx.db.insert('auditLogs', {
+      args: JSON.stringify({ docId, filename: doc.filename }),
+      command: 'docs.scanCancel',
+      mode: 'session',
+      ok: true,
+      owner: email,
+      severity: 'medium'
+    })
+  }
+})
 const listForQuarantine = query({
   args: {},
   handler: async ctx => {
@@ -530,6 +594,8 @@ export {
   adminApproveReview,
   adminConfirmReject,
   adminDeleteDoc,
+  adminScanCancel,
+  adminScanOverride,
   findByFilename,
   findBySha256,
   getForClassify,

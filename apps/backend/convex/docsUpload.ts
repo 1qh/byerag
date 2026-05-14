@@ -118,7 +118,6 @@ const finalize = internalAction({
       (error: unknown) => ({ ok: false, signature: `clamav-error:${String(error)}` }) satisfies ScanResult
     )
     if (!scan.ok) {
-      await ctx.storage.delete(args.storageId)
       const idRaw = await ctx.runMutation(internal.docs.insertQuarantined, {
         fileSize: bytes.byteLength,
         filename: args.filename,
@@ -127,6 +126,7 @@ const finalize = internalAction({
         scope: args.scope,
         sha256,
         signature: scan.signature ?? 'unknown',
+        storageId: args.storageId,
         uploadedBy
       })
       const id = idRaw
