@@ -88,6 +88,21 @@ export default defineSchema({
     .index('by_owner_model_dayKey', ['owner', 'model', 'dayKey'])
     .index('by_dayKey', ['dayKey'])
     .index('by_owner_dayKey', ['owner', 'dayKey']),
+  xTraces: defineTable({
+    args: v.string(),
+    command: v.string(),
+    durationMs: v.number(),
+    error: v.optional(v.string()),
+    expiresAt: v.number(),
+    inputsResolved: v.optional(v.string()),
+    mode: v.string(),
+    owner: v.string(),
+    ok: v.boolean(),
+    traceId: v.string()
+  })
+    .index('by_expires', ['expiresAt'])
+    .index('by_owner', ['owner'])
+    .index('by_trace', ['traceId']),
   docChunks: defineTable({
     docId: v.id('docs'),
     embedding: v.array(v.float64()),
