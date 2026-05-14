@@ -556,6 +556,39 @@ const listShared = query({
   }
 })
 const PURGE_TTL_MS = 30 * 24 * 60 * 60 * 1000
+const purgeQuarantineStaging = internalMutation({
+  args: {},
+  handler: async (ctx): Promise<{ blobsPurged: number; rowsTouched: number }> => {
+    const cutoff = Date.now() - 3_600_000
+    const candidates = await ctx.db
+      .query('docs')
+      .withIndex('by_policyStatus')
+      .filter(q =>
+        q.and(
+          q.eq(q.field('scanStatus'), 'quarantined'),
+          q.eq(q.field('scanOverriddenAt'), undefined),
+          q.neq(q.field('storageId'), undefined),
+          q.lt(q.field('uploadedAt'), cutoff)
+        )
+      )
+      .take(200)
+    let blobsPurged = 0
+    let rowsTouched = 0
+    for (const doc of candidates) {
+      if (doc.storageId)
+        try {
+          await ctx.storage.delete(doc.storageId)
+          blobsPurged += 1
+        } catch {
+          // Already gone
+        }
+
+      await ctx.db.patch(doc._id, { scanCancelledAt: Date.now(), storageId: undefined })
+      rowsTouched += 1
+    }
+    return { blobsPurged, rowsTouched }
+  }
+})
 const purgeSoftDeleted = internalMutation({
   args: {},
   handler: async (ctx): Promise<{ blobsPurged: number; chunksPurged: number }> => {
@@ -608,6 +641,7 @@ export {
   listMine,
   listShared,
   persistChunks,
+  purgeQuarantineStaging,
   purgeSoftDeleted,
   requestReview,
   setExtracted,
