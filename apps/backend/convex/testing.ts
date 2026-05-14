@@ -465,6 +465,18 @@ const heartbeatProbe = mutation({
     return true
   }
 })
+const sendCheckTokenProbe = mutation({
+  args: { activeContextToken: v.string(), testSecret: v.string(), userId: v.string() },
+  handler: async (ctx, { userId, activeContextToken, testSecret }): Promise<'mismatch' | 'ok'> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db
+      .query('userContexts')
+      .withIndex('by_user', q => q.eq('userId', userId))
+      .collect()
+    const ctxRow = rows[0] ?? null
+    return ctxRow?.activeContextToken === activeContextToken ? 'ok' : 'mismatch'
+  }
+})
 const seedAssignment = mutation({
   args: { createdBy: v.string(), testSecret: v.string(), topicId: v.id('topics'), userId: v.string() },
   handler: async (ctx, { userId, topicId, createdBy, testSecret }): Promise<void> => {
@@ -1490,6 +1502,7 @@ export {
   seedTopicWithPool,
   seedUserProfile,
   send,
+  sendCheckTokenProbe,
   sendWithSecret,
   setChatStreaming,
   setSetting,
