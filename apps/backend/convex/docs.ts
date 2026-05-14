@@ -307,6 +307,57 @@ const listMine = query({
     }))
   }
 })
+const adminDeleteDoc = mutation({
+  args: { docId: v.id('docs') },
+  handler: async (
+    ctx,
+    { docId }
+  ): Promise<{ pendingSuggestionsCancelled: number; questionsSoftDeleted: number }> => {
+    const identity = await ctx.auth.getUserIdentity()
+    const email = identity?.email?.toLowerCase()
+    if (!email) throw new Error('not authenticated')
+    const profile = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', email))
+      .first()
+    if (profile?.role !== 'admin') throw new Error('admin only')
+    const doc = await ctx.db.get(docId)
+    if (!doc) throw new Error('doc not found')
+    await ctx.db.patch(docId, { deletedAt: Date.now() })
+    const pendingSuggestions = await ctx.db
+      .query('testQuestionSuggestions')
+      .filter(q => q.eq(q.field('status'), 'pending'))
+      .take(500)
+    let pendingSuggestionsCancelled = 0
+    for (const s of pendingSuggestions)
+      if (s.sourceDocIds.includes(docId)) {
+        await ctx.db.patch(s._id, {
+          resolvedAction: 'auto-rejected',
+          resolvedAt: Date.now(),
+          resolvedBy: email,
+          resolvedReason: 'source-doc-deleted',
+          status: 'resolved'
+        })
+        pendingSuggestionsCancelled += 1
+      }
+    const questions = await ctx.db.query('testQuestions').take(2000)
+    let questionsSoftDeleted = 0
+    for (const q of questions)
+      if (!q.deletedAt && q.sourceDocIds.includes(docId)) {
+        await ctx.db.patch(q._id, { deleteReason: 'source-doc-cascade', deletedAt: Date.now() })
+        questionsSoftDeleted += 1
+      }
+    await ctx.db.insert('auditLogs', {
+      args: JSON.stringify({ docId, filename: doc.filename, pendingSuggestionsCancelled, questionsSoftDeleted }),
+      command: 'docs.adminDelete',
+      mode: 'session',
+      ok: true,
+      owner: email,
+      severity: 'medium'
+    })
+    return { pendingSuggestionsCancelled, questionsSoftDeleted }
+  }
+})
 const requestReview = mutation({
   args: { docId: v.id('docs') },
   handler: async (ctx, { docId }): Promise<void> => {
@@ -488,6 +539,7 @@ export {
   getRowsSnippet,
   adminApproveReview,
   adminConfirmReject,
+  adminDeleteDoc,
   insertQuarantined,
   insertRow,
   listForQuarantine,
