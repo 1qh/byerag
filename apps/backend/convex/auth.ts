@@ -25,10 +25,11 @@ const { auth, isAuthenticated, signIn, signOut, store } = convexAuth({
       const rawImage = typeof profile.image === 'string' ? profile.image : ''
       const safeImage = rawImage.startsWith('https://') && rawImage.length <= 2000 ? rawImage : undefined
       const db = ctx.db as unknown as DatabaseWriter
-      const dup = db
+      const dupRows = (await db
         .query('users')
         .filter(q => q.eq(q.field('email'), email))
-        .first() as null | { _id: string; email?: string }
+        .collect()) as { _id: string; email?: string }[]
+      const dup = dupRows[0] ?? null
       const userId = dup
         ? (dup._id as never)
         : await ctx.db.insert('users', {
@@ -36,10 +37,11 @@ const { auth, isAuthenticated, signIn, signOut, store } = convexAuth({
             ...(safeName ? { name: safeName } : {}),
             ...(safeImage ? { image: safeImage } : {})
           })
-      const existingProfile = db
+      const profileRows = (await db
         .query('userProfiles')
         .withIndex('by_userId', q => q.eq('userId', email))
-        .first() as null | { _id: string }
+        .collect()) as { _id: string }[]
+      const existingProfile = profileRows[0] ?? null
       if (!existingProfile) {
         const role = BOOTSTRAP_ADMIN_EMAILS.has(email) ? 'admin' : 'user'
         await ctx.db.insert('userProfiles', {
