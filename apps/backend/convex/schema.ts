@@ -96,8 +96,9 @@ export default defineSchema({
     expiresAt: v.number(),
     inputsResolved: v.optional(v.string()),
     mode: v.string(),
-    owner: v.string(),
     ok: v.boolean(),
+    owner: v.string(),
+    steps: v.optional(v.string()),
     traceId: v.string()
   })
     .index('by_expires', ['expiresAt'])
