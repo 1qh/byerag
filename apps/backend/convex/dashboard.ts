@@ -108,6 +108,8 @@ const gradebook = query({
     ctx
   ): Promise<{
     cells: { glyph: '·' | '✓' | '✗' | 'ⓐ'; topicId: string; userId: string }[]
+    colFooters: { assigned: number; passedAssigned: number; topicId: string }[]
+    rowTotals: { assignedCount: number; passedCount: number; userId: string }[]
     topics: { _id: string; name: string }[]
     users: { department?: string; userId: string }[]
   } | null> => {
@@ -118,10 +120,11 @@ const gradebook = query({
       .withIndex('by_role', q => q.eq('role', 'user'))
       .take(2000)
     const users = userRows.map(u => ({ department: u.department, userId: u.userId }))
-    const topicRows = await ctx.db
+    const topicRowsAll = await ctx.db
       .query('topics')
       .withIndex('by_deletedAt', q => q.eq('deletedAt', undefined))
       .take(500)
+    const topicRows = topicRowsAll.toSorted((a, b) => a.createdAt - b.createdAt)
     const topicsWithPool: { _id: string; name: string }[] = []
     for (const t of topicRows) {
       const pool = await ctx.db
@@ -167,7 +170,26 @@ const gradebook = query({
         const adminRow = assignmentRows.find(r => r.createdBy !== 'agent')
         cells.push({ glyph: adminRow ? '✗' : 'ⓐ', topicId: t._id, userId: u.userId })
       }
-    return { cells, topics: topicsWithPool, users }
+    const rowTotals = users.map(u => {
+      const myCells = cells.filter(c => c.userId === u.userId)
+      const assignedCount = myCells.filter(c => c.glyph !== '·').length
+      const passedCount = myCells.filter(c => c.glyph === '✓').length
+      return { assignedCount, passedCount, userId: u.userId }
+    })
+    const colFooters = topicsWithPool.map(t => {
+      const colCells = cells.filter(c => c.topicId === t._id)
+      const assigned = colCells.filter(c => c.glyph !== '·').length
+      const passedAssigned = colCells.filter(c => c.glyph === '✓').length
+      return { assigned, passedAssigned, topicId: t._id }
+    })
+    const usersSorted = users.toSorted((a, b) => {
+      const ra = rowTotals.find(r => r.userId === a.userId)
+      const rb = rowTotals.find(r => r.userId === b.userId)
+      const ta = ra && ra.assignedCount > 0 ? ra.passedCount / ra.assignedCount : 0
+      const tb = rb && rb.assignedCount > 0 ? rb.passedCount / rb.assignedCount : 0
+      return ta - tb
+    })
+    return { cells, colFooters, rowTotals, topics: topicsWithPool, users: usersSorted }
   }
 })
 export { costCyclePivot, gradebook, topStrip }
