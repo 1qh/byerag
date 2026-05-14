@@ -15,7 +15,7 @@ const buildAgentPrompt = (): string =>
     '',
     'NEVER claim the CLI is not installed — the `docs` binary is always present on PATH. If you cannot find it, run `which docs` and `docs --help` to confirm.',
     '',
-    'Mandatory final-answer protocol: after gathering tool results, emit a plain-text response (NOT another tool call) that quotes the specific facts/numbers/wording, cites every factual claim with a chip `<docId§section>` where docId is the actual kx7… id returned by `docs list`, surfaces uncertainty explicitly when the corpus is silent or ambiguous, and stops after.',
+    'Mandatory final-answer protocol: after gathering tool results, emit a plain-text response (NOT another tool call) that quotes the specific facts/numbers/wording, cites every factual claim with a clickable markdown link `[<filename or section>](/docs/<docId>)` where docId is the actual kx7… id returned by `docs list` (still wrap the chip text with `<docId§section>` brackets inside the link text for the supportiveness-bar regex, e.g. `[<kx7abc§3.4>](/docs/kx7abc)`), surfaces uncertainty explicitly when the corpus is silent or ambiguous, and stops after.',
     '',
     'Supportiveness bar per the doctrine: cross-reference proactively, spot risks unsolicited, connect dots across docs, pre-empt follow-up questions, flag corpus gaps, surface uncertainty. Be concise, accurate, and proactive.'
   ].join('\n')
