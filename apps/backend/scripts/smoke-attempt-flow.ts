@@ -82,5 +82,18 @@ const a3 = await c.mutation(api.testing.startAttemptProbe, {
   userId: U
 })
 check('assigned-attempt kind=assigned', a3.kind === 'assigned', `kind=${a3.kind}`)
-console.log(`\n[attempt] SUMMARY pass=${pass} fail=${fail} total=4`)
+console.log('[attempt] seed shallow topic poolSize=3 → start must reject')
+await c.mutation(api.testing.wipeTrainingTables, { testSecret })
+await c.mutation(api.testing.seedUserProfile, { role: 'user', testSecret, userId: U })
+const shallowTopic = (await c.mutation(api.testing.seedTopicWithPool, { name: 'Shallow', poolSize: 3, testSecret })) as string
+let rejected = false
+let rejectMsg = ''
+try {
+  await c.mutation(api.testing.startAttemptProbe, { testSecret, topicId: shallowTopic as never, userId: U })
+} catch (err) {
+  rejected = true
+  rejectMsg = String(err)
+}
+check('shallow pool start rejected (pool < 5)', rejected && rejectMsg.includes('pool < 5'), `rejected=${rejected} msg=${rejectMsg.slice(0, 80)}`)
+console.log(`\n[attempt] SUMMARY pass=${pass} fail=${fail} total=5`)
 if (fail > 0) process.exit(1)
