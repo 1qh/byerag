@@ -54,4 +54,17 @@ interface DocsReadResult {
   truncated: boolean
   version: unknown
 }
-export type { DocsDiffArgs, DocsDiffResult, DocsGrepArgs, DocsGrepResult, DocsListArgs, DocsListResult, DocsReadArgs, DocsReadResult }
+interface DocsSimilarArgs {
+  dim: "256" | "512" | "768"
+  limit: number
+  query: string
+  scope: "both" | "mine" | "shared"
+}
+interface DocsSimilarResult {
+  _id: unknown
+  _score: number
+  filename: string
+  scope: "mine" | "shared"
+  snippet: string
+}[]
+export type { DocsDiffArgs, DocsDiffResult, DocsGrepArgs, DocsGrepResult, DocsListArgs, DocsListResult, DocsReadArgs, DocsReadResult, DocsSimilarArgs, DocsSimilarResult }

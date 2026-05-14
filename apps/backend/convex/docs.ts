@@ -129,6 +129,71 @@ interface ClassifyDoc {
   filename: string
   policyStatus: 'approved' | 'pending' | 'rejected'
 }
+const getForEmbed = internalQuery({
+  args: { docId: v.id('docs') },
+  handler: async (ctx, { docId }): Promise<null | { extractedText: string; policyStatus: string }> => {
+    const row = await ctx.db.get(docId)
+    if (!row?.extractedText) return null
+    return { extractedText: row.extractedText, policyStatus: row.policyStatus }
+  }
+})
+const persistChunks = internalMutation({
+  args: {
+    centroid: v.array(v.float64()),
+    chunks: v.array(
+      v.object({
+        embedding: v.array(v.float64()),
+        end: v.number(),
+        start: v.number(),
+        text: v.string()
+      })
+    ),
+    docId: v.id('docs')
+  },
+  handler: async (ctx, { docId, chunks, centroid: c }): Promise<void> => {
+    const existing = await ctx.db
+      .query('docChunks')
+      .withIndex('by_doc', q => q.eq('docId', docId))
+      .collect()
+    for (const e of existing) await ctx.db.delete(e._id)
+    for (let i = 0; i < chunks.length; i += 1) {
+      const ch = chunks[i]
+      if (!ch) continue
+      await ctx.db.insert('docChunks', {
+        docId,
+        embedding: ch.embedding,
+        end: ch.end,
+        seq: i,
+        start: ch.start,
+        text: ch.text
+      })
+    }
+    await ctx.db.patch(docId, { embedding: c })
+  }
+})
+interface RowSnippet {
+  _id: Id<'docs'>
+  filename: string
+  scope: 'mine' | 'shared'
+  snippet: string
+}
+const getRowsSnippet = internalQuery({
+  args: { ids: v.array(v.id('docs')) },
+  handler: async (ctx, { ids }): Promise<RowSnippet[]> => {
+    const out: RowSnippet[] = []
+    for (const id of ids) {
+      const row = await ctx.db.get(id)
+      if (row)
+        out.push({
+          _id: row._id,
+          filename: row.filename,
+          scope: row.scope,
+          snippet: (row.extractedText ?? '').slice(0, 160)
+        })
+    }
+    return out
+  }
+})
 const getForClassify = internalQuery({
   args: { docId: v.id('docs') },
   handler: async (ctx, { docId }): Promise<ClassifyDoc | null> => {
@@ -157,6 +222,7 @@ const setPolicy = internalMutation({
       policyReason: args.policyReason,
       policyStatus: args.policyStatus
     })
+    if (args.policyStatus === 'approved') await ctx.scheduler.runAfter(0, internal.docsEmbed.embed, { docId: args.docId })
   }
 })
 interface UploadResult {
@@ -241,13 +307,16 @@ export {
   findByFilename,
   findBySha256,
   getForClassify,
+  getForEmbed,
   getForExtract,
+  getRowsSnippet,
   insertQuarantined,
   insertRow,
   listMine,
   listShared,
+  persistChunks,
   setExtracted,
   setPolicy,
   upload
 }
-export type { DocListItem, DocRow, ExtractTarget, UploadResult }
+export type { DocListItem, DocRow, ExtractTarget, RowSnippet, UploadResult }

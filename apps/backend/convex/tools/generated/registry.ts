@@ -6,6 +6,7 @@ import { action as docsDiff_mod } from '../docs/diff'
 import { action as docsGrep_mod } from '../docs/grep'
 import { action as docsList_mod } from '../docs/list'
 import { action as docsRead_mod } from '../docs/read'
+import { action as docsSimilar_mod } from '../docs/similar'
 const PROVIDERS: Record<string, ProviderMeta> = {
   "docs": docs_provider,
 }
@@ -48,6 +49,16 @@ const REGISTRY: Record<string, RegistryEntry<'admin' | 'user'>> = {
     kind: 'query',
     meta: (docsRead_mod as unknown as { meta: ToolMeta }).meta,
     path: ["docs","read"],
+    tier: "user"
+  },
+  "docs.similar": {
+    argSpecs: (docsSimilar_mod as unknown as { argSpecs: ArgSpecs }).argSpecs,
+    fn: internal.tools.docs.similar.action as FunctionReference<'action', 'internal'>,
+    inferredDescription: null,
+    inferredSchema: {"element":{"kind":"object","shape":{"_id":{"optional":false,"schema":{"kind":"unknown","text":"Id<\"docs\">"}},"_score":{"optional":false,"schema":{"kind":"number"}},"filename":{"optional":false,"schema":{"kind":"string"}},"scope":{"optional":false,"schema":{"kind":"enum","values":["mine","shared"]}},"snippet":{"optional":false,"schema":{"kind":"string"}}}},"kind":"array"},
+    kind: 'action',
+    meta: (docsSimilar_mod as unknown as { meta: ToolMeta }).meta,
+    path: ["docs","similar"],
     tier: "user"
   },
 }
