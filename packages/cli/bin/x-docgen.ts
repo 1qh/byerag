@@ -91,8 +91,8 @@ const renderInventory = (
 const main = async (): Promise<void> => {
   const apps = await discoverApps()
   if (apps.length === 0) {
-    console.error(`no apps with server/tools found under ${APPS_DIR}`)
-    process.exit(1)
+    console.error(`no apps with server/tools found under ${APPS_DIR}; skipping docgen`)
+    return
   }
   for (const app of apps) {
     const data = await collect([{ importBase: null, root: app.root }], resolve(app.root, '__nogen__'))
