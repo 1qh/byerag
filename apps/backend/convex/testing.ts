@@ -111,6 +111,25 @@ const docsGenerateUploadUrl = mutation({
     return ctx.storage.generateUploadUrl()
   }
 })
+const scanOverrideProbe = mutation({
+  args: { adminEmail: v.string(), docId: v.id('docs'), testSecret: v.string() },
+  handler: async (ctx, { adminEmail, docId, testSecret }): Promise<void> => {
+    verifyTestSecret(testSecret)
+    const doc = await ctx.db.get(docId)
+    if (!doc) throw new Error('doc not found')
+    if (doc.scanStatus !== 'quarantined') throw new Error('not quarantined')
+    if (!doc.storageId) throw new Error('staging blob already purged')
+    await ctx.db.patch(docId, { scanOverriddenAt: Date.now(), scanOverriddenBy: adminEmail, scanStatus: 'clean' })
+    await ctx.db.insert('auditLogs', {
+      args: JSON.stringify({ docId, filename: doc.filename, signature: doc.scanOverrideSignature }),
+      command: 'docs.scanOverride',
+      mode: 'session',
+      ok: true,
+      owner: adminEmail,
+      severity: 'high'
+    })
+  }
+})
 const checkRateLimitProbe = action({
   args: { max: v.number(), owner: v.string(), testSecret: v.string() },
   handler: async (ctx, { max, owner, testSecret }): Promise<boolean> => {
@@ -333,6 +352,7 @@ export {
   readFile,
   removeChat,
   reserveBudgetProbe,
+  scanOverrideProbe,
   send,
   uploadFile,
   wipeAllForOwner,
