@@ -84,7 +84,7 @@ await waitApproved(idB)
 console.log('[smoke-agent-docs] both docs approved+embedded')
 const chatId = await client.mutation(api.testing.send, {
   app: 'user',
-  content: `Compare the two shared docs ${idA} and ${idB} for conflicts using byerag docs tools. Report the conflict and cite excerpts.`,
+  content: `Compare the two shared docs ${idA} and ${idB} for conflicts using docs tools. Report the conflict and cite excerpts.`,
   email: bootstrapEmail,
   testSecret
 })

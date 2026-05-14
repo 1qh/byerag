@@ -19,7 +19,7 @@ const action = defineTool({
   cost: 'medium',
   description: 'Vector similarity over docs.embedding. Returns top-K w/ cosine score, filename, snippet.',
   errorCodes: ['UPSTREAM_ERROR'],
-  examples: ['byerag docs similar --query "PTO policy" --scope shared'],
+  examples: ['docs similar --query "PTO policy" --scope shared'],
   handler: async (ctx, args) => {
     const cap = Math.min(args.limit, 50)
     const vec = await embedQuery(args.query)

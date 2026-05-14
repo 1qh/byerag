@@ -156,7 +156,6 @@ const probe = async (c: Candidate): Promise<ProbeResult> => {
       reason: `kimi-knows (cosine=${cos.toFixed(3)}${exactMatch ? ', exact-substring' : ''})`,
       verdict: 'reject'
     }
-
   const savePath = join(REAL_DOCS_DIR, c.filename)
   mkdirSync(REAL_DOCS_DIR, { recursive: true })
   writeFileSync(savePath, c.snippet)

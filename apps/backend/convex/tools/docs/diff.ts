@@ -38,7 +38,7 @@ const action = defineQuery({
   cost: 'medium',
   description: 'Mechanical unified diff between two docs (line-level). ACL: each doc independently checked.',
   errorCodes: ['FORBIDDEN', 'NOT_FOUND'],
-  examples: ['byerag docs diff --a kx7abc --b kx7def'],
+  examples: ['docs diff --a kx7abc --b kx7def'],
   handler: async (ctx, args) => {
     const fail = makeFail('docs.diff')
     const rowA = await ctx.db.get(args.a as never)

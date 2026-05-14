@@ -134,7 +134,6 @@ const extractAssistantText = (messages: Message[]): string => {
       for (const match of m.content.matchAll(ASSISTANT_TEXT_RE))
         if (match.groups?.txt)
           parts.push(match.groups.txt.replaceAll(String.raw`\n`, '\n').replaceAll(String.raw`\"`, '"'))
-
   return parts.join('\n')
 }
 const judge = (s: Scenario, messages: Message[]): Verdict => {

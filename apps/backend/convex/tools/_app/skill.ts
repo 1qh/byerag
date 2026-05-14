@@ -6,13 +6,13 @@ import { REGISTRY } from '../generated/registry'
 const SKILL_VERSION = 1
 const PREAMBLE = [
   '---',
-  'name: byerag',
+  'name: docs-cli',
   'description: Internal documentation assistant CLI for coding agents. Lists docs, reads content, greps across the corpus, diffs two docs, surfaces semantic matches. Use for any internal-doc question.',
   '---',
   '',
-  '# byerag — internal docs CLI for coding agents',
+  '# Internal documentation CLI for coding agents',
   '',
-  'You have `byerag`, a CLI surface over the internal docs corpus. Use it to answer questions grounded in the docs the user actually owns or shares.',
+  'You have a CLI surface over the internal documentation corpus, installed as one binary per provider (`docs`, `training`). Use it to answer questions grounded in the docs the user actually owns or shares.',
   '',
   'You are the orchestrator. Each command is one tool call; compose them.',
   '',
@@ -21,7 +21,7 @@ const PREAMBLE = [
 ].join('\n')
 const renderEntry = (cmd: string, entry: { meta: { description?: string } }): string => {
   const desc = entry.meta.description ?? ''
-  return `### \`byerag ${cmd}\`\n${desc}\n`
+  return `### \`${cmd}\`\n${desc}\n`
 }
 const buildSkill = (): string => {
   const entries = Object.entries(REGISTRY).filter(([, e]) => e.tier !== 'admin')
