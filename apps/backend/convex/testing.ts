@@ -677,6 +677,75 @@ const unassignAllForTopicProbe = mutation({
     return { assignmentsCancelled: cancelled, inProgressCancelled: liveCancelled }
   }
 })
+const adminDeleteDocProbe = mutation({
+  args: { adminEmail: v.string(), docId: v.id('docs'), testSecret: v.string() },
+  handler: async (
+    ctx,
+    { docId, adminEmail, testSecret }
+  ): Promise<{ pendingSuggestionsCancelled: number; questionsSoftDeleted: number }> => {
+    verifyTestSecret(testSecret)
+    const doc = await ctx.db.get(docId)
+    if (!doc) throw new Error('doc not found')
+    await ctx.db.patch(docId, { deletedAt: Date.now() })
+    const pending = await ctx.db
+      .query('testQuestionSuggestions')
+      .filter(q => q.eq(q.field('status'), 'pending'))
+      .take(500)
+    let pCancelled = 0
+    for (const s of pending)
+      if (s.sourceDocIds.includes(docId)) {
+        await ctx.db.patch(s._id, {
+          resolvedAction: 'auto-rejected',
+          resolvedAt: Date.now(),
+          resolvedBy: adminEmail,
+          resolvedReason: 'source-doc-deleted',
+          status: 'resolved'
+        })
+        pCancelled += 1
+      }
+    const qs = await ctx.db.query('testQuestions').take(2000)
+    let qDeleted = 0
+    for (const q of qs)
+      if (!q.deletedAt && q.sourceDocIds.includes(docId)) {
+        await ctx.db.patch(q._id, { deleteReason: 'source-doc-cascade', deletedAt: Date.now() })
+        qDeleted += 1
+      }
+    return { pendingSuggestionsCancelled: pCancelled, questionsSoftDeleted: qDeleted }
+  }
+})
+const seedSuggestionWithDoc = mutation({
+  args: { docId: v.id('docs'), testSecret: v.string(), topicId: v.id('topics') },
+  handler: async (ctx, { topicId, docId, testSecret }): Promise<string> => (
+    verifyTestSecret(testSecret),
+    ctx.db.insert('testQuestionSuggestions', {
+      choices: ['A', 'B', 'C'],
+      correctIndex: 0,
+      createdAt: Date.now(),
+      kind: 'new',
+      prompt: 'src-doc',
+      regenCount: 0,
+      sourceDocIds: [docId],
+      status: 'pending',
+      topicId
+    })
+  )
+})
+const seedQuestionWithDoc = mutation({
+  args: { docId: v.id('docs'), testSecret: v.string(), topicId: v.id('topics') },
+  handler: async (ctx, { topicId, docId, testSecret }): Promise<string> => (
+    verifyTestSecret(testSecret),
+    ctx.db.insert('testQuestions', {
+      choices: ['A', 'B', 'C'],
+      correctIndex: 0,
+      createdAt: Date.now(),
+      createdBy: 'test',
+      prompt: 'q',
+      revision: 1,
+      sourceDocIds: [docId],
+      topicId
+    })
+  )
+})
 const adminDeleteTopicProbe = mutation({
   args: { adminEmail: v.string(), testSecret: v.string(), topicId: v.id('topics') },
   handler: async (
@@ -1226,6 +1295,7 @@ const listSandboxIds = internalQuery({
   }
 })
 export {
+  adminDeleteDocProbe,
   adminDeleteTopicProbe,
   ageDocDeletedAt,
   ageQuarantineRow,
@@ -1279,7 +1349,9 @@ export {
   scanOverrideProbe,
   seedAssignment,
   seedCostRecord,
+  seedQuestionWithDoc,
   seedSuggestion,
+  seedSuggestionWithDoc,
   seedTestPass,
   seedTopicWithPool,
   seedUserProfile,
