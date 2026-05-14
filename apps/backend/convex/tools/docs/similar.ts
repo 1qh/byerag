@@ -36,7 +36,7 @@ const action = defineTool({
     }
     if (wantMine) {
       const r = await ctx.vectorSearch('docs', 'by_embedding', {
-        filter: q => q.and(q.eq('scope', 'mine'), q.eq('owner', ctx.auth.owner)),
+        filter: q => q.eq('owner', ctx.auth.owner),
         limit: cap,
         vector: vec
       })
