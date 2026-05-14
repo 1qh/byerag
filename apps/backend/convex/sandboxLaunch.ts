@@ -68,7 +68,7 @@ const prepareSandboxLayout = async (
     sandbox.files.write(AGENT_CLI_PATH, opts.cliScript)
   ])
   const cliNames = opts.providers.map(p => p.replace(CLI_PREFIX_RE, '')).filter(n => PROVIDER_NAME_RE.test(n))
-  const binDir = `${AGENT_DIR}/node_modules/.bin`
+  const binDir = `${HOME}/.bun/bin`
   const writeWrapper = (n: string): string =>
     `rm -f '${binDir}/${n}'; { printf '#!/bin/sh\\nexec node ${AGENT_CLI_PATH} "$@"\\n' > '${binDir}/${n}'; chmod +x '${binDir}/${n}'; }`
   const parts = [
