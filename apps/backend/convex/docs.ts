@@ -315,10 +315,11 @@ const adminDeleteDoc = mutation({
     const identity = await ctx.auth.getUserIdentity()
     const email = identity?.email?.toLowerCase()
     if (!email) throw new Error('not authenticated')
-    const profile = await ctx.db
+    const profileRows = await ctx.db
       .query('userProfiles')
       .withIndex('by_userId', q => q.eq('userId', email))
-      .first()
+      .collect()
+    const profile = profileRows[0]
     if (profile?.role !== 'admin') throw new Error('admin only')
     const doc = await ctx.db.get(docId)
     if (!doc) throw new Error('doc not found')
