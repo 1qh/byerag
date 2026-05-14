@@ -195,7 +195,8 @@ const settleReservation = internalMutation({
   handler: async (ctx, { owner, reservedCents, reservedDayKey: rDay, actualCents }) => {
     if (actualCents > 0) {
       const k = dayKey(Date.now())
-      const existing = ctx.db
+      // biome-ignore lint/nursery/noPlaywrightUselessAwait: Convex .first() returns thenable
+      const existing = await ctx.db
         .query('costRecords')
         .withIndex('by_owner_model_dayKey', q => q.eq('owner', owner).eq('model', 'kimi-for-coding').eq('dayKey', k))
         .first()
