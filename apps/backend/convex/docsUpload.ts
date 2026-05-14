@@ -9,6 +9,19 @@ import type { Id } from './_generated/dataModel'
 import { internal } from './_generated/api'
 import { internalAction } from './_generated/server'
 import { canonicalizeEmail } from './authHelpers'
+const ALLOWED_MIMES = new Set<string>([
+  'application/epub+zip',
+  'application/pdf',
+  'application/rtf',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'image/jpeg',
+  'image/png',
+  'image/tiff',
+  'image/webp',
+  'text/markdown',
+  'text/plain'
+])
 const CLAMAV_HOST = process.env.CLAMAV_HOST ?? 'clamav'
 const CLAMAV_PORT = 3310
 const CLAMAV_DEADLINE_MS = 30_000
@@ -98,6 +111,10 @@ const finalize = internalAction({
     uploaderEmail: v.string()
   },
   handler: async (ctx, args): Promise<UploadResult> => {
+    if (!ALLOWED_MIMES.has(args.mime)) {
+      await ctx.storage.delete(args.storageId)
+      return { ok: false, reason: `unsupported-mime:${args.mime}` }
+    }
     const blob = await ctx.storage.get(args.storageId)
     if (!blob) return { ok: false, reason: 'blob-missing' }
     const bytes = new Uint8Array(await blob.arrayBuffer())
