@@ -104,6 +104,13 @@ const readFile = action({
     return ctx.runAction(internal.files.read, { email, path })
   }
 })
+const docsGenerateUploadUrl = mutation({
+  args: { testSecret: v.string() },
+  handler: async (ctx, { testSecret }): Promise<string> => {
+    verifyTestSecret(testSecret)
+    return ctx.storage.generateUploadUrl()
+  }
+})
 const docsFinalize = action({
   args: {
     filename: v.string(),
@@ -212,6 +219,7 @@ const listSandboxIds = internalQuery({
 export {
   clearStreamingFlagsInternal,
   docsFinalize,
+  docsGenerateUploadUrl,
   downloadZip,
   getChatStreaming,
   listChats,
