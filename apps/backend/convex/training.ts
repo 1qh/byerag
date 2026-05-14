@@ -182,10 +182,11 @@ const persistSuggestionsWithEmbedding = internalMutation({
     for (const q of questions) {
       let topicId = topicCache.get(q.topicName)
       if (!topicId) {
-        const existing = ctx.db
+        const topicRows = await ctx.db
           .query('topics')
           .withIndex('by_name', x => x.eq('name', q.topicName))
-          .first()
+          .collect()
+        const existing = topicRows[0]
         if (existing) topicId = existing._id
         else {
           topicId = await ctx.db.insert('topics', {
@@ -206,11 +207,11 @@ const persistSuggestionsWithEmbedding = internalMutation({
           .withIndex('by_topic_deletedAt', x => x.eq('topicId', topicId as never).eq('deletedAt', undefined))
           .take(200)
         for (const e of existingQs) {
-          const eq = ctx.db
+          const eqRows = await ctx.db
             .query('testQuestionSuggestions')
             .withIndex('by_target', x => x.eq('targetQuestionId', e._id))
-            .first()
-          undefined
+            .collect()
+          if (eqRows[0]) continue
         }
       }
       const currentPool = await ctx.db
@@ -277,10 +278,11 @@ const persistSuggestions = internalMutation({
     for (const q of questions) {
       let topicId = topicCache.get(q.topicName)
       if (!topicId) {
-        const existing = ctx.db
+        const topicRows = await ctx.db
           .query('topics')
           .withIndex('by_name', x => x.eq('name', q.topicName))
-          .first()
+          .collect()
+        const existing = topicRows[0]
         if (existing) topicId = existing._id
         else {
           topicId = await ctx.db.insert('topics', {
@@ -328,10 +330,11 @@ const listPendingSuggestionsForAdmin = query({
     const identity = await ctx.auth.getUserIdentity()
     const email = identity?.email?.toLowerCase()
     if (!email) return []
-    const profile = ctx.db
+    const profileRows = await ctx.db
       .query('userProfiles')
       .withIndex('by_userId', q => q.eq('userId', email))
-      .first()
+      .collect()
+    const profile = profileRows[0]
     if (profile?.role !== 'admin') return []
     const rows = await ctx.db
       .query('testQuestionSuggestions')
@@ -376,10 +379,11 @@ const listAttemptsForAdmin = query({
     const identity = await ctx.auth.getUserIdentity()
     const email = identity?.email?.toLowerCase()
     if (!email) return []
-    const profile = ctx.db
+    const profileRows = await ctx.db
       .query('userProfiles')
       .withIndex('by_userId', q => q.eq('userId', email))
-      .first()
+      .collect()
+    const profile = profileRows[0]
     if (profile?.role !== 'admin') return []
     const rows = await ctx.db
       .query('testAttempts')
@@ -402,10 +406,11 @@ const rejectSuggestionPublic = mutation({
     const identity = await ctx.auth.getUserIdentity()
     const email = identity?.email?.toLowerCase()
     if (!email) throw new Error('not authenticated')
-    const profile = ctx.db
+    const profileRows = await ctx.db
       .query('userProfiles')
       .withIndex('by_userId', q => q.eq('userId', email))
-      .first()
+      .collect()
+    const profile = profileRows[0]
     if (profile?.role !== 'admin') throw new Error('admin only')
     const s = await ctx.db.get(suggestionId)
     if (!s) throw new Error('suggestion not found')
@@ -453,10 +458,11 @@ const approveSuggestionPublic = mutation({
     const identity = await ctx.auth.getUserIdentity()
     const email = identity?.email?.toLowerCase()
     if (!email) throw new Error('not authenticated')
-    const profile = ctx.db
+    const profileRows = await ctx.db
       .query('userProfiles')
       .withIndex('by_userId', q => q.eq('userId', email))
-      .first()
+      .collect()
+    const profile = profileRows[0]
     if (profile?.role !== 'admin') throw new Error('admin only')
     const s = await ctx.db.get(suggestionId)
     if (!s) throw new Error('suggestion not found')
@@ -489,10 +495,11 @@ const markTopicSubstantive = mutation({
     const identity = await ctx.auth.getUserIdentity()
     const email = identity?.email?.toLowerCase()
     if (!email) throw new Error('not authenticated')
-    const profile = ctx.db
+    const profileRows = await ctx.db
       .query('userProfiles')
       .withIndex('by_userId', q => q.eq('userId', email))
-      .first()
+      .collect()
+    const profile = profileRows[0]
     if (profile?.role !== 'admin') throw new Error('admin only')
     const now = Date.now()
     await ctx.db.patch(topicId, { lastSubstantiveUpdate: now })
@@ -506,12 +513,12 @@ const markTopicSubstantive = mutation({
     for (const p of stalePass) {
       await ctx.db.delete(p._id)
       passesRevoked += 1
-      const existingAssignment = ctx.db
+      const existingAssignmentRows = await ctx.db
         .query('testAssignments')
         .withIndex('by_user_topic', q => q.eq('userId', p.userId).eq('topicId', topicId))
         .filter(q => q.eq(q.field('deletedAt'), undefined))
-        .first()
-      if (!existingAssignment) {
+        .collect()
+      if (!existingAssignmentRows[0]) {
         await ctx.db.insert('testAssignments', { createdAt: now, createdBy: email, topicId, userId: p.userId })
         assignmentsCreated += 1
       }
