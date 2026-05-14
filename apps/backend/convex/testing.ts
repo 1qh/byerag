@@ -970,6 +970,13 @@ const seedTestPass = mutation({
     })
   }
 })
+const getSuggestionRow = query({
+  args: { suggestionId: v.id('testQuestionSuggestions'), testSecret: v.string() },
+  handler: async (ctx, { suggestionId, testSecret }) => {
+    verifyTestSecret(testSecret)
+    return ctx.db.get(suggestionId)
+  }
+})
 const seedSuggestion = mutation({
   args: {
     choices: v.array(v.string()),
@@ -1467,6 +1474,7 @@ export {
   getDocRow,
   getQuestionRow,
   getSetting,
+  getSuggestionRow,
   getTopicPoolCap,
   getTopicRow,
   getUserProfile,

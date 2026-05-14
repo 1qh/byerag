@@ -43,6 +43,13 @@ await c.mutation(api.testing.wipeTrainingTables, { testSecret })
 await c.mutation(api.testing.seedUserProfile, { role: 'user', testSecret, userId: U })
 await c.mutation(api.testing.seedUserProfile, { role: 'admin', testSecret, userId: ADMIN })
 const topicId = await c.mutation(api.testing.seedTopicWithPool, { name: 'CascTopic', poolSize: 5, testSecret })
+const sugId = await c.mutation(api.testing.seedSuggestion, {
+  choices: ['A', 'B', 'C'],
+  correctIndex: 0,
+  prompt: 'pending-sug',
+  testSecret,
+  topicId: topicId as never
+})
 await c.mutation(api.testing.seedAssignment, { createdBy: ADMIN, testSecret, topicId: topicId as never, userId: U })
 const a1 = (await c.mutation(api.testing.startAttemptProbe, { testSecret, topicId: topicId as never, userId: U })) as {
   attemptId: string
@@ -60,5 +67,14 @@ const topic = (await c.query(api.testing.getTopicRow, { testSecret, topicId: top
   deletedAt?: number
 }
 check('topic.deletedAt set', typeof topic?.deletedAt === 'number', `deletedAt=${topic?.deletedAt ?? 'null'}`)
-console.log(`\n[cascade] SUMMARY pass=${pass} fail=${fail} total=4`)
+const sug = (await c.query(api.testing.getSuggestionRow, { suggestionId: sugId as never, testSecret })) as null | {
+  resolvedReason?: string
+  status?: string
+}
+check(
+  'pending suggestion → resolvedReason=topic-deleted, status=resolved',
+  sug?.resolvedReason === 'topic-deleted' && sug?.status === 'resolved',
+  `reason=${sug?.resolvedReason ?? 'null'} status=${sug?.status ?? 'null'}`
+)
+console.log(`\n[cascade] SUMMARY pass=${pass} fail=${fail} total=5`)
 if (fail > 0) process.exit(1)
