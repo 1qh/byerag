@@ -17,17 +17,17 @@ const action = defineQuery({
         .query('testQuestions')
         .withIndex('by_topic_deletedAt', q => q.eq('topicId', t._id).eq('deletedAt', undefined))
         .take(6)
-      const pass = ctx.db
+      const passRows = await ctx.db
         .query('testPasses')
         .withIndex('by_user_topic_kind', q => q.eq('userId', userId).eq('topicId', t._id).eq('kind', 'assigned'))
-        .first()
-      const selfPass = ctx.db
+        .collect()
+      const selfPassRows = await ctx.db
         .query('testPasses')
         .withIndex('by_user_topic_kind', q => q.eq('userId', userId).eq('topicId', t._id).eq('kind', 'self'))
-        .first()
+        .collect()
       out.push({
         _id: t._id,
-        myStatus: pass ? 'passed-assigned' : selfPass ? 'passed-self' : 'not-attempted',
+        myStatus: passRows[0] ? 'passed-assigned' : selfPassRows[0] ? 'passed-self' : 'not-attempted',
         name: t.name,
         poolSize: pool.length
       })

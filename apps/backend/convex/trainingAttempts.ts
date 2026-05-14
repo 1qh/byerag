@@ -33,16 +33,17 @@ const startAttempt = mutation({
       .take(500)
     if (pool.length < POOL_MIN) throw new Error(`pool too small: ${pool.length}/${POOL_MIN}`)
     const picked = shuffle(pool).slice(0, REQUIRED_PER_ATTEMPT)
-    const liveAssignment = ctx.db
+    const liveAssignRows = await ctx.db
       .query('testAssignments')
       .withIndex('by_user_topic', q => q.eq('userId', userId).eq('topicId', topicId))
       .filter(q => q.eq(q.field('deletedAt'), undefined))
-      .first()
-    const kind: 'assigned' | 'self' = liveAssignment ? 'assigned' : 'self'
-    const prior = ctx.db
+      .collect()
+    const kind: 'assigned' | 'self' = liveAssignRows[0] ? 'assigned' : 'self'
+    const priorRows = await ctx.db
       .query('testAttempts')
       .withIndex('by_user_topic', q => q.eq('userId', userId).eq('topicId', topicId))
-      .first()
+      .collect()
+    const prior = priorRows[0]
     if (prior) await ctx.db.patch(prior._id, { cancelledReason: 'new-attempt-started', status: 'cancelled' })
     const questionSnapshots = picked.map(q => {
       const order = shuffle([0, 1, 2])
@@ -93,12 +94,13 @@ const submitAttempt = mutation({
       status: passed ? 'passed' : 'failed'
     })
     if (passed) {
-      const priorPass = ctx.db
+      const priorPassRows = await ctx.db
         .query('testPasses')
         .withIndex('by_user_topic_kind', q =>
           q.eq('userId', userId).eq('topicId', attempt.topicId).eq('kind', attempt.kind)
         )
-        .first()
+        .collect()
+      const priorPass = priorPassRows[0]
       if (priorPass) await ctx.db.patch(priorPass._id, { attemptId, passedAt: finishedAt })
       else
         await ctx.db.insert('testPasses', {
