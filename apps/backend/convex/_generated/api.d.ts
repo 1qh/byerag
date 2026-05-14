@@ -7,6 +7,7 @@
  * To regenerate, run `npx convex dev`.
  * @module
  */
+
 import type * as agent from "../agent.js";
 import type * as agentScript from "../agentScript.js";
 import type * as apps__apps from "../apps/_apps.js";
@@ -54,6 +55,7 @@ import type * as tools__app_mentionResolver from "../tools/_app/mentionResolver.
 import type * as tools__app_skill from "../tools/_app/skill.js";
 import type * as tools__app_stream from "../tools/_app/stream.js";
 import type * as tools_docs__provider from "../tools/docs/_provider.js";
+import type * as tools_docs_conflict from "../tools/docs/conflict.js";
 import type * as tools_docs_diff from "../tools/docs/diff.js";
 import type * as tools_docs_grep from "../tools/docs/grep.js";
 import type * as tools_docs_list from "../tools/docs/list.js";
@@ -64,11 +66,13 @@ import type * as tools_generated_toolCallers from "../tools/generated/toolCaller
 import type * as tools_generated_toolTypes from "../tools/generated/toolTypes.js";
 import type * as userContexts from "../userContexts.js";
 import type * as utils from "../utils.js";
+
 import type {
   ApiFromModules,
   FilterApi,
   FunctionReference,
 } from "convex/server";
+
 declare const fullApi: ApiFromModules<{
   agent: typeof agent;
   agentScript: typeof agentScript;
@@ -117,6 +121,7 @@ declare const fullApi: ApiFromModules<{
   "tools/_app/skill": typeof tools__app_skill;
   "tools/_app/stream": typeof tools__app_stream;
   "tools/docs/_provider": typeof tools_docs__provider;
+  "tools/docs/conflict": typeof tools_docs_conflict;
   "tools/docs/diff": typeof tools_docs_diff;
   "tools/docs/grep": typeof tools_docs_grep;
   "tools/docs/list": typeof tools_docs_list;
@@ -128,6 +133,7 @@ declare const fullApi: ApiFromModules<{
   userContexts: typeof userContexts;
   utils: typeof utils;
 }>;
+
 /**
  * A utility for referencing Convex functions in your app's public API.
  *
@@ -140,6 +146,7 @@ export declare const api: FilterApi<
   typeof fullApi,
   FunctionReference<any, "public">
 >;
+
 /**
  * A utility for referencing Convex functions in your app's internal API.
  *
@@ -152,4 +159,5 @@ export declare const internal: FilterApi<
   typeof fullApi,
   FunctionReference<any, "internal">
 >;
+
 export declare const components: {};
