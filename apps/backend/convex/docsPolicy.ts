@@ -95,6 +95,7 @@ const classify = internalAction({
       return { classified: false, reason: 'final-classifier-error' }
     }
     if (!verdict) return { classified: false, reason: 'parse-failed' }
+    await ctx.runMutation(internal.ownerSpend.addSpend, { cents: 1, owner: doc.uploadedBy })
     await ctx.runMutation(internal.docs.setPolicy, {
       docId,
       policyCategory: verdict.category,
