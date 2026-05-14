@@ -489,6 +489,67 @@ const approveSuggestionPublic = mutation({
     return { questionId }
   }
 })
+const resolvePairAction = mutation({
+  args: {
+    action: v.union(v.literal('accept-swap'), v.literal('keep-old'), v.literal('keep-both'), v.literal('reject-both')),
+    pairId: v.id('testQuestionSuggestions')
+  },
+  handler: async (ctx, { pairId, action }): Promise<{ approvedQuestionId?: string; retiredQuestionId?: string }> => {
+    const identity = await ctx.auth.getUserIdentity()
+    const email = identity?.email?.toLowerCase()
+    if (!email) throw new Error('not authenticated')
+    const profileRows = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', email))
+      .collect()
+    const profile = profileRows[0]
+    if (profile?.role !== 'admin') throw new Error('admin only')
+    const a = await ctx.db.get(pairId)
+    if (!a) throw new Error('suggestion not found')
+    if (a.status !== 'pending') throw new Error('suggestion already resolved')
+    if (!a.pairedWith) throw new Error('not a paired suggestion')
+    const b = await ctx.db.get(a.pairedWith)
+    if (!b) throw new Error('paired suggestion missing')
+    if (b.status !== 'pending') throw new Error('paired suggestion already resolved')
+    const newSug = a.kind === 'new' ? a : b
+    const retireSug = a.kind === 'retire' ? a : b.kind === 'retire' ? b : null
+    const now = Date.now()
+    const resolved = (action_label: string) => ({
+      resolvedAction: action_label as 'approve' | 'reject',
+      resolvedAt: now,
+      resolvedBy: email,
+      resolvedReason: 'admin-action' as const,
+      status: 'resolved' as const
+    })
+    let approvedQuestionId: string | undefined
+    let retiredQuestionId: string | undefined
+    if (action === 'accept-swap' || action === 'keep-both') {
+      if (newSug.kind !== 'new' || !newSug.prompt || !newSug.choices || newSug.correctIndex === undefined)
+        throw new Error('new-suggestion shape invalid')
+
+      approvedQuestionId = await ctx.db.insert('testQuestions', {
+        choices: newSug.choices,
+        correctIndex: newSug.correctIndex,
+        createdAt: now,
+        createdBy: email,
+        prompt: newSug.prompt,
+        revision: 1,
+        sourceDocIds: newSug.sourceDocIds,
+        topicId: newSug.topicId
+      })
+      await ctx.db.patch(newSug._id, resolved('approve'))
+    } else await ctx.db.patch(newSug._id, resolved('reject'))
+
+    if (retireSug)
+      if (action === 'accept-swap' && retireSug.targetQuestionId) {
+        await ctx.db.patch(retireSug.targetQuestionId, { deleteReason: 'agent-retire-conflict', deletedAt: now })
+        retiredQuestionId = retireSug.targetQuestionId
+        await ctx.db.patch(retireSug._id, resolved('approve'))
+      } else await ctx.db.patch(retireSug._id, resolved('reject'))
+
+    return { approvedQuestionId, retiredQuestionId }
+  }
+})
 const adminRegenerateQuestion = mutation({
   args: { hint: v.optional(v.string()), questionId: v.id('testQuestions') },
   handler: async (ctx, { questionId, hint }): Promise<{ regenCount: number; suggestionId: string }> => {
@@ -740,5 +801,6 @@ export {
   persistSuggestions,
   persistSuggestionsWithEmbedding,
   rejectSuggestionPublic,
+  resolvePairAction,
   writeAuditRow
 }
