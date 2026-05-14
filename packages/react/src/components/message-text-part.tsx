@@ -3,6 +3,7 @@ import type { ComponentProps } from 'react'
 import { cn } from '@a/ui'
 import { Message, MessageResponse } from '@a/ui/components/ai-elements/message'
 import { memo } from 'react'
+import { CitationAnchor } from './citation-anchor'
 import { MentionChip } from './mention-chip'
 import { useMentionItemsCtx } from './mention-items-context'
 import { usePane } from './pane'
@@ -31,6 +32,7 @@ const linkifyMentions = (text: string): string =>
 const MentionAnchor = ({ href, children }: ComponentProps<'a'>) => {
   const pane = usePane()
   const items = useMentionItemsCtx()
+  if (typeof href === 'string' && href.startsWith('/docs/')) return <CitationAnchor href={href}>{children}</CitationAnchor>
   if (typeof href === 'string' && href.startsWith('mention://')) {
     const stripped = href.slice('mention://'.length)
     const slash = stripped.indexOf('/')
