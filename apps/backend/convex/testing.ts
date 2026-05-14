@@ -769,8 +769,8 @@ const seedSuggestion = mutation({
     testSecret: v.string(),
     topicId: v.id('topics')
   },
-  handler: async (ctx, { topicId, prompt, choices, correctIndex, testSecret }): Promise<string> =>
-    (verifyTestSecret(testSecret),
+  handler: async (ctx, { topicId, prompt, choices, correctIndex, testSecret }): Promise<string> => (
+    verifyTestSecret(testSecret),
     ctx.db.insert('testQuestionSuggestions', {
       choices,
       correctIndex,
@@ -781,14 +781,15 @@ const seedSuggestion = mutation({
       sourceDocIds: [],
       status: 'pending',
       topicId
-    }))
+    })
+  )
 })
 const approveSuggestionProbe = mutation({
   args: { adminEmail: v.string(), suggestionId: v.id('testQuestionSuggestions'), testSecret: v.string() },
   handler: async (ctx, { suggestionId, adminEmail, testSecret }): Promise<{ questionId: string }> => {
     verifyTestSecret(testSecret)
     const s = await ctx.db.get(suggestionId)
-    if (!s?.prompt || !s.choices || s.correctIndex === undefined) throw new Error('bad suggestion')
+    if (!(s?.prompt && s.choices) || s.correctIndex === undefined) throw new Error('bad suggestion')
     const qid = await ctx.db.insert('testQuestions', {
       choices: s.choices,
       correctIndex: s.correctIndex,
@@ -1243,6 +1244,7 @@ export {
   countOwnerSpend,
   countTestPasses,
   countTestSuggestions,
+  countTopicQuestions,
   docsFinalize,
   docsGenerateUploadUrl,
   downloadZip,
@@ -1277,6 +1279,7 @@ export {
   scanOverrideProbe,
   seedAssignment,
   seedCostRecord,
+  seedSuggestion,
   seedTestPass,
   seedTopicWithPool,
   seedUserProfile,
