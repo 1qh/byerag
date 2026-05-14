@@ -115,9 +115,12 @@ const ensureChatRuntime = mutation({
   args: { chatId: v.id('chats'), testSecret: v.string() },
   handler: async (ctx, { chatId, testSecret }): Promise<void> => {
     verifyTestSecret(testSecret)
-    const query = ctx.db.query('chatRuntime').withIndex('by_chat', q => q.eq('chatId', chatId))
-    const existing: null | { _id: Id<'chatRuntime'> } = query.first()
-    if (existing?._id) await ctx.db.patch(existing._id, { proxyCallsThisTurn: 0, streamEventCount: 0 })
+    const rows = await ctx.db
+      .query('chatRuntime')
+      .withIndex('by_chat', q => q.eq('chatId', chatId))
+      .collect()
+    const existing = rows[0]
+    if (existing) await ctx.db.patch(existing._id, { proxyCallsThisTurn: 0, streamEventCount: 0 })
     else await ctx.db.insert('chatRuntime', { chatId, proxyCallsThisTurn: 0, streamEventCount: 0 })
   }
 })
