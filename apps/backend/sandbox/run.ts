@@ -55,7 +55,7 @@ cleanEnv.CLAUDE_CODE_INCLUDE_PARTIAL_MESSAGES = '1'
 cleanEnv.ANTHROPIC_AUTH_TOKEN = `sk-ant-oat01-proxy_${config.CHAT_ID}_${config.CHAT_SECRET.replaceAll('-', '')}`
 cleanEnv.CLI_SESSION_ID = config.CHAT_ID
 cleanEnv.CLI_SESSION_SECRET = config.CHAT_SECRET
-const SKILLS_DIR = '/home/agent/workspace/.claude/skills'
+const SKILLS_DIR = '/workspace/.claude/skills'
 const skillNames: string[] = []
 const appSkills = AGENT_SKILLS_BY_APP[config.CHAT_APP] ?? {}
 for (const [name, content] of Object.entries(appSkills)) {
@@ -64,10 +64,10 @@ for (const [name, content] of Object.entries(appSkills)) {
   writeFileSync(`${dir}/SKILL.md`, content)
   skillNames.push(name)
 }
-process.chdir('/home/agent/workspace')
+process.chdir('/workspace')
 const opts = {
   allowDangerouslySkipPermissions: true,
-  cwd: '/home/agent/workspace',
+  cwd: '/workspace',
   effort: config.EFFORT,
   env: cleanEnv,
   maxBudgetUsd: config.MAX_BUDGET_USD,

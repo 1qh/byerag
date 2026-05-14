@@ -7,6 +7,7 @@ const schema = z.object({
   CONVEX_SITE_URL: z.url().startsWith('http'),
   KIMI_API_KEY: z.string().min(1),
   KIMI_BASE_URL: z.url().startsWith('https://'),
+  SANDBOX_CONVEX_SITE_URL: z.url().startsWith('http'),
   SANDBOX_IMAGE: z.string().min(1)
 })
 type EnvSchema = z.infer<typeof schema>
@@ -15,6 +16,7 @@ const readRaw = (): Record<keyof EnvSchema, string | undefined> => ({
   CONVEX_SITE_URL: process.env.CONVEX_SITE_URL,
   KIMI_API_KEY: process.env.KIMI_API_KEY,
   KIMI_BASE_URL: process.env.KIMI_BASE_URL,
+  SANDBOX_CONVEX_SITE_URL: process.env.SANDBOX_CONVEX_SITE_URL,
   SANDBOX_IMAGE: process.env.SANDBOX_IMAGE
 })
 const env = new Proxy({} as EnvSchema, {

@@ -16,6 +16,7 @@ import {
   CLAUDE_MAX_TURNS,
   CLAUDE_MODEL,
   CLAUDE_SESSIONS_PATH,
+  CLAUDE_TMP_PATH,
   DISALLOWED_CHATID_CHAR_RE,
   SANDBOX_TIMEOUT_MS
 } from './constants'
@@ -125,7 +126,7 @@ const run = internalAction({
         providers: app.cliProviders
       })
       await emit('script_uploaded')
-      const logFile = `/home/user/.claude-tmp/${chatId}/agent.log`
+      const logFile = `${CLAUDE_TMP_PATH}/${chatId}/agent.log`
       const systemPrompt = await app.buildSystemPrompt({ email, runQuery: async (ref, args) => ctx.runQuery(ref, args) })
       await sandbox.commands.run(`setsid bun run ${AGENT_RUN_PATH} >${logFile} 2>&1`, {
         background: true,

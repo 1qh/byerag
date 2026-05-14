@@ -37,6 +37,7 @@ import { errorEventEnvelope } from './streamProtocol'
 import { constantTimeEqual, log } from './utils'
 const ANTHROPIC_VERSION_RE = /^\d{4}-\d{2}-\d{2}(?:-[a-z0-9]+)?$/u
 const ALLOWED_UPSTREAM_PATHS = new Set(['/v1/messages', '/v1/messages/count_tokens'])
+const TRAILING_SLASH_RE = /\/$/u
 const STREAM_EVENTS_QUERY_PAGE = 500
 const SEND_BUCKET_MAX = 30
 const SEND_BUCKET_WINDOW_MS = 60_000
@@ -584,7 +585,9 @@ const anthropicProxy = httpAction(async (ctx, req) => {
   let upstream: string
   const upstreamBase = new URL(env.KIMI_BASE_URL)
   try {
-    const candidate = new URL(upstreamPath, upstreamBase)
+    const basePath = upstreamBase.pathname.replace(TRAILING_SLASH_RE, '')
+    const relPath = upstreamPath.startsWith('/') ? upstreamPath : `/${upstreamPath}`
+    const candidate = new URL(`${basePath}${relPath}`, `${upstreamBase.protocol}//${upstreamBase.host}`)
     if (candidate.host !== upstreamBase.host) return jsonErr('invalid upstream', 400)
     upstream = candidate.toString()
   } catch {

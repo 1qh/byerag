@@ -3,9 +3,9 @@ import type { Sandbox } from './sandboxClient'
 import { CLAUDE_SESSIONS_PATH, CLAUDE_SHARED_MEMORY_PATH, CLAUDE_TMP_PATH } from './constants'
 import { env as siteEnv } from './env'
 import { redactSecrets } from './redactor'
-const HOME = '/home/user'
-const AGENT_DIR = `${HOME}/agent`
-const WORKSPACE = `${HOME}/workspace`
+const HOME = '/home/agent'
+const AGENT_DIR = HOME
+const WORKSPACE = '/workspace'
 const SANDBOX_PATH = [`${AGENT_DIR}/node_modules/.bin`, '/usr/local/bin', '/usr/bin', '/bin'].join(':')
 const CLAUDE_CLI_PATH = `${AGENT_DIR}/node_modules/@anthropic-ai/claude-code/bin/claude.exe`
 const AGENT_RUN_PATH = `${AGENT_DIR}/run.ts`
@@ -49,8 +49,8 @@ const buildSandboxEnv = (opts: SandboxEnvInput): Record<string, string> => ({
 const CLI_PREFIX_RE = /^_/u
 const PROVIDER_NAME_RE = /^[a-z][a-z0-9-]{0,31}$/u
 const siteUrl = (): string => {
-  const url = siteEnv.CONVEX_SITE_URL
-  if (!url.startsWith('https://')) throw new Error('CONVEX_SITE_URL must be HTTPS')
+  const url = siteEnv.SANDBOX_CONVEX_SITE_URL
+  if (!url.startsWith('http')) throw new Error('SANDBOX_CONVEX_SITE_URL must start with http(s)')
   return url
 }
 const redactError = (e: unknown, secret: string): string =>
