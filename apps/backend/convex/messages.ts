@@ -538,9 +538,9 @@ const anthropicProxy = httpAction(async (ctx, req) => {
     }
   let reservedDayKey: null | string = null
   let reservedCents = ESTIMATE_RESERVED_CENTS
+  let modelName: string | undefined
   if (!isCountTokens) {
     let maxTokens = 4096
-    let modelName: string | undefined
     if (buffered)
       try {
         const bodyObj = JSON.parse(new TextDecoder().decode(buffered)) as {
