@@ -677,6 +677,31 @@ const unassignAllForTopicProbe = mutation({
     return { assignmentsCancelled: cancelled, inProgressCancelled: liveCancelled }
   }
 })
+const adminApproveReviewProbe = mutation({
+  args: { adminEmail: v.string(), docId: v.id('docs'), testSecret: v.string() },
+  handler: async (ctx, { docId, adminEmail, testSecret }): Promise<void> => {
+    verifyTestSecret(testSecret)
+    const doc = await ctx.db.get(docId)
+    if (!doc) throw new Error('not found')
+    await ctx.db.patch(docId, { policyOverriddenBy: adminEmail, policyStatus: 'approved' })
+  }
+})
+const adminConfirmRejectProbe = mutation({
+  args: { adminEmail: v.string(), docId: v.id('docs'), testSecret: v.string() },
+  handler: async (ctx, { docId, adminEmail, testSecret }): Promise<void> => {
+    verifyTestSecret(testSecret)
+    const doc = await ctx.db.get(docId)
+    if (!doc) throw new Error('not found')
+    if (doc.storageId)
+      try {
+        await ctx.storage.delete(doc.storageId)
+      } catch {
+        /* Gone */
+      }
+
+    await ctx.db.patch(docId, { policyOverriddenBy: adminEmail, storageId: undefined })
+  }
+})
 const adminDeleteDocProbe = mutation({
   args: { adminEmail: v.string(), docId: v.id('docs'), testSecret: v.string() },
   handler: async (
@@ -1295,6 +1320,8 @@ const listSandboxIds = internalQuery({
   }
 })
 export {
+  adminApproveReviewProbe,
+  adminConfirmRejectProbe,
   adminDeleteDocProbe,
   adminDeleteTopicProbe,
   ageDocDeletedAt,
