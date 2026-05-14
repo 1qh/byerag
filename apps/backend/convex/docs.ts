@@ -257,7 +257,9 @@ const upload = action({
     storageId: v.id('_storage')
   },
   handler: async (ctx, args): Promise<UploadResult> => {
-    const uploaderEmail = await requireOwnerEmail(ctx)
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity?.email) throw new Error('not authenticated')
+    const uploaderEmail = identity.email.toLowerCase()
     return ctx.runAction(internal.docsUpload.finalize, { ...args, uploaderEmail })
   }
 })
