@@ -8,7 +8,7 @@ const action = defineQuery({
   cost: 'low',
   description: 'List approved corpus documents in scope. Returns id, filename, mime, size, uploadedAt, scope.',
   errorCodes: [],
-  examples: ['byerag docs list --scope shared', 'byerag docs list --scope both --limit 20'],
+  examples: ['docs list --scope shared', 'docs list --scope both --limit 20'],
   handler: async (ctx, args) => {
     const cap = Math.min(args.limit, 200)
     const wantShared = args.scope === 'shared' || args.scope === 'both'

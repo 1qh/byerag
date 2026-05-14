@@ -83,7 +83,7 @@ const action = defineTool({
   description:
     'LLM-driven semantic conflict scan between two docs. Returns factual/wording/gap conflicts; excerpts grep-verified, hallucinated dropped, sorted factual-first.',
   errorCodes: ['FORBIDDEN', 'NOT_FOUND', 'UPSTREAM_ERROR'],
-  examples: ['byerag docs conflict --a kx7abc --b kx7def'],
+  examples: ['docs conflict --a kx7abc --b kx7def'],
   handler: async (ctx, args) => {
     const fail = makeFail('docs.conflict')
     const rowA = await ctx.runQuery(internal.docs.getForConflict, { docId: args.a as Id<'docs'> })

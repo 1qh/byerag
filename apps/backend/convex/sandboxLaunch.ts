@@ -6,7 +6,7 @@ import { redactSecrets } from './redactor'
 const HOME = '/home/agent'
 const AGENT_DIR = HOME
 const WORKSPACE = '/workspace'
-const SANDBOX_PATH = [`${AGENT_DIR}/node_modules/.bin`, '/usr/local/bin', '/usr/bin', '/bin'].join(':')
+const SANDBOX_PATH = [`${HOME}/.bun/bin`, `${AGENT_DIR}/node_modules/.bin`, '/usr/local/bin', '/usr/bin', '/bin'].join(':')
 const CLAUDE_CLI_PATH = `${AGENT_DIR}/node_modules/@anthropic-ai/claude-code/bin/claude.exe`
 const AGENT_RUN_PATH = `${AGENT_DIR}/run.ts`
 const AGENT_CLI_PATH = `${AGENT_DIR}/cli.mjs`

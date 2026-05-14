@@ -9,7 +9,7 @@ const action = defineQuery({
   description:
     'Fetch extracted text of a doc. ACL: mine-scope rows readable only by owner; shared accessible to any signed-in.',
   errorCodes: ['FORBIDDEN', 'NOT_FOUND', 'INVALID_ARG'],
-  examples: ['byerag docs read --id kx7abc...'],
+  examples: ['docs read --id kx7abc...'],
   handler: async (ctx, args) => {
     const fail = makeFail('docs.read')
     const cap = Math.min(args.bytes, MAX_BYTES)

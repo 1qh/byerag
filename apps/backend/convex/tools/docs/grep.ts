@@ -11,7 +11,7 @@ const action = defineQuery({
   cost: 'medium',
   description: 'Regex match across docs in scope. Returns {docId, filename, lineNumber, snippet} tuples.',
   errorCodes: ['INVALID_ARG'],
-  examples: ['byerag docs grep --pattern "warranty" --scope shared'],
+  examples: ['docs grep --pattern "warranty" --scope shared'],
   handler: async (ctx, args) => {
     const fail = makeFail('docs.grep')
     const cap = Math.min(args.limit, MAX_HITS)
