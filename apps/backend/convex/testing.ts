@@ -118,6 +118,33 @@ const resetPolicyPending = mutation({
     await ctx.db.patch(docId, { policyCategory: undefined, policyReason: undefined, policyStatus: 'pending' })
   }
 })
+const setChatStreaming = mutation({
+  args: { chatId: v.id('chats'), streaming: v.boolean(), testSecret: v.string() },
+  handler: async (ctx, { chatId, streaming, testSecret }): Promise<void> => {
+    verifyTestSecret(testSecret)
+    await ctx.db.patch(chatId, { streaming })
+  }
+})
+const insertStreamEventProbe = mutation({
+  args: { chatId: v.id('chats'), content: v.string(), seq: v.number(), testSecret: v.string() },
+  handler: async (ctx, { chatId, content, seq, testSecret }): Promise<{ error?: string; ok: boolean }> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db
+      .query('streamEvents')
+      .withIndex('by_chat_seq', q => q.eq('chatId', chatId).eq('seq', seq))
+      .collect()
+    if (rows[0]) return { error: 'duplicate seq', ok: false }
+    const runtimeRows = await ctx.db
+      .query('chatRuntime')
+      .withIndex('by_chat', q => q.eq('chatId', chatId))
+      .collect()
+    const rt = runtimeRows[0]
+    if (rt) await ctx.db.patch(rt._id, { streamEventCount: rt.streamEventCount + 1 })
+    else await ctx.db.insert('chatRuntime', { chatId, streamEventCount: 1 })
+    await ctx.db.insert('streamEvents', { chatId, content, seq })
+    return { ok: true }
+  }
+})
 const ageQuarantineRow = mutation({
   args: { ageMs: v.number(), docId: v.id('docs'), testSecret: v.string() },
   handler: async (ctx, { ageMs, docId, testSecret }): Promise<void> => {
@@ -410,6 +437,7 @@ export {
   ensureChatRuntime,
   getChatStreaming,
   getDocRow,
+  insertStreamEventProbe,
   listChats,
   listDocsByOwner,
   listFiles,
@@ -424,6 +452,7 @@ export {
   runQuarantinePurge,
   scanOverrideProbe,
   send,
+  setChatStreaming,
   uploadFile,
   wipeAllForOwner,
   wipeDocs
