@@ -487,7 +487,6 @@ const adminScanCancel = mutation({
       } catch {
         // Already gone
       }
-
     await ctx.db.patch(docId, { scanCancelledAt: Date.now(), storageId: undefined })
     await ctx.db.insert('auditLogs', {
       args: JSON.stringify({ docId, filename: doc.filename }),
