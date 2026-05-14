@@ -489,6 +489,77 @@ const approveSuggestionPublic = mutation({
     return { questionId }
   }
 })
+const adminDeleteTopic = mutation({
+  args: { topicId: v.id('topics') },
+  handler: async (
+    ctx,
+    { topicId }
+  ): Promise<{
+    assignmentsCancelled: number
+    attemptsCancelled: number
+    questionsDeleted: number
+    suggestionsResolved: number
+  }> => {
+    const identity = await ctx.auth.getUserIdentity()
+    const email = identity?.email?.toLowerCase()
+    if (!email) throw new Error('not authenticated')
+    const profileRows = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', email))
+      .collect()
+    const profile = profileRows[0]
+    if (profile?.role !== 'admin') throw new Error('admin only')
+    const now = Date.now()
+    await ctx.db.patch(topicId, { deletedAt: now })
+    const questions = await ctx.db
+      .query('testQuestions')
+      .withIndex('by_topic_deletedAt', q => q.eq('topicId', topicId).eq('deletedAt', undefined))
+      .take(1000)
+    for (const q of questions) await ctx.db.patch(q._id, { deleteReason: 'topic-cascade', deletedAt: now })
+    const suggestions = await ctx.db
+      .query('testQuestionSuggestions')
+      .withIndex('by_topic_status', q => q.eq('topicId', topicId).eq('status', 'pending'))
+      .take(1000)
+    for (const s of suggestions)
+      await ctx.db.patch(s._id, {
+        resolvedAction: 'auto-rejected',
+        resolvedAt: now,
+        resolvedBy: email,
+        resolvedReason: 'topic-deleted',
+        status: 'resolved'
+      })
+    const assignments = await ctx.db
+      .query('testAssignments')
+      .withIndex('by_topic_deletedAt', q => q.eq('topicId', topicId).eq('deletedAt', undefined))
+      .take(2000)
+    for (const a of assignments) await ctx.db.patch(a._id, { deletedAt: now, deletedBy: email })
+    const inProgress = await ctx.db
+      .query('testAttempts')
+      .withIndex('by_topic_status', q => q.eq('topicId', topicId).eq('status', 'in-progress'))
+      .take(1000)
+    for (const att of inProgress) await ctx.db.patch(att._id, { cancelledReason: 'topic-deleted', status: 'cancelled' })
+    await ctx.db.insert('auditLogs', {
+      args: JSON.stringify({
+        assignmentsCancelled: assignments.length,
+        attemptsCancelled: inProgress.length,
+        questionsDeleted: questions.length,
+        suggestionsResolved: suggestions.length,
+        topicId
+      }),
+      command: 'training.topic.delete',
+      mode: 'session',
+      ok: true,
+      owner: email,
+      severity: 'medium'
+    })
+    return {
+      assignmentsCancelled: assignments.length,
+      attemptsCancelled: inProgress.length,
+      questionsDeleted: questions.length,
+      suggestionsResolved: suggestions.length
+    }
+  }
+})
 const markTopicSubstantive = mutation({
   args: { topicId: v.id('topics') },
   handler: async (ctx, { topicId }): Promise<{ assignmentsCreated: number; passesRevoked: number }> => {
@@ -535,6 +606,7 @@ const markTopicSubstantive = mutation({
   }
 })
 export {
+  adminDeleteTopic,
   approveSuggestion,
   approveSuggestionPublic,
   autoAssign,
