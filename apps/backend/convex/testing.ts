@@ -111,6 +111,18 @@ const docsGenerateUploadUrl = mutation({
     return ctx.storage.generateUploadUrl()
   }
 })
+const wipeDocs = mutation({
+  args: { testSecret: v.string() },
+  handler: async (ctx, { testSecret }): Promise<number> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db.query('docs').collect()
+    for (const r of rows) {
+      if (r.storageId) await ctx.storage.delete(r.storageId)
+      await ctx.db.delete(r._id)
+    }
+    return rows.length
+  }
+})
 const docsFinalize = action({
   args: {
     filename: v.string(),
@@ -231,5 +243,6 @@ export {
   removeChat,
   send,
   uploadFile,
-  wipeAllForOwner
+  wipeAllForOwner,
+  wipeDocs
 }

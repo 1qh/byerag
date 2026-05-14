@@ -49,16 +49,15 @@ const uploadBytes = async (label: string, bytes: Uint8Array, filename: string, m
   return result
 }
 const EICAR = String.raw`X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*`
-const cleanBytes = new TextEncoder().encode(`smoke-doc-${Date.now()} clean test content`)
-const r1 = await uploadBytes('clean1', cleanBytes, `smoke-${Date.now()}.txt`, 'text/plain')
+const wipeCount = await client.mutation(api.testing.wipeDocs, { testSecret })
+console.log(`[wipe] removed ${wipeCount} docs rows`)
+const runId = Date.now().toString()
+const cleanBytes = new TextEncoder().encode(`smoke-doc-${runId} clean test content`)
+const eicarBytes = new TextEncoder().encode(EICAR)
+const r1 = await uploadBytes('clean1', cleanBytes, `smoke-${runId}.txt`, 'text/plain')
 if (!r1.ok) die(`clean1 expected ok=true got reason=${r1.reason}`)
-const r2 = await uploadBytes('dup', cleanBytes, `smoke-dup-${Date.now()}.txt`, 'text/plain')
+const r2 = await uploadBytes('dup', cleanBytes, `smoke-dup-${runId}.txt`, 'text/plain')
 if (r2.reason !== 'duplicate') die(`dup expected reason=duplicate got ${JSON.stringify(r2)}`)
-const r3 = await uploadBytes(
-  'eicar',
-  new TextEncoder().encode(EICAR),
-  `eicar-${Date.now()}.com`,
-  'application/octet-stream'
-)
+const r3 = await uploadBytes('eicar', eicarBytes, `eicar-${runId}.com`, 'application/octet-stream')
 if (r3.reason !== 'quarantined') die(`eicar expected reason=quarantined got ${JSON.stringify(r3)}`)
 console.log('[smoke-upload] OK clean+dup+eicar all green')

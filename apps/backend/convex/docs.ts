@@ -73,6 +73,7 @@ const insertRow = internalMutation({
       const prev = await ctx.db.get(args.supersedes)
       if (prev) await ctx.db.patch(args.supersedes, { deletedAt: Date.now(), supersededBy: id })
     }
+    await ctx.scheduler.runAfter(0, internal.docsExtract.extract, { docId: id })
     return id
   }
 })
