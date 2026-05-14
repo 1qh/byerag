@@ -61,7 +61,7 @@ const seedDoc = async (filename: string, body: string): Promise<string> => {
     uploaderEmail: bootstrapEmail
   })
   const r = result as { docId?: string; ok: boolean }
-  if (!r.ok || !r.docId) throw new Error(`finalize ${filename} failed: ${JSON.stringify(result)}`)
+  if (!(r.ok && r.docId)) throw new Error(`finalize ${filename} failed: ${JSON.stringify(result)}`)
   return r.docId
 }
 const idA = await seedDoc('offer-letter.txt', 'Offer Letter\n\nSection 3.4 PTO: Employee receives 15 days PTO per year.\n')
@@ -117,11 +117,11 @@ const deadline = Date.now() + DEADLINE_MS
 let messages: Message[] = []
 let toolNames = new Set<string>()
 let done = false
-const TOOL_RE = /byerag\s+docs\s+(list|read|grep|conflict|similar)/gu
+const TOOL_RE = /\bdocs\s+(?<verb>list|read|grep|conflict|similar)\b/gu
 while (Date.now() < deadline) {
   messages = await fetchAllMessages()
   toolNames = new Set<string>()
-  for (const m of messages) for (const x of m.content.matchAll(TOOL_RE)) if (x[1]) toolNames.add(x[1])
+  for (const m of messages) for (const x of m.content.matchAll(TOOL_RE)) if (x.groups?.verb) toolNames.add(x.groups.verb)
   done = messages.some(m => m.type === 'result')
   if (done) break
   await sleep(POLL_MS)
