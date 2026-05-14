@@ -7,6 +7,7 @@
  * To regenerate, run `npx convex dev`.
  * @module
  */
+
 import type * as agent from "../agent.js";
 import type * as agentScript from "../agentScript.js";
 import type * as apps__apps from "../apps/_apps.js";
@@ -18,6 +19,8 @@ import type * as chatRuntime from "../chatRuntime.js";
 import type * as chats from "../chats.js";
 import type * as cliScript from "../cliScript.js";
 import type * as constants from "../constants.js";
+import type * as docs from "../docs.js";
+import type * as docsUpload from "../docsUpload.js";
 import type * as env from "../env.js";
 import type * as fileActions from "../fileActions.js";
 import type * as files from "../files.js";
@@ -52,11 +55,13 @@ import type * as tools_generated_toolCallers from "../tools/generated/toolCaller
 import type * as tools_generated_toolTypes from "../tools/generated/toolTypes.js";
 import type * as userContexts from "../userContexts.js";
 import type * as utils from "../utils.js";
+
 import type {
   ApiFromModules,
   FilterApi,
   FunctionReference,
 } from "convex/server";
+
 declare const fullApi: ApiFromModules<{
   agent: typeof agent;
   agentScript: typeof agentScript;
@@ -69,6 +74,8 @@ declare const fullApi: ApiFromModules<{
   chats: typeof chats;
   cliScript: typeof cliScript;
   constants: typeof constants;
+  docs: typeof docs;
+  docsUpload: typeof docsUpload;
   env: typeof env;
   fileActions: typeof fileActions;
   files: typeof files;
@@ -104,6 +111,7 @@ declare const fullApi: ApiFromModules<{
   userContexts: typeof userContexts;
   utils: typeof utils;
 }>;
+
 /**
  * A utility for referencing Convex functions in your app's public API.
  *
@@ -116,6 +124,7 @@ export declare const api: FilterApi<
   typeof fullApi,
   FunctionReference<any, "public">
 >;
+
 /**
  * A utility for referencing Convex functions in your app's internal API.
  *
@@ -128,4 +137,5 @@ export declare const internal: FilterApi<
   typeof fullApi,
   FunctionReference<any, "internal">
 >;
+
 export declare const components: {};
