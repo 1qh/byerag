@@ -3,9 +3,11 @@
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
 /** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
+
 import { ConvexHttpClient } from 'convex/browser'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { gzipSync } from 'node:zlib'
 import { api } from '../convex/_generated/api'
 const ENV_LINE = /^\s*(?<key>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?<val>.*?)\s*$/u
 const parseEnv = (text: string): Record<string, string> => {
@@ -36,35 +38,30 @@ const check = (label: string, ok: boolean, detail: string): void => {
   if (ok) pass += 1
   else fail += 1
 }
-console.log('[oversize] wipe + create 51MB blob')
+console.log('[zip-bomb] wipe + craft 100MB-of-zeros gzipped (~100KB) bomb')
 await c.mutation(api.testing.wipeDocs, { testSecret })
-const SIZE = 51 * 1024 * 1024
-const buf = new Uint8Array(SIZE)
-for (let i = 0; i < SIZE; i += 1024) buf[i] = 65
+const raw = new Uint8Array(100 * 1024 * 1024)
+const gz = gzipSync(raw)
+console.log(`[zip-bomb] gzipped size=${gz.byteLength} bytes (decompresses to ${raw.byteLength})`)
 const uploadUrl = await c.mutation(api.testing.docsGenerateUploadUrl, { testSecret })
 const res = await fetch(uploadUrl, {
-  body: new Blob([buf]),
-  headers: { 'Content-Type': 'application/octet-stream' },
+  body: new Blob([gz]),
+  headers: { 'Content-Type': 'application/gzip' },
   method: 'POST'
 })
 const { storageId } = (await res.json()) as { storageId: string }
 const fin = (await c.action(api.testing.docsFinalize, {
-  filename: 'huge.bin',
-  mime: 'application/octet-stream',
+  filename: 'bomb.gz',
+  mime: 'application/gzip',
   scope: 'shared',
   storageId: storageId as never,
   testSecret,
   uploaderEmail: uploader
 })) as { docId?: string; ok: boolean; reason?: string; signature?: string }
 check(
-  'oversize upload quarantined',
-  !fin.ok && fin.reason === 'quarantined',
-  `reason=${fin.reason ?? '—'} signature=${fin.signature ?? '—'}`
+  'zip-bomb quarantined OR rejected by scan',
+  !fin.ok,
+  `ok=${fin.ok} reason=${fin.reason ?? '—'} signature=${fin.signature ?? '—'}`
 )
-check(
-  'signature starts with oversized:',
-  (fin.signature ?? '').startsWith('oversized:'),
-  `signature=${fin.signature ?? '—'}`
-)
-console.log(`\n[oversize] SUMMARY pass=${pass} fail=${fail} total=2`)
+console.log(`\n[zip-bomb] SUMMARY pass=${pass} fail=${fail} total=1`)
 if (fail > 0) process.exit(1)

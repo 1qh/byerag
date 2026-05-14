@@ -118,6 +118,17 @@ const resetPolicyPending = mutation({
     await ctx.db.patch(docId, { policyCategory: undefined, policyReason: undefined, policyStatus: 'pending' })
   }
 })
+const countChunksForDoc = query({
+  args: { docId: v.id('docs'), testSecret: v.string() },
+  handler: async (ctx, { docId, testSecret }): Promise<{ count: number; firstEnd?: number; firstStart?: number }> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db
+      .query('docChunks')
+      .withIndex('by_doc', q => q.eq('docId', docId))
+      .collect()
+    return { count: rows.length, firstEnd: rows[0]?.end, firstStart: rows[0]?.start }
+  }
+})
 const setChatStreaming = mutation({
   args: { chatId: v.id('chats'), streaming: v.boolean(), testSecret: v.string() },
   handler: async (ctx, { chatId, streaming, testSecret }): Promise<void> => {
@@ -428,6 +439,7 @@ export {
   clearStreamingFlagsInternal,
   consumeProxyBudgetProbe,
   countAuditLogs,
+  countChunksForDoc,
   countCostRecords,
   countOwnerSpend,
   countTestSuggestions,
