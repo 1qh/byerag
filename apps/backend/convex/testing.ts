@@ -480,6 +480,63 @@ const seedCostRecord = mutation({
     })
   }
 })
+const adminDeleteTopicProbe = mutation({
+  args: { adminEmail: v.string(), testSecret: v.string(), topicId: v.id('topics') },
+  handler: async (
+    ctx,
+    { topicId, adminEmail, testSecret }
+  ): Promise<{
+    assignmentsCancelled: number
+    attemptsCancelled: number
+    questionsDeleted: number
+    suggestionsResolved: number
+  }> => {
+    verifyTestSecret(testSecret)
+    const now = Date.now()
+    await ctx.db.patch(topicId, { deletedAt: now })
+    const questions = await ctx.db
+      .query('testQuestions')
+      .withIndex('by_topic_deletedAt', q => q.eq('topicId', topicId).eq('deletedAt', undefined))
+      .take(1000)
+    for (const q of questions) await ctx.db.patch(q._id, { deleteReason: 'topic-cascade', deletedAt: now })
+    const suggestions = await ctx.db
+      .query('testQuestionSuggestions')
+      .withIndex('by_topic_status', q => q.eq('topicId', topicId).eq('status', 'pending'))
+      .take(1000)
+    for (const s of suggestions)
+      await ctx.db.patch(s._id, {
+        resolvedAction: 'auto-rejected',
+        resolvedAt: now,
+        resolvedBy: adminEmail,
+        resolvedReason: 'topic-deleted',
+        status: 'resolved'
+      })
+    const assignments = await ctx.db
+      .query('testAssignments')
+      .withIndex('by_topic_deletedAt', q => q.eq('topicId', topicId).eq('deletedAt', undefined))
+      .take(2000)
+    for (const a of assignments) await ctx.db.patch(a._id, { deletedAt: now, deletedBy: adminEmail })
+    const inProgress = await ctx.db
+      .query('testAttempts')
+      .withIndex('by_topic_status', q => q.eq('topicId', topicId).eq('status', 'in-progress'))
+      .take(1000)
+    for (const att of inProgress) await ctx.db.patch(att._id, { cancelledReason: 'topic-deleted', status: 'cancelled' })
+    return {
+      assignmentsCancelled: assignments.length,
+      attemptsCancelled: inProgress.length,
+      questionsDeleted: questions.length,
+      suggestionsResolved: suggestions.length
+    }
+  }
+})
+const getTopicRow = query({
+  args: { testSecret: v.string(), topicId: v.id('topics') },
+  handler: async (ctx, { topicId, testSecret }): Promise<null | { deletedAt?: number; name: string }> => {
+    verifyTestSecret(testSecret)
+    const t = await ctx.db.get(topicId)
+    return t ? { deletedAt: t.deletedAt, name: t.name } : null
+  }
+})
 const seedTestPass = mutation({
   args: {
     kind: v.union(v.literal('self'), v.literal('assigned')),
@@ -912,6 +969,7 @@ const listSandboxIds = internalQuery({
   }
 })
 export {
+  adminDeleteTopicProbe,
   ageDocDeletedAt,
   ageQuarantineRow,
   attemptDetailProbe,
@@ -932,6 +990,7 @@ export {
   ensureChatRuntime,
   getChatStreaming,
   getDocRow,
+  getTopicRow,
   getUserProfile,
   gradebookProbe,
   insertStreamEventProbe,
