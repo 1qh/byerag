@@ -137,6 +137,7 @@ interface ClassifyDoc {
   extractedText?: string
   filename: string
   policyStatus: 'approved' | 'pending' | 'rejected'
+  uploadedBy: string
 }
 const getForEmbed = internalQuery({
   args: { docId: v.id('docs') },
@@ -223,7 +224,12 @@ const getForClassify = internalQuery({
   handler: async (ctx, { docId }): Promise<ClassifyDoc | null> => {
     const row = await ctx.db.get(docId)
     if (!row) return null
-    return { extractedText: row.extractedText, filename: row.filename, policyStatus: row.policyStatus }
+    return {
+      extractedText: row.extractedText,
+      filename: row.filename,
+      policyStatus: row.policyStatus,
+      uploadedBy: row.uploadedBy
+    }
   }
 })
 const setPolicy = internalMutation({
