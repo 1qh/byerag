@@ -3,8 +3,8 @@
 /* eslint-disable no-await-in-loop, no-control-regex */
 /* oxlint-disable eslint(no-await-in-loop), eslint(no-control-regex) */
 import { v } from 'convex/values'
-import { internal } from './_generated/api'
 import type { QueryCtx } from './_generated/server'
+import { internal } from './_generated/api'
 import { internalMutation, internalQuery, mutation, query } from './_generated/server'
 const RE_CONTROL_ASCII = /[\u0000-\u0009\u000B\u000C\u000E-\u001F\u007F]/gu
 const RE_NEWLINES = /[\n\r\u0085\u2028\u2029]/gu
@@ -143,7 +143,7 @@ const requireAdminEmail = async (ctx: QueryCtx): Promise<null | string> => {
 }
 const listUserProfilesForAdmin = query({
   args: {},
-  handler: async (ctx) => {
+  handler: async ctx => {
     const adminEmail = await requireAdminEmail(ctx)
     if (!adminEmail) return []
     const rows = await ctx.db.query('userProfiles').take(2000)
@@ -162,7 +162,7 @@ const setUserDepartment = mutation({
   handler: async (ctx, { userId, department }): Promise<void> => {
     const adminEmail = await requireAdminEmail(ctx)
     if (!adminEmail) throw new Error('admin only')
-    const row = await ctx.db
+    const row = ctx.db
       .query('userProfiles')
       .withIndex('by_userId', q => q.eq('userId', userId))
       .first()
@@ -183,7 +183,7 @@ const setUserRole = mutation({
   handler: async (ctx, { userId, role }): Promise<void> => {
     const adminEmail = await requireAdminEmail(ctx)
     if (!adminEmail) throw new Error('admin only')
-    const row = await ctx.db
+    const row = ctx.db
       .query('userProfiles')
       .withIndex('by_userId', q => q.eq('userId', userId))
       .first()
@@ -213,7 +213,11 @@ const listAuditLogsForAdmin = query({
     if (!adminEmail) return []
     const cap = Math.min(limit ?? 100, 500)
     const rows = ownerFilter
-      ? await ctx.db.query('auditLogs').withIndex('by_owner', x => x.eq('owner', ownerFilter)).order('desc').take(cap)
+      ? await ctx.db
+          .query('auditLogs')
+          .withIndex('by_owner', x => x.eq('owner', ownerFilter))
+          .order('desc')
+          .take(cap)
       : await ctx.db.query('auditLogs').order('desc').take(cap)
     return rows.map(r => ({
       _creationTime: r._creationTime,
@@ -233,7 +237,10 @@ const listCostRecordsForAdmin = query({
     const adminEmail = await requireAdminEmail(ctx)
     if (!adminEmail) return []
     const rows = dayKey
-      ? await ctx.db.query('costRecords').withIndex('by_dayKey', q => q.eq('dayKey', dayKey)).take(500)
+      ? await ctx.db
+          .query('costRecords')
+          .withIndex('by_dayKey', q => q.eq('dayKey', dayKey))
+          .take(500)
       : await ctx.db.query('costRecords').order('desc').take(500)
     return rows.map(r => ({
       cacheReadInputTokens: r.cacheReadInputTokens,
@@ -254,10 +261,10 @@ export {
   listAuditLogsForAdmin,
   listCostRecordsForAdmin,
   listUserProfilesForAdmin,
-  setUserDepartment,
-  setUserRole,
   pruneAuditLogs,
   pruneStaleRateLimits,
   sanitizeExternal,
-  sanitizeForDisplay
+  sanitizeForDisplay,
+  setUserDepartment,
+  setUserRole
 }

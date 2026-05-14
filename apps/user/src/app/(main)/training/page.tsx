@@ -1,6 +1,6 @@
 'use client'
-import { useMutation, useQuery } from 'convex/react'
 import { api } from 'backend/convex/_generated/api'
+import { useMutation, useQuery } from 'convex/react'
 import { useState } from 'react'
 const TrainingPage = (): React.ReactElement => {
   const topics = useQuery(api.training.listMyTopics)
@@ -12,42 +12,52 @@ const TrainingPage = (): React.ReactElement => {
       .then(r => {
         window.location.href = `/training/${r.attemptId}`
       })
-      .catch(e => {
+      .catch(error => {
         // eslint-disable-next-line no-console
-        console.error('start failed', e)
+        console.error('start failed', error)
       })
-      .finally(() => setStarting(p => { const n = new Set(p); n.delete(topicId); return n }))
+      .finally(() =>
+        setStarting(p => {
+          const n = new Set(p)
+          n.delete(topicId)
+          return n
+        })
+      )
   }
-  if (topics === undefined) return <div className="p-6">Loading…</div>
-  if (topics.length === 0) return <div className="p-6 text-muted-foreground">No topics available yet.</div>
+  if (topics === undefined) return <div className='p-6'>Loading…</div>
+  if (topics.length === 0) return <div className='p-6 text-muted-foreground'>No topics available yet.</div>
   return (
-    <div className="space-y-4 p-6">
-      <h2 className="font-semibold text-lg">Training topics</h2>
-      <table className="w-full text-sm">
+    <div className='space-y-4 p-6'>
+      <h2 className='font-semibold text-lg'>Training topics</h2>
+      <table className='w-full text-sm'>
         <thead>
-          <tr className="border-b text-left">
-            <th className="py-2">Topic</th>
-            <th className="text-right">Pool</th>
+          <tr className='border-b text-left'>
+            <th className='py-2'>Topic</th>
+            <th className='text-right'>Pool</th>
             <th>Status</th>
-            <th className="text-right">Start</th>
+            <th className='text-right'>Start</th>
           </tr>
         </thead>
         <tbody>
           {topics.map(t => (
-            <tr key={t._id} className="border-b">
-              <td className="py-2">{t.name}</td>
-              <td className="text-right">{t.poolSize}</td>
+            <tr className='border-b' key={t._id}>
+              <td className='py-2'>{t.name}</td>
+              <td className='text-right'>{t.poolSize}</td>
               <td>
-                {t.myStatus === 'passed-assigned' ? '✓ passed (assigned)' :
-                 t.myStatus === 'passed-self' ? '✓ passed (self)' :
-                 t.myStatus === 'not-attempted' ? '—' : t.myStatus}
+                {t.myStatus === 'passed-assigned'
+                  ? '✓ passed (assigned)'
+                  : t.myStatus === 'passed-self'
+                    ? '✓ passed (self)'
+                    : t.myStatus === 'not-attempted'
+                      ? '—'
+                      : t.myStatus}
               </td>
-              <td className="text-right">
+              <td className='text-right'>
                 <button
-                  type="button"
-                  className="rounded-md border bg-primary px-3 py-1 text-primary-foreground text-sm disabled:opacity-50"
+                  className='rounded-md border bg-primary px-3 py-1 text-primary-foreground text-sm disabled:opacity-50'
                   disabled={t.poolSize < 5 || starting.has(t._id) || t.myStatus.startsWith('passed-')}
-                  onClick={() => onStart(t._id)}>
+                  onClick={() => onStart(t._id)}
+                  type='button'>
                   {starting.has(t._id) ? 'Starting…' : 'Start (5 random)'}
                 </button>
               </td>

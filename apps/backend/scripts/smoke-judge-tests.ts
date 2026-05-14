@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /* oxlint-disable unicorn/prefer-ternary, unicorn/no-new-array, unicorn/prefer-array-find, eslint(no-unused-vars) */
-/* eslint-disable @typescript-eslint/max-params, @typescript-eslint/no-shadow, @typescript-eslint/no-deprecated, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/use-unknown-in-catch-callback-variable, no-await-in-loop, no-continue, no-shadow, no-useless-assignment, unicorn/prefer-ternary, unicorn/no-new-array, unicorn/prefer-array-find */
+/* eslint-disable @typescript-eslint/max-params, @typescript-eslint/use-unknown-in-catch-callback-variable, no-await-in-loop, unicorn/prefer-ternary, unicorn/no-new-array, unicorn/prefer-array-find */
 /** biome-ignore-all lint/nursery/noContinue: control flow shape */
 /** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
@@ -10,7 +10,7 @@
 /* eslint-disable no-console */
 /** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+
 import { $ } from 'bun'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -135,7 +135,12 @@ try {
 console.log('\n[judge] G — Assessment generation pipeline')
 try {
   const gen = await convexFetch<{ count: number; topicNames: string[] }>('testing:countTestSuggestions', { testSecret })
-  record('G.suggestions', `testQuestionSuggestions has rows (got ${gen.count})`, gen.count > 0, `count=${gen.count} topics=${gen.topicNames.slice(0, 3).join(',')}`)
+  record(
+    'G.suggestions',
+    `testQuestionSuggestions has rows (got ${gen.count})`,
+    gen.count > 0,
+    `count=${gen.count} topics=${gen.topicNames.slice(0, 3).join(',')}`
+  )
 } catch (error) {
   record('G.suggestions', 'testQuestionSuggestions has rows', false, String(error).slice(0, 200))
 }

@@ -3,7 +3,7 @@
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
 /** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
+
 import { ConvexHttpClient } from 'convex/browser'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -25,13 +25,19 @@ const env = parseEnv(readFileSync(join(import.meta.dir, '..', '.env'), 'utf8'))
 const url = env.CONVEX_SELF_HOSTED_URL ?? ''
 const testSecret = env.TEST_SECRET ?? ''
 const bootstrapEmail = (env.BOOTSTRAP_ADMIN_EMAIL ?? '').split(',')[0]?.trim() ?? ''
-const die = (msg: string): never => { console.error(msg); process.exit(2) }
-if (!url || !testSecret || !bootstrapEmail) die('env missing')
-const sleep = async (ms: number): Promise<void> => new Promise(r => { setTimeout(r, ms) })
+const die = (msg: string): never => {
+  console.error(msg)
+  process.exit(2)
+}
+if (!(url && testSecret && bootstrapEmail)) die('env missing')
+const sleep = async (ms: number): Promise<void> =>
+  new Promise(r => {
+    setTimeout(r, ms)
+  })
 const c = new ConvexHttpClient(url)
 interface Case {
   body: string
-  expectCategory: 'abusive' | 'off-topic' | 'on-topic' | 'prompt-injection' | 'spam' | 'promotional'
+  expectCategory: 'abusive' | 'off-topic' | 'on-topic' | 'promotional' | 'prompt-injection' | 'spam'
   expectStatus: 'approved' | 'rejected'
   filename: string
 }
@@ -64,8 +70,12 @@ const cases: Case[] = [
 console.log('[policy] wiping docs')
 await c.mutation(api.testing.wipeDocs, { testSecret })
 const seedAndAwaitClassify = async (cs: Case): Promise<{ category?: string; status?: string }> => {
-  const uploadUrl = (await c.mutation(api.testing.docsGenerateUploadUrl, { testSecret })) as string
-  const res = await fetch(uploadUrl, { body: new Blob([cs.body], { type: 'text/plain' }), headers: { 'Content-Type': 'text/plain' }, method: 'POST' })
+  const uploadUrl = await c.mutation(api.testing.docsGenerateUploadUrl, { testSecret })
+  const res = await fetch(uploadUrl, {
+    body: new Blob([cs.body], { type: 'text/plain' }),
+    headers: { 'Content-Type': 'text/plain' },
+    method: 'POST'
+  })
   if (!res.ok) throw new Error(`upload ${cs.filename}: ${res.status}`)
   const { storageId } = (await res.json()) as { storageId: string }
   const r = (await c.action(api.testing.docsFinalize, {
@@ -76,11 +86,15 @@ const seedAndAwaitClassify = async (cs: Case): Promise<{ category?: string; stat
     testSecret,
     uploaderEmail: bootstrapEmail
   })) as { docId?: string; ok: boolean }
-  if (!r.ok || !r.docId) throw new Error(`finalize ${cs.filename} failed`)
+  if (!(r.ok && r.docId)) throw new Error(`finalize ${cs.filename} failed`)
   const deadline = Date.now() + 60_000
   while (Date.now() < deadline) {
-    const row = (await c.query(api.testing.getDocRow, { docId: r.docId as never, testSecret })) as null | { policyCategory?: string; policyStatus?: string }
-    if (row?.policyStatus === 'approved' || row?.policyStatus === 'rejected') return { category: row.policyCategory, status: row.policyStatus }
+    const row = (await c.query(api.testing.getDocRow, { docId: r.docId as never, testSecret })) as null | {
+      policyCategory?: string
+      policyStatus?: string
+    }
+    if (row?.policyStatus === 'approved' || row?.policyStatus === 'rejected')
+      return { category: row.policyCategory, status: row.policyStatus }
     await sleep(2000)
   }
   return {}
@@ -90,9 +104,10 @@ let fail = 0
 for (const cs of cases) {
   const got = await seedAndAwaitClassify(cs)
   const ok = got.status === cs.expectStatus
-  // Category check is soft — classifier may pick a different category that's still in the rejected family
   const symbol = ok ? '✓' : '✗'
-  console.log(`${symbol} ${cs.filename}: expected status=${cs.expectStatus}, got status=${got.status ?? '(timeout)'} category=${got.category ?? '—'}`)
+  console.log(
+    `${symbol} ${cs.filename}: expected status=${cs.expectStatus}, got status=${got.status ?? '(timeout)'} category=${got.category ?? '—'}`
+  )
   if (ok) pass += 1
   else fail += 1
 }

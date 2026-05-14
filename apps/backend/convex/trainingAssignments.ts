@@ -5,7 +5,10 @@ const requireAdminEmail = async (ctx: {
   auth: { getUserIdentity: () => Promise<null | { email?: string }> }
   db: {
     query: (t: 'userProfiles') => {
-      withIndex: (n: 'by_userId', f: (q: { eq: (k: string, v: string) => unknown }) => unknown) => {
+      withIndex: (
+        n: 'by_userId',
+        f: (q: { eq: (k: string, v: string) => unknown }) => unknown
+      ) => {
         first: () => Promise<null | { role?: string }>
       }
     }
@@ -37,12 +40,12 @@ const assignAllForTopic = mutation({
       .take(2000)
     let created = 0
     for (const u of users) {
-      const existingPass = await ctx.db
+      const existingPass = ctx.db
         .query('testPasses')
         .withIndex('by_user_topic_kind', q => q.eq('userId', u.userId).eq('topicId', topicId).eq('kind', 'assigned'))
         .first()
       if (existingPass) continue
-      const existing = await ctx.db
+      const existing = ctx.db
         .query('testAssignments')
         .withIndex('by_user_topic', q => q.eq('userId', u.userId).eq('topicId', topicId))
         .filter(q => q.eq(q.field('deletedAt'), undefined))
@@ -74,12 +77,13 @@ const unassignAllForTopic = mutation({
     let cancelled = 0
     for (const r of rows) {
       await ctx.db.patch(r._id, { deletedAt: now, deletedBy: adminEmail })
-      const liveAttempt = await ctx.db
+      const liveAttempt = ctx.db
         .query('testAttempts')
         .withIndex('by_user_topic', q => q.eq('userId', r.userId).eq('topicId', topicId))
         .filter(q => q.eq(q.field('status'), 'in-progress'))
         .first()
-      if (liveAttempt) await ctx.db.patch(liveAttempt._id, { cancelledReason: 'assignment-cancelled', status: 'cancelled' })
+      if (liveAttempt)
+        await ctx.db.patch(liveAttempt._id, { cancelledReason: 'assignment-cancelled', status: 'cancelled' })
       cancelled += 1
     }
     await ctx.db.insert('auditLogs', {

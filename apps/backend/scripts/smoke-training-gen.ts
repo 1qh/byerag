@@ -3,7 +3,7 @@
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
 /** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
+
 import { ConvexHttpClient } from 'convex/browser'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -32,12 +32,14 @@ const die = (msg: string): never => {
 if (!url) die('CONVEX_SELF_HOSTED_URL missing')
 if (!testSecret) die('TEST_SECRET missing')
 if (!bootstrapEmail) die('BOOTSTRAP_ADMIN_EMAIL missing')
-const sleep = async (ms: number): Promise<void> => new Promise(r => { setTimeout(r, ms) })
+const sleep = async (ms: number): Promise<void> =>
+  new Promise(r => {
+    setTimeout(r, ms)
+  })
 const c = new ConvexHttpClient(url)
 console.log('[gen-smoke] wiping docs')
 await c.mutation(api.testing.wipeDocs, { testSecret })
 const seedBody = `Security Policy v2 (2026)
-
 Section 1: All employee laptops must be encrypted with FileVault (macOS) or BitLocker (Windows).
 Section 2: Password manager (1Password company plan) is mandatory for any SaaS credential storage.
 Section 3: MFA via TOTP or hardware key is required for every external service.
@@ -45,7 +47,7 @@ Section 4: Quarterly access review by team lead; revoke unused accounts within 1
 Section 5: Incident response: report any suspected compromise to security@company within 1 hour.
 `
 console.log('[gen-smoke] seeding shared doc')
-const uploadUrl = (await c.mutation(api.testing.docsGenerateUploadUrl, { testSecret })) as string
+const uploadUrl = await c.mutation(api.testing.docsGenerateUploadUrl, { testSecret })
 const upload = await fetch(uploadUrl, {
   body: new Blob([seedBody], { type: 'text/plain' }),
   headers: { 'Content-Type': 'text/plain' },
@@ -60,7 +62,7 @@ const result = (await c.action(api.testing.docsFinalize, {
   testSecret,
   uploaderEmail: bootstrapEmail
 })) as { docId?: string; ok: boolean }
-if (!result.ok || !result.docId) die(`finalize failed: ${JSON.stringify(result)}`)
+if (!(result.ok && result.docId)) die(`finalize failed: ${JSON.stringify(result)}`)
 console.log(`[gen-smoke] docId=${result.docId} — waiting for generation pipeline`)
 const deadline = Date.now() + 120_000
 const TS = testSecret

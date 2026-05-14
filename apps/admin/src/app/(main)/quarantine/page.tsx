@@ -1,6 +1,6 @@
 'use client'
-import { useMutation, useQuery } from 'convex/react'
 import { api } from 'backend/convex/_generated/api'
+import { useMutation, useQuery } from 'convex/react'
 import { useState } from 'react'
 const QuarantinePage = (): React.ReactElement => {
   const rows = useQuery(api.docs.listForQuarantine, {})
@@ -11,44 +11,56 @@ const QuarantinePage = (): React.ReactElement => {
     setBusy(p => new Set(p).add(id))
     const fn = kind === 'approve' ? approve : reject
     fn({ docId: id as never })
-      .catch((e: unknown) => alert(String(e)))
-      .finally(() => setBusy(p => { const n = new Set(p); n.delete(id); return n }))
+      .catch((error: unknown) => alert(String(error)))
+      .finally(() =>
+        setBusy(p => {
+          const n = new Set(p)
+          n.delete(id)
+          return n
+        })
+      )
   }
-  if (rows === undefined) return <div className="p-6">Loading…</div>
-  if (rows.length === 0) return <div className="p-6 text-muted-foreground">No docs awaiting review.</div>
+  if (rows === undefined) return <div className='p-6'>Loading…</div>
+  if (rows.length === 0) return <div className='p-6 text-muted-foreground'>No docs awaiting review.</div>
   return (
-    <div className="space-y-3 p-6">
-      <h2 className="font-semibold text-lg">Quarantine queue ({rows.length})</h2>
-      <table className="w-full text-sm">
+    <div className='space-y-3 p-6'>
+      <h2 className='font-semibold text-lg'>Quarantine queue ({rows.length})</h2>
+      <table className='w-full text-sm'>
         <thead>
-          <tr className="border-b text-left">
-            <th className="py-2">Filename</th>
+          <tr className='border-b text-left'>
+            <th className='py-2'>Filename</th>
             <th>Owner</th>
             <th>Status</th>
             <th>Category</th>
             <th>Reason</th>
-            <th className="text-right">Actions</th>
+            <th className='text-right'>Actions</th>
           </tr>
         </thead>
         <tbody>
           {rows.map(r => (
-            <tr key={r._id} className="border-b">
-              <td className="py-2">{r.filename}</td>
+            <tr className='border-b' key={r._id}>
+              <td className='py-2'>{r.filename}</td>
               <td>{r.owner ?? '(shared)'}</td>
-              <td>{r.policyStatus} / {r.scanStatus}</td>
+              <td>
+                {r.policyStatus} / {r.scanStatus}
+              </td>
               <td>{r.policyCategory ?? '—'}</td>
-              <td className="max-w-md truncate text-xs">{r.policyReason ?? r.scanOverrideSignature ?? ''}</td>
-              <td className="text-right space-x-2">
+              <td className='max-w-md truncate text-xs'>{r.policyReason ?? r.scanOverrideSignature ?? ''}</td>
+              <td className='text-right space-x-2'>
                 <button
-                  type="button"
-                  className="rounded-md border bg-primary px-3 py-1 text-primary-foreground text-xs disabled:opacity-50"
+                  className='rounded-md border bg-primary px-3 py-1 text-primary-foreground text-xs disabled:opacity-50'
                   disabled={busy.has(r._id)}
-                  onClick={() => act(r._id, 'approve')}>Approve</button>
+                  onClick={() => act(r._id, 'approve')}
+                  type='button'>
+                  Approve
+                </button>
                 <button
-                  type="button"
-                  className="rounded-md border bg-destructive px-3 py-1 text-destructive-foreground text-xs disabled:opacity-50"
+                  className='rounded-md border bg-destructive px-3 py-1 text-destructive-foreground text-xs disabled:opacity-50'
                   disabled={busy.has(r._id)}
-                  onClick={() => act(r._id, 'reject')}>Confirm reject</button>
+                  onClick={() => act(r._id, 'reject')}
+                  type='button'>
+                  Confirm reject
+                </button>
               </td>
             </tr>
           ))}

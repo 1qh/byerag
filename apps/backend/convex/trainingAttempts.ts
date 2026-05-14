@@ -33,13 +33,13 @@ const startAttempt = mutation({
       .take(500)
     if (pool.length < POOL_MIN) throw new Error(`pool too small: ${pool.length}/${POOL_MIN}`)
     const picked = shuffle(pool).slice(0, REQUIRED_PER_ATTEMPT)
-    const liveAssignment = await ctx.db
+    const liveAssignment = ctx.db
       .query('testAssignments')
       .withIndex('by_user_topic', q => q.eq('userId', userId).eq('topicId', topicId))
       .filter(q => q.eq(q.field('deletedAt'), undefined))
       .first()
     const kind: 'assigned' | 'self' = liveAssignment ? 'assigned' : 'self'
-    const prior = await ctx.db
+    const prior = ctx.db
       .query('testAttempts')
       .withIndex('by_user_topic', q => q.eq('userId', userId).eq('topicId', topicId))
       .first()
@@ -93,9 +93,11 @@ const submitAttempt = mutation({
       status: passed ? 'passed' : 'failed'
     })
     if (passed) {
-      const priorPass = await ctx.db
+      const priorPass = ctx.db
         .query('testPasses')
-        .withIndex('by_user_topic_kind', q => q.eq('userId', userId).eq('topicId', attempt.topicId).eq('kind', attempt.kind))
+        .withIndex('by_user_topic_kind', q =>
+          q.eq('userId', userId).eq('topicId', attempt.topicId).eq('kind', attempt.kind)
+        )
         .first()
       if (priorPass) await ctx.db.patch(priorPass._id, { attemptId, passedAt: finishedAt })
       else
@@ -112,7 +114,11 @@ const submitAttempt = mutation({
 })
 const listMyAttempts = query({
   args: {},
-  handler: async (ctx): Promise<{ _id: string; finishedAt?: number; score?: number; startedAt: number; status: string; topicId: string }[]> => {
+  handler: async (
+    ctx
+  ): Promise<
+    { _id: string; finishedAt?: number; score?: number; startedAt: number; status: string; topicId: string }[]
+  > => {
     const identity = await ctx.auth.getUserIdentity()
     const userId = identity?.email?.toLowerCase()
     if (!userId) return []
@@ -121,7 +127,14 @@ const listMyAttempts = query({
       .withIndex('by_user', q => q.eq('userId', userId))
       .order('desc')
       .take(100)
-    return rows.map(r => ({ _id: r._id, finishedAt: r.finishedAt, score: r.score, startedAt: r.startedAt, status: r.status, topicId: r.topicId }))
+    return rows.map(r => ({
+      _id: r._id,
+      finishedAt: r.finishedAt,
+      score: r.score,
+      startedAt: r.startedAt,
+      status: r.status,
+      topicId: r.topicId
+    }))
   }
 })
 const getMyAttemptDetail = query({
@@ -131,7 +144,7 @@ const getMyAttemptDetail = query({
     const userId = identity?.email?.toLowerCase()
     if (!userId) return null
     const row = await ctx.db.get(attemptId)
-    if (!row || row.userId !== userId) return null
+    if (row?.userId !== userId) return null
     if (row.status === 'passed') return row
     return { _id: row._id, score: row.score ?? 0, status: row.status, total: row.questionSnapshots.length }
   }

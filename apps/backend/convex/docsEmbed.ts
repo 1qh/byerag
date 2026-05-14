@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/max-params, @typescript-eslint/no-shadow, @typescript-eslint/no-deprecated, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/use-unknown-in-catch-callback-variable, no-await-in-loop, no-continue, no-shadow, no-useless-assignment, unicorn/prefer-ternary, unicorn/no-new-array, unicorn/prefer-array-find */
+/* eslint-disable @typescript-eslint/no-shadow, no-await-in-loop, unicorn/prefer-ternary, unicorn/no-new-array, unicorn/prefer-array-find */
 /* oxlint-disable unicorn/prefer-ternary, unicorn/no-new-array, unicorn/prefer-array-find, eslint(no-unused-vars) */
 /** biome-ignore-all lint/nursery/noContinue: control flow shape */
 /** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
@@ -9,7 +9,7 @@
 /** biome-ignore-all lint/style/noProcessEnv: OLLAMA_HOST env */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: OLLAMA_HOST optional */
 /** biome-ignore-all lint/suspicious/useAwait: fetch chain */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 'use node'
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
@@ -59,6 +59,12 @@ const ollamaEmbed = async (input: string, prefix: 'search_document' | 'search_qu
   return vec
 }
 const embedQuery = async (input: string): Promise<number[]> => ollamaEmbed(input, 'search_query')
+const matryoshkaTruncate = (vec: number[], dim: number): number[] => {
+  if (dim >= EMBED_DIM) return vec
+  const out = new Array<number>(EMBED_DIM).fill(0)
+  for (let i = 0; i < dim; i += 1) out[i] = vec[i] ?? 0
+  return out
+}
 const centroid = (vecs: number[][]): number[] => {
   if (vecs.length === 0) return []
   const out = new Array<number>(EMBED_DIM).fill(0)
@@ -69,10 +75,7 @@ const centroid = (vecs: number[][]): number[] => {
 const embed = internalAction({
   args: { docId: v.id('docs') },
   handler: async (ctx, { docId }): Promise<{ chunkCount?: number; embedded: boolean; reason?: string }> => {
-    const target = (await ctx.runQuery(internal.docs.getForEmbed, { docId })) as null | {
-      extractedText: string
-      policyStatus: string
-    }
+    const target = await ctx.runQuery(internal.docs.getForEmbed, { docId })
     if (!target) return { embedded: false, reason: 'no-extracted-text' }
     if (target.policyStatus !== 'approved') return { embedded: false, reason: `policy:${target.policyStatus}` }
     const chunks = chunkText(target.extractedText)
@@ -90,4 +93,4 @@ const embed = internalAction({
     return { chunkCount: embedded.length, embedded: true }
   }
 })
-export { chunkText, embed, embedQuery }
+export { chunkText, embed, EMBED_DIM, embedQuery, matryoshkaTruncate }

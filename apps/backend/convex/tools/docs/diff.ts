@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/max-params, @typescript-eslint/no-shadow, @typescript-eslint/no-deprecated, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/use-unknown-in-catch-callback-variable, no-await-in-loop, no-continue, no-shadow, no-useless-assignment, unicorn/prefer-ternary, unicorn/no-new-array, unicorn/prefer-array-find */
+/* eslint-disable no-continue, unicorn/prefer-ternary, unicorn/no-new-array, unicorn/prefer-array-find */
 /** biome-ignore-all lint/nursery/noContinue: control flow shape */
 /** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
@@ -49,7 +49,13 @@ const action = defineQuery({
   examples: ['docs diff --a kx7abc --b kx7def'],
   handler: async (ctx, args) => {
     const fail = makeFail('FORBIDDEN', 'NOT_FOUND')
-    type DocRow = { _id: string; extractedText?: string; filename: string; owner?: string; scope: 'mine' | 'shared' }
+    interface DocRow {
+      _id: string
+      extractedText?: string
+      filename: string
+      owner?: string
+      scope: 'mine' | 'shared'
+    }
     const rowA = (await ctx.db.get(args.a as never)) as DocRow | null
     if (!rowA) throw fail('NOT_FOUND', `doc ${args.a} not found`)
     if (!aclCheck(rowA, ctx.auth.owner)) throw fail('FORBIDDEN', 'doc A not in caller scope')

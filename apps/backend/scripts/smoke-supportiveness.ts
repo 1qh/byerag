@@ -4,7 +4,7 @@
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
 /** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
+
 import { ConvexHttpClient } from 'convex/browser'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -78,7 +78,7 @@ const scenarios = filter ? allScenarios.filter(s => s.name === filter) : allScen
 if (scenarios.length === 0) die(`no scenarios match filter='${filter}'`)
 const client = new ConvexHttpClient(url)
 const seedDoc = async (filename: string, body: string): Promise<string> => {
-  const uploadUrl = (await client.mutation(api.testing.docsGenerateUploadUrl, { testSecret })) as string
+  const uploadUrl = await client.mutation(api.testing.docsGenerateUploadUrl, { testSecret })
   const res = await fetch(uploadUrl, {
     body: new Blob([body], { type: 'text/plain' }),
     headers: { 'Content-Type': 'text/plain' },

@@ -7,6 +7,7 @@
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import { action } from './_generated/server'
+import { embedQuery, matryoshkaTruncate } from './docsEmbed'
 import { killSandbox, listSandboxIds } from './sandboxClient'
 import { constantTimeEqual } from './utils'
 const verifyTestSecret = (secret: string) => {
@@ -38,4 +39,21 @@ const killAllSandboxes = action({
     return { killed }
   }
 })
-export { killAllSandboxes }
+const docsSimilarProbe = action({
+  args: { dim: v.number(), query: v.string(), scope: v.string(), testSecret: v.string() },
+  handler: async (
+    ctx,
+    { dim, query, scope, testSecret }
+  ): Promise<{ dim: number; hits: { _id: string; _score: number }[] }> => {
+    verifyTestSecret(testSecret)
+    const full = await embedQuery(query)
+    const vec = matryoshkaTruncate(full, dim)
+    const r = await ctx.vectorSearch('docs', 'by_embedding', {
+      filter: q => q.eq('scope', scope as 'mine' | 'shared'),
+      limit: 10,
+      vector: vec
+    })
+    return { dim, hits: r.map(h => ({ _id: h._id, _score: h._score })) }
+  }
+})
+export { docsSimilarProbe, killAllSandboxes }

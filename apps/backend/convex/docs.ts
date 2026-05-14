@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/max-params, @typescript-eslint/no-shadow, @typescript-eslint/no-deprecated, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/use-unknown-in-catch-callback-variable, no-await-in-loop, no-continue, no-shadow, no-useless-assignment, unicorn/prefer-ternary, unicorn/no-new-array, unicorn/prefer-array-find */
+/* eslint-disable no-await-in-loop, no-continue, unicorn/prefer-ternary, unicorn/no-new-array, unicorn/prefer-array-find */
 /** biome-ignore-all lint/nursery/noContinue: control flow shape */
 /** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
@@ -309,10 +309,7 @@ const listMine = query({
 })
 const adminDeleteDoc = mutation({
   args: { docId: v.id('docs') },
-  handler: async (
-    ctx,
-    { docId }
-  ): Promise<{ pendingSuggestionsCancelled: number; questionsSoftDeleted: number }> => {
+  handler: async (ctx, { docId }): Promise<{ pendingSuggestionsCancelled: number; questionsSoftDeleted: number }> => {
     const identity = await ctx.auth.getUserIdentity()
     const email = identity?.email?.toLowerCase()
     if (!email) throw new Error('not authenticated')
@@ -424,7 +421,7 @@ const adminConfirmReject = mutation({
       try {
         await ctx.storage.delete(doc.storageId)
       } catch {
-        // already gone
+        // Already gone
       }
       await ctx.db.patch(docId, { policyOverriddenBy: email, storageId: undefined })
     }
@@ -440,7 +437,7 @@ const adminConfirmReject = mutation({
 })
 const listForQuarantine = query({
   args: {},
-  handler: async (ctx) => {
+  handler: async ctx => {
     const identity = await ctx.auth.getUserIdentity()
     const email = identity?.email?.toLowerCase()
     if (!email) return []
@@ -513,7 +510,7 @@ const purgeSoftDeleted = internalMutation({
           await ctx.storage.delete(doc.storageId)
           blobsPurged += 1
         } catch {
-          // already gone
+          // Already gone
         }
         await ctx.db.patch(doc._id, { storageId: undefined })
       }
@@ -530,6 +527,9 @@ const purgeSoftDeleted = internalMutation({
   }
 })
 export {
+  adminApproveReview,
+  adminConfirmReject,
+  adminDeleteDoc,
   findByFilename,
   findBySha256,
   getForClassify,
@@ -537,17 +537,14 @@ export {
   getForEmbed,
   getForExtract,
   getRowsSnippet,
-  adminApproveReview,
-  adminConfirmReject,
-  adminDeleteDoc,
   insertQuarantined,
   insertRow,
   listForQuarantine,
   listMine,
-  requestReview,
   listShared,
   persistChunks,
   purgeSoftDeleted,
+  requestReview,
   setExtracted,
   setPolicy,
   upload
