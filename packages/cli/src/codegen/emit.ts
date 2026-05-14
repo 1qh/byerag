@@ -46,11 +46,13 @@ const emitToolTypes = (tools: ToolFile[], schemas: Map<string, Extracted>): stri
     const ex = schemas.get(t.absPath)
     if (!ex) continue
     const name = pascalCase(t.cliPath.join('-'))
-    if (ex.args) {
-      lines.push(`interface ${name}Args ${schemaToTs(ex.args)}`, '')
+    const argsTs = ex.args ? schemaToTs(ex.args) : null
+    if (argsTs) {
+      lines.push(argsTs.startsWith('{') ? `interface ${name}Args ${argsTs}` : `type ${name}Args = ${argsTs}`, '')
       exportedNames.push(`${name}Args`)
     }
-    lines.push(`interface ${name}Result ${schemaToTs(ex.schema)}`, '')
+    const resultTs = schemaToTs(ex.schema)
+    lines.push(resultTs.startsWith('{') ? `interface ${name}Result ${resultTs}` : `type ${name}Result = ${resultTs}`, '')
     exportedNames.push(`${name}Result`)
   }
   lines.push(`export type { ${exportedNames.join(', ')} }`)
