@@ -68,7 +68,11 @@ const DashboardPage = (): React.ReactElement => {
             ) : (
               pivot.map(r => (
                 <tr className='border-b' key={`${r.owner}|${r.model}`}>
-                  <td className='py-2'>{r.owner}</td>
+                  <td className='py-2'>
+                    <a className='hover:underline' href={`/users/${encodeURIComponent(r.owner)}/cost`}>
+                      {r.owner}
+                    </a>
+                  </td>
                   <td>{r.model}</td>
                   <td className='text-right'>{r.inputTokens.toLocaleString()}</td>
                   <td className='text-right'>{r.outputTokens.toLocaleString()}</td>
@@ -77,6 +81,18 @@ const DashboardPage = (): React.ReactElement => {
               ))
             )}
           </tbody>
+          {pivot.length > 0 && (
+            <tfoot>
+              <tr className='border-t-2 font-semibold'>
+                <td className='py-2' colSpan={2}>
+                  Total
+                </td>
+                <td className='text-right'>{pivot.reduce((s, r) => s + r.inputTokens, 0).toLocaleString()}</td>
+                <td className='text-right'>{pivot.reduce((s, r) => s + r.outputTokens, 0).toLocaleString()}</td>
+                <td className='text-right'>{fmtCents(pivot.reduce((s, r) => s + r.cents, 0))}</td>
+              </tr>
+            </tfoot>
+          )}
         </table>
       </section>
       <section>
