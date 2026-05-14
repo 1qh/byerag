@@ -111,6 +111,20 @@ const docsGenerateUploadUrl = mutation({
     return ctx.storage.generateUploadUrl()
   }
 })
+const ageQuarantineRow = mutation({
+  args: { ageMs: v.number(), docId: v.id('docs'), testSecret: v.string() },
+  handler: async (ctx, { ageMs, docId, testSecret }): Promise<void> => {
+    verifyTestSecret(testSecret)
+    await ctx.db.patch(docId, { uploadedAt: Date.now() - ageMs })
+  }
+})
+const runQuarantinePurge = action({
+  args: { testSecret: v.string() },
+  handler: async (ctx, { testSecret }): Promise<{ blobsPurged: number; rowsTouched: number }> => {
+    verifyTestSecret(testSecret)
+    return ctx.runMutation(internal.docs.purgeQuarantineStaging, {})
+  }
+})
 const ensureChatRuntime = mutation({
   args: { chatId: v.id('chats'), testSecret: v.string() },
   handler: async (ctx, { chatId, testSecret }): Promise<void> => {
@@ -375,6 +389,7 @@ const listSandboxIds = internalQuery({
   }
 })
 export {
+  ageQuarantineRow,
   checkRateLimitProbe,
   clearStreamingFlagsInternal,
   consumeProxyBudgetProbe,
@@ -398,6 +413,7 @@ export {
   removeChat,
   requestReviewProbe,
   reserveBudgetProbe,
+  runQuarantinePurge,
   scanOverrideProbe,
   send,
   uploadFile,
