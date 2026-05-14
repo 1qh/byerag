@@ -200,16 +200,38 @@ const countAdmins = query({
   }
 })
 const setSetting = mutation({
-  args: { key: v.string(), testSecret: v.string(), value: v.string() },
-  handler: async (ctx, { key, value, testSecret }): Promise<void> => {
+  args: { adminEmail: v.optional(v.string()), key: v.string(), testSecret: v.string(), value: v.string() },
+  handler: async (ctx, { key, value, adminEmail, testSecret }): Promise<void> => {
     verifyTestSecret(testSecret)
+    const author = adminEmail ?? 'test'
     const rows = await ctx.db
       .query('settings')
       .withIndex('by_key', q => q.eq('key', key))
       .collect()
     const existing = rows[0]
-    if (existing) await ctx.db.patch(existing._id, { updatedAt: Date.now(), updatedBy: 'test', value })
-    else await ctx.db.insert('settings', { key, updatedAt: Date.now(), updatedBy: 'test', value })
+    if (existing) await ctx.db.patch(existing._id, { updatedAt: Date.now(), updatedBy: author, value })
+    else await ctx.db.insert('settings', { key, updatedAt: Date.now(), updatedBy: author, value })
+    if (adminEmail)
+      await ctx.db.insert('auditLogs', {
+        args: JSON.stringify({ key, valueLen: value.length }),
+        command: 'settings.set',
+        mode: 'session',
+        ok: true,
+        owner: adminEmail,
+        severity: key === 'corpus_policy' ? 'medium' : 'low'
+      })
+  }
+})
+const getSetting = query({
+  args: { key: v.string(), testSecret: v.string() },
+  handler: async (ctx, { key, testSecret }): Promise<null | { updatedBy: string; value: string }> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db
+      .query('settings')
+      .withIndex('by_key', q => q.eq('key', key))
+      .collect()
+    const r = rows[0]
+    return r ? { updatedBy: r.updatedBy, value: r.value } : null
   }
 })
 const gradebookWithDeptProbe = query({
@@ -698,7 +720,6 @@ const adminConfirmRejectProbe = mutation({
       } catch {
         /* Gone */
       }
-
     await ctx.db.patch(docId, { policyOverriddenBy: adminEmail, storageId: undefined })
   }
 })
@@ -1350,6 +1371,7 @@ export {
   getChatStreaming,
   getDocRow,
   getQuestionRow,
+  getSetting,
   getTopicPoolCap,
   getTopicRow,
   getUserProfile,
