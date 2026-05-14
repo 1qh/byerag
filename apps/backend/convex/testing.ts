@@ -181,6 +181,33 @@ const setSetting = mutation({
     else await ctx.db.insert('settings', { key, updatedAt: Date.now(), updatedBy: 'test', value })
   }
 })
+const seedTestPass = mutation({
+  args: {
+    kind: v.union(v.literal('self'), v.literal('assigned')),
+    testSecret: v.string(),
+    topicId: v.id('topics'),
+    userId: v.string()
+  },
+  handler: async (ctx, { userId, topicId, kind, testSecret }): Promise<void> => {
+    verifyTestSecret(testSecret)
+    const attemptId = await ctx.db.insert('testAttempts', {
+      kind,
+      questionSnapshots: [],
+      score: 5,
+      startedAt: Date.now(),
+      status: 'passed',
+      topicId,
+      userId
+    })
+    await ctx.db.insert('testPasses', {
+      attemptId,
+      kind,
+      passedAt: Date.now(),
+      topicId,
+      userId
+    })
+  }
+})
 const seedTopicWithPool = mutation({
   args: { name: v.string(), poolSize: v.number(), testSecret: v.string() },
   handler: async (ctx, { name, poolSize, testSecret }): Promise<string> => {
@@ -202,7 +229,6 @@ const seedTopicWithPool = mutation({
         sourceDocIds: [],
         topicId
       })
-
     return topicId
   }
 })
@@ -621,6 +647,7 @@ export {
   runPurgeSoftDeleted,
   runQuarantinePurge,
   scanOverrideProbe,
+  seedTestPass,
   seedTopicWithPool,
   seedUserProfile,
   send,
