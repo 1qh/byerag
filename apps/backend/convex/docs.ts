@@ -104,6 +104,61 @@ const insertQuarantined = internalMutation({
       version: 1
     })
 })
+interface ExtractTarget {
+  filename: string
+  mime: string
+  storageId: Id<'_storage'>
+}
+const getForExtract = internalQuery({
+  args: { docId: v.id('docs') },
+  handler: async (ctx, { docId }): Promise<ExtractTarget | null> => {
+    const row = await ctx.db.get(docId)
+    if (!row?.storageId) return null
+    return { filename: row.filename, mime: row.mime, storageId: row.storageId }
+  }
+})
+const setExtracted = internalMutation({
+  args: { docId: v.id('docs'), extractedText: v.string(), lang: v.optional(v.string()) },
+  handler: async (ctx, { docId, extractedText, lang }): Promise<void> => {
+    await ctx.db.patch(docId, { extractedText, lang })
+    await ctx.scheduler.runAfter(0, internal.docsPolicy.classify, { docId })
+  }
+})
+interface ClassifyDoc {
+  extractedText?: string
+  filename: string
+  policyStatus: 'approved' | 'pending' | 'rejected'
+}
+const getForClassify = internalQuery({
+  args: { docId: v.id('docs') },
+  handler: async (ctx, { docId }): Promise<ClassifyDoc | null> => {
+    const row = await ctx.db.get(docId)
+    if (!row) return null
+    return { extractedText: row.extractedText, filename: row.filename, policyStatus: row.policyStatus }
+  }
+})
+const setPolicy = internalMutation({
+  args: {
+    docId: v.id('docs'),
+    policyCategory: v.union(
+      v.literal('on-topic'),
+      v.literal('off-topic'),
+      v.literal('spam'),
+      v.literal('prompt-injection'),
+      v.literal('abusive'),
+      v.literal('promotional')
+    ),
+    policyReason: v.string(),
+    policyStatus: v.union(v.literal('approved'), v.literal('rejected'))
+  },
+  handler: async (ctx, args): Promise<void> => {
+    await ctx.db.patch(args.docId, {
+      policyCategory: args.policyCategory,
+      policyReason: args.policyReason,
+      policyStatus: args.policyStatus
+    })
+  }
+})
 interface UploadResult {
   docId?: Id<'docs'>
   duplicate?: { existingId: Id<'docs'>; filename: string; uploadedAt: number }
@@ -182,5 +237,17 @@ const listShared = query({
     }))
   }
 })
-export { findByFilename, findBySha256, insertQuarantined, insertRow, listMine, listShared, upload }
-export type { DocListItem, DocRow, UploadResult }
+export {
+  findByFilename,
+  findBySha256,
+  getForClassify,
+  getForExtract,
+  insertQuarantined,
+  insertRow,
+  listMine,
+  listShared,
+  setExtracted,
+  setPolicy,
+  upload
+}
+export type { DocListItem, DocRow, ExtractTarget, UploadResult }
