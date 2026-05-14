@@ -175,7 +175,7 @@ const persistSuggestionsWithEmbedding = internalMutation({
         }
         topicCache.set(q.topicName, topicId)
       }
-      let pairKind: 'conflict' | undefined
+      let pairKind: 'cap-swap' | 'conflict' | undefined
       let pairedWith: undefined | string
       if (q.promptEmbedding.length > 0) {
         const existingQs = await ctx.db
@@ -188,6 +188,17 @@ const persistSuggestionsWithEmbedding = internalMutation({
             .withIndex('by_target', x => x.eq('targetQuestionId', e._id))
             .first()
           void eq
+        }
+      }
+      const currentPool = await ctx.db
+        .query('testQuestions')
+        .withIndex('by_topic_deletedAt', x => x.eq('topicId', topicId as never).eq('deletedAt', undefined))
+        .take(DEFAULT_POOL_CAP + 1)
+      if (currentPool.length >= DEFAULT_POOL_CAP) {
+        const oldest = currentPool.sort((a, b) => a.createdAt - b.createdAt)[0]
+        if (oldest) {
+          pairKind = 'cap-swap'
+          pairedWith = oldest._id
         }
       }
       const sid = await ctx.db.insert('testQuestionSuggestions', {
