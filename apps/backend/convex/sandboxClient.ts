@@ -155,7 +155,7 @@ const execInside = async (id: string, cmd: string, opts: RunOpts): Promise<RunRe
   const envs = Object.entries(opts.envs ?? {}).map(([k, v]) => `${k}=${v}`)
   const wrapped = opts.background ? `nohup ${cmd} >/dev/null 2>&1 &` : cmd
   const exec = await dockerJson<{ Id: string }>({
-    body: { AttachStderr: true, AttachStdout: true, Cmd: ['sh', '-lc', wrapped], Env: envs },
+    body: { AttachStderr: true, AttachStdout: true, Cmd: ['sh', '-c', wrapped], Env: envs },
     method: 'POST',
     path: `/containers/${id}/exec`
   })
