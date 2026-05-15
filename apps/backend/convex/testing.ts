@@ -1438,10 +1438,10 @@ const countAuditLogs = query({
   args: { testSecret: v.string() },
   handler: async (ctx, { testSecret }): Promise<{ count: number; sampleCommands: string[] }> => {
     verifyTestSecret(testSecret)
-    const rows = await ctx.db.query('auditLogs').take(200)
+    const rows = await ctx.db.query('auditLogs').order('desc').take(200)
     const cmds = new Set<string>()
     for (const r of rows) cmds.add(r.command)
-    return { count: rows.length, sampleCommands: [...cmds].slice(0, 10) }
+    return { count: rows.length, sampleCommands: [...cmds].slice(0, 20) }
   }
 })
 const docsFinalize = action({

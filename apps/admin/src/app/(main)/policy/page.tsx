@@ -30,6 +30,7 @@ const PolicyPage = (): React.ReactElement => {
         Used by the policy classifier on every upload to accept/reject documents.
       </p>
       <textarea
+        aria-label='Corpus policy text'
         className='h-64 w-full rounded-md border bg-background p-3 font-mono text-sm'
         onChange={e => setText(e.target.value)}
         value={text}

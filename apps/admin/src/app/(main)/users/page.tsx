@@ -23,13 +23,21 @@ const UsersPage = (): React.ReactElement => {
             <tr className='border-b' key={r._id}>
               <td className='py-2'>{r.userId}</td>
               <td>
-                <select className='rounded border px-2 py-1' onChange={() => undefined} value={r.role}>
+                <select
+                  aria-label='User role'
+                  className='rounded border px-2 py-1'
+                  onChange={() => undefined}
+                  value={r.role}>
                   <option value='user'>user</option>
                   <option value='admin'>admin</option>
                 </select>
               </td>
               <td>
-                <select className='rounded border px-2 py-1' onChange={() => undefined} value={r.department ?? ''}>
+                <select
+                  aria-label='User department'
+                  className='rounded border px-2 py-1'
+                  onChange={() => undefined}
+                  value={r.department ?? ''}>
                   <option value=''>—</option>
                   {DEPARTMENTS.map(d => (
                     <option key={d} value={d}>

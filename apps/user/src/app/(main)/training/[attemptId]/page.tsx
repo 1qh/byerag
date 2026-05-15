@@ -90,7 +90,14 @@ const AttemptPage = ({ params }: { params: Promise<{ attemptId: string }> }): Re
           <div className='space-y-1'>
             {q.choicesShuffled.map((c, j) => (
               <label className='flex items-center gap-2 text-sm' key={c}>
-                <input checked={answers[i] === j} name={`q${i}`} onChange={() => onPick(i, j)} type='radio' value={j} />
+                <input
+                  aria-label={c}
+                  checked={answers[i] === j}
+                  name={`q${i}`}
+                  onChange={() => onPick(i, j)}
+                  type='radio'
+                  value={j}
+                />
                 <span>{c}</span>
               </label>
             ))}
