@@ -1,4 +1,4 @@
-/* eslint-disable no-await-in-loop, no-continue, unicorn/prefer-ternary, unicorn/no-new-array, unicorn/prefer-array-find */
+/* eslint-disable no-await-in-loop, no-continue */
 /** biome-ignore-all lint/nursery/noContinue: control flow shape */
 /** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
@@ -640,7 +640,6 @@ const listForQuarantine = query({
     const identity = await ctx.auth.getUserIdentity()
     const email = identity?.email?.toLowerCase()
     if (!email) return []
-    // biome-ignore lint/nursery/noPlaywrightUselessAwait: Convex .first() returns thenable
     const profile = await ctx.db
       .query('userProfiles')
       .withIndex('by_userId', q => q.eq('userId', email))

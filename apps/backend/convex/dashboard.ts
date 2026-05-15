@@ -1,4 +1,8 @@
+/* eslint-disable no-continue */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops */
+/** biome-ignore-all lint/nursery/noContinue: control flow shape */
+/** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
+/* oxlint-disable eslint(no-await-in-loop), eslint(complexity), eslint(no-shadow), eslint(no-unused-vars), eslint(no-sequences), unicorn(no-array-reduce), unicorn(prefer-ternary), eslint(max-params) */
 /* eslint-disable no-await-in-loop */
 import { v } from 'convex/values'
 import type { QueryCtx } from './_generated/server'
@@ -15,6 +19,8 @@ const requireAdmin = async (ctx: QueryCtx): Promise<null | string> => {
     .first()
   return profile?.role === 'admin' ? email : null
 }
+const fmtDate = (x: Date): string =>
+  `${x.getUTCFullYear()}-${(x.getUTCMonth() + 1).toString().padStart(2, '0')}-${x.getUTCDate().toString().padStart(2, '0')}`
 const cycleStartFor = (now: number, anchorDay: number): { end: string; start: string } => {
   const d = new Date(now)
   const day = d.getUTCDate()
@@ -23,9 +29,7 @@ const cycleStartFor = (now: number, anchorDay: number): { end: string; start: st
       ? new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), anchorDay))
       : new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, anchorDay))
   const cycleEnd = new Date(Date.UTC(cycleStart.getUTCFullYear(), cycleStart.getUTCMonth() + 1, anchorDay - 1))
-  const fmt = (x: Date): string =>
-    `${x.getUTCFullYear()}-${(x.getUTCMonth() + 1).toString().padStart(2, '0')}-${x.getUTCDate().toString().padStart(2, '0')}`
-  return { end: fmt(cycleEnd), start: fmt(cycleStart) }
+  return { end: fmtDate(cycleEnd), start: fmtDate(cycleStart) }
 }
 const topStrip = query({
   args: {},

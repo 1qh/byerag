@@ -1,5 +1,4 @@
-/* eslint-disable unicorn/prefer-ternary, unicorn/no-new-array, unicorn/prefer-array-find */
-/* oxlint-disable unicorn/prefer-ternary, unicorn/no-new-array, unicorn/prefer-array-find, eslint(no-unused-vars) */
+/* oxlint-disable eslint(no-unused-vars) */
 /** biome-ignore-all lint/nursery/noContinue: control flow shape */
 /** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
@@ -149,19 +148,19 @@ const sendCore = async (
     .query('costRecords')
     .withIndex('by_owner_model_dayKey', q => q.eq('owner', email).eq('model', 'kimi-for-coding').eq('dayKey', dayKey))
     .first()
-  if (existing) await ctx.db.patch(existing._id, { callCount: existing.callCount + 1 })
-  else
-    await ctx.db.insert('costRecords', {
-      cacheCreationInputTokens: 0,
-      cacheReadInputTokens: 0,
-      callCount: 1,
-      cents: 0,
-      dayKey,
-      inputTokens: 0,
-      model: 'kimi-for-coding',
-      outputTokens: 0,
-      owner: email
-    })
+  await (existing
+    ? ctx.db.patch(existing._id, { callCount: existing.callCount + 1 })
+    : ctx.db.insert('costRecords', {
+        cacheCreationInputTokens: 0,
+        cacheReadInputTokens: 0,
+        callCount: 1,
+        cents: 0,
+        dayKey,
+        inputTokens: 0,
+        model: 'kimi-for-coding',
+        outputTokens: 0,
+        owner: email
+      }))
   return { chatId: cid, secret }
 }
 export { sanitizeTitle, sendCore, sessionMessage, VALID_SESSION_ID, verifySecret }

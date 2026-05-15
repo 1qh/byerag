@@ -1,3 +1,8 @@
+/* eslint-disable no-await-in-loop */
+/** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops */
+/** biome-ignore-all lint/nursery/noContinue: control flow shape */
+/** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
+/* oxlint-disable eslint(no-await-in-loop), eslint(complexity), eslint(no-shadow), eslint(no-unused-vars), eslint(no-sequences), unicorn(no-array-reduce), unicorn(prefer-ternary), eslint(max-params) */
 import { defineQuery } from '../_api'
 const action = defineQuery({
   args: {},

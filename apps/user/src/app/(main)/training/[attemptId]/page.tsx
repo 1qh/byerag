@@ -1,4 +1,5 @@
 'use client'
+import { cn } from '@a/ui'
 import { api } from 'backend/convex/_generated/api'
 import { useMutation, useQuery } from 'convex/react'
 import { use, useState } from 'react'
@@ -27,13 +28,13 @@ const AttemptPage = ({ params }: { params: Promise<{ attemptId: string }> }): Re
           Passed — {full.score}/{full.questionSnapshots.length}
         </h2>
         {full.questionSnapshots.map((q, i) => (
-          <div className='rounded-md border p-4 space-y-2' key={`${q.promptText}-${i}`}>
+          <div className='rounded-md border p-4 space-y-2' key={`${attemptId}-${q.promptText}`}>
             <div className='font-medium'>
               {i + 1}. {q.promptText}
             </div>
             <ol className='list-decimal list-inside text-sm'>
               {q.choicesShuffled.map((c, j) => (
-                <li className={j === q.correctIndexShuffled ? 'font-semibold text-green-700' : ''} key={c}>
+                <li className={cn(j === q.correctIndexShuffled && 'font-semibold text-green-700')} key={c}>
                   {c}
                 </li>
               ))}
@@ -61,17 +62,18 @@ const AttemptPage = ({ params }: { params: Promise<{ attemptId: string }> }): Re
       return n
     })
   }
-  const onSubmit = (): void => {
-    submit({ answers, attemptId: attemptId as never })
-      .then(r => setSubmitted(r))
-      .catch(error => {
-        // eslint-disable-next-line no-console
-        console.error('submit failed', error)
-      })
+  const onSubmit = async (): Promise<void> => {
+    try {
+      const r = await submit({ answers, attemptId: attemptId as never })
+      setSubmitted(r)
+    } catch (error: unknown) {
+      // eslint-disable-next-line no-console
+      console.error('submit failed', error)
+    }
   }
   if (submitted)
     return (
-      <div className={`p-6 font-semibold text-lg ${submitted.passed ? 'text-green-700' : 'text-destructive'}`}>
+      <div className={cn('p-6 font-semibold text-lg', submitted.passed ? 'text-green-700' : 'text-destructive')}>
         {submitted.passed
           ? `✓ Passed (${submitted.score}/${a.questionSnapshots.length})`
           : `✗ Failed (${submitted.score}/${a.questionSnapshots.length}) — retake from /training`}
@@ -97,8 +99,11 @@ const AttemptPage = ({ params }: { params: Promise<{ attemptId: string }> }): Re
       ))}
       <button
         className='rounded-md border bg-primary px-4 py-2 text-primary-foreground disabled:opacity-50'
-        disabled={answers.length !== a.questionSnapshots.length || answers.some(x => x === undefined)}
-        onClick={onSubmit}
+        disabled={answers.length !== a.questionSnapshots.length}
+        onClick={() => {
+          // oxlint-disable-next-line promise/prefer-await-to-then -- React event handler cannot be async (no-misused-promises); .catch is the documented byerag pattern
+          onSubmit().catch(() => undefined)
+        }}
         type='button'>
         Submit
       </button>

@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 /* eslint-disable no-console */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
+/* oxlint-disable eslint(no-await-in-loop), eslint(no-shadow), eslint(no-unused-expressions), eslint(max-params), eslint(no-unused-vars), promise(param-names), unicorn(prefer-native-coercion-functions), unicorn(prefer-ternary) */
 /** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
-import { ConvexHttpClient } from 'convex/browser'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 const ENV_LINE = /^\s*(?<key>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?<val>.*?)\s*$/u
@@ -26,7 +26,6 @@ if (!(url && testSecret)) {
   console.error('env missing')
   process.exit(2)
 }
-const c = new ConvexHttpClient(url)
 const probe = await fetch(`${url}/api/query`, {
   body: JSON.stringify({ args: { testSecret }, path: 'testing:countTestSuggestions' }),
   headers: { 'Content-Type': 'application/json' },

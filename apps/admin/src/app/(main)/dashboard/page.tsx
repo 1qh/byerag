@@ -15,21 +15,21 @@ const DashboardPage = (): React.ReactElement => {
   const assignAll = useMutation(api.trainingAssignments.assignAllForTopic)
   const unassignAll = useMutation(api.trainingAssignments.unassignAllForTopic)
   const rearm = useMutation(api.training.markTopicSubstantive)
-  const [busy, setBusy] = useState<Set<string>>(new Set())
-  const onTopicAction = (topicId: string, kind: 'assign' | 'rearm' | 'unassign'): void => {
+  const [busy, setBusy] = useState<Set<string>>(() => new Set())
+  const onTopicAction = async (topicId: string, kind: 'assign' | 'rearm' | 'unassign'): Promise<void> => {
     setBusy(p => new Set(p).add(`${topicId}|${kind}`))
     const fn = kind === 'assign' ? assignAll : kind === 'unassign' ? unassignAll : rearm
-    fn({ topicId: topicId as never })
-      .catch((error: unknown) => {
-        toast.error(String(error))
+    try {
+      await fn({ topicId: topicId as never })
+    } catch (error: unknown) {
+      toast.error(String(error))
+    } finally {
+      setBusy(p => {
+        const n = new Set(p)
+        n.delete(`${topicId}|${kind}`)
+        return n
       })
-      .finally(() => {
-        setBusy(p => {
-          const n = new Set(p)
-          n.delete(`${topicId}|${kind}`)
-          return n
-        })
-      })
+    }
   }
   if (top === undefined || pivot === undefined) return <div className='p-6'>Loading…</div>
   if (top === null) return <div className='p-6 text-destructive'>Admin role required.</div>
@@ -56,6 +56,8 @@ const DashboardPage = (): React.ReactElement => {
             {[...history].toReversed().map(c => {
               const maxCents = Math.max(1, ...history.map(h => h.cents))
               const heightPct = Math.max(2, (c.cents / maxCents) * 100)
+              // oxlint-disable-next-line react-perf/jsx-no-new-object-as-prop -- height varies per bar
+              const barStyle: React.CSSProperties = { height: `${heightPct}px` }
               return (
                 <button
                   className={cn(
@@ -74,7 +76,7 @@ const DashboardPage = (): React.ReactElement => {
                       c.isCurrent ? 'animate-pulse bg-primary/60' : 'bg-primary',
                       selectedCycle === c.cycleStart && 'ring-2 ring-foreground'
                     )}
-                    style={{ height: `${heightPct}px` }}
+                    style={barStyle}
                   />
                   <div>{c.cycleStart.slice(5)}</div>
                 </button>
@@ -162,7 +164,10 @@ const DashboardPage = (): React.ReactElement => {
                         <button
                           className='rounded border px-1 text-xs disabled:opacity-50'
                           disabled={busy.has(`${t._id}|assign`)}
-                          onClick={() => onTopicAction(t._id, 'assign')}
+                          onClick={() => {
+                            // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React event handler cannot be async (no-misused-promises); .catch is the documented byerag pattern
+                            onTopicAction(t._id, 'assign').catch((error: unknown) => toast.error(String(error)))
+                          }}
                           title='Assign to all role=user'
                           type='button'>
                           +
@@ -170,7 +175,10 @@ const DashboardPage = (): React.ReactElement => {
                         <button
                           className='rounded border px-1 text-xs disabled:opacity-50'
                           disabled={busy.has(`${t._id}|rearm`)}
-                          onClick={() => onTopicAction(t._id, 'rearm')}
+                          onClick={() => {
+                            // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React event handler cannot be async (no-misused-promises); .catch is the documented byerag pattern
+                            onTopicAction(t._id, 'rearm').catch((error: unknown) => toast.error(String(error)))
+                          }}
                           title='Mark substantive — re-arm assigned passes'
                           type='button'>
                           ↻
@@ -178,7 +186,10 @@ const DashboardPage = (): React.ReactElement => {
                         <button
                           className='rounded border px-1 text-xs disabled:opacity-50'
                           disabled={busy.has(`${t._id}|unassign`)}
-                          onClick={() => onTopicAction(t._id, 'unassign')}
+                          onClick={() => {
+                            // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React event handler cannot be async (no-misused-promises); .catch is the documented byerag pattern
+                            onTopicAction(t._id, 'unassign').catch((error: unknown) => toast.error(String(error)))
+                          }}
                           title='Un-assign all'
                           type='button'>
                           ×

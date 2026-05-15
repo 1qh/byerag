@@ -54,7 +54,8 @@ const QuarantinePage = (): React.ReactElement => {
                   className='rounded-md border bg-primary px-3 py-1 text-primary-foreground text-xs disabled:opacity-50'
                   disabled={busy.has(r._id)}
                   onClick={() => {
-                    undefined
+                    // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React event handler cannot be async (no-misused-promises); .catch is the documented byerag pattern
+                    act(r._id, 'approve').catch((error: unknown) => toast.error(String(error)))
                   }}
                   type='button'>
                   Approve
@@ -63,7 +64,8 @@ const QuarantinePage = (): React.ReactElement => {
                   className='rounded-md border bg-destructive px-3 py-1 text-destructive-foreground text-xs disabled:opacity-50'
                   disabled={busy.has(r._id)}
                   onClick={() => {
-                    undefined
+                    // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React event handler cannot be async (no-misused-promises); .catch is the documented byerag pattern
+                    act(r._id, 'reject').catch((error: unknown) => toast.error(String(error)))
                   }}
                   type='button'>
                   Confirm reject

@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
-/* eslint-disable no-console */
+/* eslint-disable no-console, no-await-in-loop */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
+/* oxlint-disable eslint(no-await-in-loop), eslint(no-shadow), eslint(no-unused-expressions), eslint(max-params), eslint(no-unused-vars), promise(param-names), unicorn(prefer-native-coercion-functions), unicorn(prefer-ternary) */
 /** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
 import { ConvexHttpClient } from 'convex/browser'
@@ -30,8 +31,8 @@ if (!(url && testSecret && uploader)) {
 }
 const c = new ConvexHttpClient(url)
 const sleep = async (ms: number): Promise<void> =>
-  new Promise(r => {
-    setTimeout(r, ms)
+  new Promise(resolve => {
+    setTimeout(resolve, ms)
   })
 let pass = 0
 let fail = 0

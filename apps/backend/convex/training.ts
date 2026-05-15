@@ -1,8 +1,8 @@
-/* eslint-disable no-await-in-loop, no-continue, complexity, @typescript-eslint/no-unnecessary-condition */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops by design */
 /** biome-ignore-all lint/nursery/noContinue: control flow shape */
 /** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
 /* oxlint-disable eslint(no-await-in-loop), eslint(complexity), eslint(no-shadow), unicorn(no-array-reduce), unicorn(prefer-ternary) */
+/* eslint-disable no-await-in-loop, complexity, no-continue, @typescript-eslint/no-unnecessary-condition -- sequential Convex DB ops by design; control flow shape; widened types from generated API */
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import { internalAction, internalMutation, internalQuery, mutation, query } from './_generated/server'
@@ -570,7 +570,11 @@ const adminRegenerateQuestion = mutation({
       .query('testQuestionSuggestions')
       .withIndex('by_target', x => x.eq('targetQuestionId', questionId))
       .collect()
-    const lastRegen = priorSuggestions.reduce((acc, s) => Math.max(acc, s.regenCount ?? 0), 0)
+    let lastRegen = 0
+    for (const s of priorSuggestions) {
+      const rc = s.regenCount ?? 0
+      if (rc > lastRegen) lastRegen = rc
+    }
     if (lastRegen >= 5) throw new Error('regenCount cap reached (5)')
     const regenCount = lastRegen + 1
     const sid = await ctx.db.insert('testQuestionSuggestions', {

@@ -34,8 +34,8 @@ if (!url) die('CONVEX_SELF_HOSTED_URL missing')
 if (!testSecret) die('TEST_SECRET missing')
 if (!bootstrapEmail) die('BOOTSTRAP_ADMIN_EMAIL missing')
 const sleep = async (ms: number): Promise<void> =>
-  new Promise(r => {
-    setTimeout(r, ms)
+  new Promise(resolve => {
+    setTimeout(resolve, ms)
   })
 const c = new ConvexHttpClient(url)
 const SANDBOX = (await $`docker ps --filter ancestor=byerag-sandbox --format '{{.Names}}'`.text()).trim().split('\n')[0]

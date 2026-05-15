@@ -20,8 +20,8 @@ const DocViewerPage = ({ params }: { params: Promise<{ docId: string }> }): Reac
       </div>
       <pre className='whitespace-pre-wrap rounded-md border bg-muted p-4 font-mono text-sm'>
         {lines.map((line, i) => (
-          // biome-ignore lint/correctness/useJsxKeyInIterable: line index is stable for static doc viewer
-          <div className='target:bg-yellow-100' id={`L${i + 1}`} key={`L${i + 1}`}>
+          // biome-ignore lint/suspicious/noArrayIndexKey: line index is stable for static doc viewer
+          <div className='target:bg-yellow-100' id={`L${i + 1}`} key={`id-${docId}-L${i + 1}`}>
             {line || ' '}
           </div>
         ))}

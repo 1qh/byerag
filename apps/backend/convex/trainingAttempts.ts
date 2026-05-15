@@ -1,3 +1,7 @@
+/** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops */
+/** biome-ignore-all lint/nursery/noContinue: control flow shape */
+/** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
+/* oxlint-disable eslint(no-await-in-loop), eslint(complexity), eslint(no-shadow), eslint(no-unused-vars), eslint(no-sequences), unicorn(no-array-reduce), unicorn(prefer-ternary), eslint(max-params) */
 import { v } from 'convex/values'
 import { mutation, query } from './_generated/server'
 const REQUIRED_PER_ATTEMPT = 5
@@ -101,15 +105,15 @@ const submitAttempt = mutation({
         )
         .collect()
       const priorPass = priorPassRows[0]
-      if (priorPass) await ctx.db.patch(priorPass._id, { attemptId, passedAt: finishedAt })
-      else
-        await ctx.db.insert('testPasses', {
-          attemptId,
-          kind: attempt.kind,
-          passedAt: finishedAt,
-          topicId: attempt.topicId,
-          userId
-        })
+      await (priorPass
+        ? ctx.db.patch(priorPass._id, { attemptId, passedAt: finishedAt })
+        : ctx.db.insert('testPasses', {
+            attemptId,
+            kind: attempt.kind,
+            passedAt: finishedAt,
+            topicId: attempt.topicId,
+            userId
+          }))
     }
     return { passed, score }
   }

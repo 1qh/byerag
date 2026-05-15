@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 /* eslint-disable no-console */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
+/* oxlint-disable eslint(no-await-in-loop), eslint(no-shadow), eslint(no-unused-expressions), eslint(max-params), eslint(no-unused-vars), promise(param-names), unicorn(prefer-native-coercion-functions), unicorn(prefer-ternary) */
 /** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
 import { ConvexHttpClient } from 'convex/browser'
@@ -75,11 +76,11 @@ await c.mutation(api.testing.seedAssignment, {
   topicId: topicId as never,
   userId: U
 })
-const a3 = await c.mutation(api.testing.startAttemptProbe, {
+const a3 = (await c.mutation(api.testing.startAttemptProbe, {
   testSecret,
   topicId: topicId as never,
   userId: U
-})
+})) as { kind: string }
 check('assigned-attempt kind=assigned', a3.kind === 'assigned', `kind=${a3.kind}`)
 console.log('[attempt] seed shallow topic poolSize=3 → start must reject')
 await c.mutation(api.testing.wipeTrainingTables, { testSecret })

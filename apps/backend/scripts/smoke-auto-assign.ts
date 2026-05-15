@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 /* eslint-disable no-console */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
+/* oxlint-disable eslint(no-await-in-loop), eslint(no-shadow), eslint(no-unused-expressions), eslint(max-params), eslint(no-unused-vars), promise(param-names), unicorn(prefer-native-coercion-functions), unicorn(prefer-ternary) */
 /** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
 import { ConvexHttpClient } from 'convex/browser'
@@ -59,7 +60,10 @@ const r2 = (await c.action(api.testing.runAutoAssign, { testSecret })) as {
 }
 check('enabled cron: 4 assignments (2 users × 2 topics)', r2.assignmentsCreated === 4, `created=${r2.assignmentsCreated}`)
 check('enabled cron: 2 topics processed', r2.topicsProcessed === 2, `topicsProcessed=${r2.topicsProcessed}`)
-const agentCount = await c.query(api.testing.countAssignmentsByCreator, { createdBy: 'agent', testSecret })
+const agentCount = await c.query(api.testing.countAssignmentsByCreator, {
+  createdBy: 'agent',
+  testSecret
+})
 check('all 4 rows createdBy=agent', agentCount === 4, `count=${agentCount}`)
 console.log('[auto-assign] re-run cron — idempotent (no new rows, already covered)')
 const r3 = (await c.action(api.testing.runAutoAssign, { testSecret })) as { assignmentsCreated: number }

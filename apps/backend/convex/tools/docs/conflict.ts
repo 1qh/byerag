@@ -1,4 +1,3 @@
-/* eslint-disable unicorn/prefer-ternary, unicorn/no-new-array, unicorn/prefer-array-find */
 /** biome-ignore-all lint/nursery/noContinue: control flow shape */
 /** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
@@ -54,7 +53,7 @@ const callKimi = async (system: string, user: string): Promise<string> => {
     signal: AbortSignal.timeout(KIMI_TIMEOUT_MS)
   })
   if (!res.ok) throw new Error(`kimi ${res.status}: ${(await res.text()).slice(0, 200)}`)
-  const json: KimiResponse = await res.json()
+  const json = (await res.json()) as KimiResponse
   const text = json.content?.find(c => c.type === 'text')?.text ?? ''
   if (!text) throw new Error('kimi empty response')
   return text

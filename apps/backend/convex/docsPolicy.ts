@@ -1,5 +1,4 @@
-/* eslint-disable unicorn/prefer-ternary, unicorn/no-new-array, unicorn/prefer-array-find */
-/* oxlint-disable unicorn/prefer-ternary, unicorn/no-new-array, unicorn/prefer-array-find, eslint(no-unused-vars) */
+/* oxlint-disable eslint(no-unused-vars) */
 /** biome-ignore-all lint/nursery/noContinue: control flow shape */
 /** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
@@ -17,11 +16,6 @@ const MAX_PROMPT_CHARS = 4000
 const KIMI_TIMEOUT_MS = 30_000
 const POLICY_CATEGORIES = new Set(['abusive', 'off-topic', 'on-topic', 'promotional', 'prompt-injection', 'spam'])
 const JSON_BLOCK_RE = /\{[\s\S]*?"relevant"[\s\S]*?\}/u
-interface ClassifyDoc {
-  extractedText?: string
-  filename: string
-  policyStatus: 'approved' | 'pending' | 'rejected'
-}
 interface KimiResponse {
   content?: { text?: string; type?: string }[]
 }
@@ -47,7 +41,7 @@ const callKimi = async (systemPrompt: string, userPrompt: string): Promise<strin
     signal: AbortSignal.timeout(KIMI_TIMEOUT_MS)
   })
   if (!res.ok) throw new Error(`kimi ${res.status}: ${(await res.text()).slice(0, 200)}`)
-  const json: KimiResponse = await res.json()
+  const json = (await res.json()) as KimiResponse
   const text = json.content?.find(c => c.type === 'text')?.text ?? ''
   if (!text) throw new Error('kimi empty response')
   return text

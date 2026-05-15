@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-/* eslint-disable no-console */
+/* eslint-disable no-console, @typescript-eslint/max-params */
 /** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
 import { $ } from 'bun'
@@ -71,7 +71,7 @@ record(
   r5.output.includes('agent') && r5.output.includes('1000'),
   r5.output
 )
-const pass = checks.filter(c => c.pass).length
-const fail = checks.length - pass
-console.log(`\n[isolation] SUMMARY pass=${pass} fail=${fail} total=${checks.length}`)
-if (fail > 0) process.exit(1)
+const passCount = checks.filter(c => c.pass).length
+const failCount = checks.length - passCount
+console.log(`\n[isolation] SUMMARY pass=${passCount} fail=${failCount} total=${checks.length}`)
+if (failCount > 0) process.exit(1)

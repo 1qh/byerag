@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 /* eslint-disable no-console */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
+/* oxlint-disable eslint(no-await-in-loop), eslint(no-shadow), eslint(no-unused-expressions), eslint(max-params), eslint(no-unused-vars), promise(param-names), unicorn(prefer-native-coercion-functions), unicorn(prefer-ternary) */
 /** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
-import { ConvexHttpClient } from 'convex/browser'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 const env = Object.fromEntries(
@@ -17,7 +17,6 @@ const env = Object.fromEntries(
 ) as Record<string, string>
 const url = env.CONVEX_SELF_HOSTED_URL ?? ''
 const testSecret = env.TEST_SECRET ?? ''
-const c = new ConvexHttpClient(url)
 const TS = testSecret
 const fetchQuery = async <T>(path: string, body: Record<string, unknown> = {}): Promise<T> => {
   const r = await fetch(`${url}/api/query`, {
@@ -29,10 +28,7 @@ const fetchQuery = async <T>(path: string, body: Record<string, unknown> = {}): 
   if (j.status !== 'success') throw new Error(`${path}: ${j.status}`)
   return j.value as T
 }
-const topics = await fetchQuery<{ topics: { _id: string; name: string; poolSize: number }[] }>(
-  'testing:countTestSuggestions'
-)
-undefined
+await fetchQuery<{ topics: { _id: string; name: string; poolSize: number }[] }>('testing:countTestSuggestions')
 const beforePass = await fetchQuery<{ count: number }>('testing:countAuditLogs')
 console.log(`[rearm] audit rows before: ${beforePass.count}`)
 console.log('[rearm] To exercise re-arm cascade end-to-end:')

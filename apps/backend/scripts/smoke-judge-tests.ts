@@ -1,13 +1,12 @@
 #!/usr/bin/env bun
-/* oxlint-disable unicorn/prefer-ternary, unicorn/no-new-array, unicorn/prefer-array-find, eslint(no-unused-vars) */
-/* eslint-disable @typescript-eslint/max-params, @typescript-eslint/use-unknown-in-catch-callback-variable, no-await-in-loop, unicorn/prefer-ternary, unicorn/no-new-array, unicorn/prefer-array-find */
+/* oxlint-disable eslint(no-unused-vars) */
 /** biome-ignore-all lint/nursery/noContinue: control flow shape */
 /** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
 /** biome-ignore-all lint/performance/useTopLevelRegex: scoped regex ok */
 /** biome-ignore-all lint/style/useExplicitLengthCheck: idiomatic */
 /** biome-ignore-all lint/correctness/noUnusedVariables: pending feature */
-/* eslint-disable no-console */
+/* eslint-disable no-console, no-await-in-loop, @typescript-eslint/max-params */
 /** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
 import { $ } from 'bun'
@@ -72,29 +71,50 @@ record(
   found.length === expected.length && services.length >= 3,
   `services=${services.join(', ')}`
 )
-const convexVersion = await fetch(`${url}/version`)
-  .then(async r => (r.ok ? r.text() : `HTTP ${r.status}`))
-  .catch(error => `ERR ${String(error).slice(0, 100)}`)
+const convexVersion = await (async (): Promise<string> => {
+  try {
+    const versionRes = await fetch(`${url}/version`)
+    return versionRes.ok ? await versionRes.text() : `HTTP ${versionRes.status}`
+  } catch (error) {
+    return `ERR ${String(error).slice(0, 100)}`
+  }
+})()
 record(
   'B.convex-version',
   `${url}/version returns 200`,
   !(convexVersion.startsWith('HTTP') || convexVersion.startsWith('ERR')),
   convexVersion.slice(0, 200)
 )
-const ollamaTags = (await fetch(`http://localhost:${ollamaPort}/api/tags`)
-  .then(async r => (r.ok ? ((await r.json()) as unknown) : null))
-  .catch(() => null)) as null | { models?: { name?: string }[] }
+const ollamaTags = await (async (): Promise<null | { models?: { name?: string }[] }> => {
+  try {
+    const tagsRes = await fetch(`http://localhost:${ollamaPort}/api/tags`)
+    if (!tagsRes.ok) return null
+    return (await tagsRes.json()) as { models?: { name?: string }[] }
+  } catch {
+    return null
+  }
+})()
 const ollamaModels = ollamaTags?.models?.map(m => m.name ?? '') ?? []
 const hasNomic = ollamaModels.some(n => n.includes('nomic-embed-text-v2-moe'))
 record('B.ollama-nomic', 'Ollama serves nomic-embed-text-v2-moe', hasNomic, `models=${ollamaModels.join(', ')}`)
 console.log('\n[judge] C — Web apps reachable')
-const adminStatus = await fetch(`http://localhost:${adminPort}/`)
-  .then(r => `HTTP ${r.status}`)
-  .catch(error => `ERR ${String(error).slice(0, 80)}`)
+const adminStatus = await (async (): Promise<string> => {
+  try {
+    const adminRes = await fetch(`http://localhost:${adminPort}/`)
+    return `HTTP ${adminRes.status}`
+  } catch (error) {
+    return `ERR ${String(error).slice(0, 80)}`
+  }
+})()
 record('C.admin-app', `admin app at :${adminPort} returns 200`, adminStatus === 'HTTP 200', adminStatus)
-const userStatus = await fetch(`http://localhost:${userPort}/`)
-  .then(r => `HTTP ${r.status}`)
-  .catch(error => `ERR ${String(error).slice(0, 80)}`)
+const userStatus = await (async (): Promise<string> => {
+  try {
+    const userRes = await fetch(`http://localhost:${userPort}/`)
+    return `HTTP ${userRes.status}`
+  } catch (error) {
+    return `ERR ${String(error).slice(0, 80)}`
+  }
+})()
 record('C.user-app', `user app at :${userPort} returns 200`, userStatus === 'HTTP 200', userStatus)
 console.log('\n[judge] I — Cost + audit recording')
 const testSecret = env.TEST_SECRET ?? ''
@@ -160,7 +180,7 @@ console.log('\n[judge] K — Final promise')
 const ledgerPath = join(import.meta.dir, '..', '..', '..', '..', 'byerag-docs', 'ledger.jsonl')
 let promiseFound = false
 try {
-  const ledgerTail = readFileSync(ledgerPath, 'utf8').split('\n').filter(Boolean).at(-1) ?? ''
+  const ledgerTail = readFileSync(ledgerPath, 'utf8').split('\n').findLast(Boolean) ?? ''
   promiseFound = ledgerTail.includes('<promise>BYERAG SHIPPED') && ledgerTail.includes('</promise>')
 } catch {
   // Ledger missing

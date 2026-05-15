@@ -7,11 +7,19 @@
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential retry backoff */
 /* oxlint-disable eslint(no-empty), eslint(no-await-in-loop), promise/prefer-await-to-then, unicorn/prefer-top-level-await */
 /* eslint-disable no-await-in-loop */
-import type { SDKSession } from '@anthropic-ai/claude-agent-sdk'
 import { unstable_v2_createSession, unstable_v2_resumeSession } from '@anthropic-ai/claude-agent-sdk'
 import { execSync } from 'node:child_process'
 import { mkdirSync, unlinkSync, writeFileSync } from 'node:fs'
 import { z } from 'zod/v4'
+type CreateSessionFn = (opts: Record<string, unknown>) => SDKSession
+type ResumeSessionFn = (id: string, opts: Record<string, unknown>) => SDKSession
+interface SDKSession {
+  send: (text: string) => void
+  readonly sessionId: string
+  stream: () => AsyncIterable<unknown>
+}
+const createSession = unstable_v2_createSession as unknown as CreateSessionFn
+const resumeSession = unstable_v2_resumeSession as unknown as ResumeSessionFn
 const AGENT_SKILLS_BY_APP: Record<string, Record<string, string>> = {}
 const envSchema = z.object({
   CHAT_APP: z.string().min(1),
@@ -80,12 +88,12 @@ let session: SDKSession
 let sessionWasResumed = false
 if (config.RESUME_SESSION_ID)
   try {
-    session = unstable_v2_resumeSession(config.RESUME_SESSION_ID, opts)
+    session = resumeSession(config.RESUME_SESSION_ID, opts)
     sessionWasResumed = true
   } catch {
-    session = unstable_v2_createSession(opts)
+    session = createSession(opts)
   }
-else session = unstable_v2_createSession(opts)
+else session = createSession(opts)
 const sleep = async (ms: number): Promise<void> =>
   new Promise(resolve => {
     setTimeout(resolve, ms)
@@ -118,6 +126,10 @@ const postJson = async (path: string, body: Record<string, unknown>): Promise<vo
     }
   throw lastErr instanceof Error ? lastErr : new Error(`${path} failed`)
 }
+interface SDKStreamEvent {
+  session_id?: string
+  type?: string
+}
 let seq = 0
 let sessionId = ''
 try {
@@ -126,7 +138,8 @@ try {
     ? `<system-instructions>\n${config.SYSTEM_PROMPT}\n</system-instructions>\n\n${config.USER_TEXT}`
     : config.USER_TEXT
   session.send(text)
-  for await (const event of session.stream()) {
+  for await (const rawEvent of session.stream()) {
+    const event = rawEvent as SDKStreamEvent
     if (!sessionId && event.session_id) sessionId = event.session_id
     await postJson('/api/stream/event', {
       chatId: config.CHAT_ID,

@@ -1,12 +1,10 @@
 #!/usr/bin/env bun
-/* eslint-disable @typescript-eslint/max-params, unicorn/prefer-ternary, unicorn/no-new-array, unicorn/prefer-array-find */
-/** biome-ignore-all lint/nursery/noContinue: control flow shape */
 /** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
+/* oxlint-disable eslint(no-await-in-loop), eslint(no-shadow), eslint(no-unused-expressions), eslint(max-params), eslint(no-unused-vars), unicorn(prefer-native-coercion-functions) */
 /** biome-ignore-all lint/performance/useTopLevelRegex: scoped regex ok */
 /** biome-ignore-all lint/style/useExplicitLengthCheck: idiomatic */
-/** biome-ignore-all lint/correctness/noUnusedVariables: pending feature */
-/* eslint-disable no-console */
+/* eslint-disable no-console, @typescript-eslint/max-params */
 /** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
 import { ConvexHttpClient } from 'convex/browser'
@@ -38,19 +36,25 @@ if (!url) die('CONVEX_SELF_HOSTED_URL missing')
 if (!testSecret) die('TEST_SECRET missing')
 if (!uploader) die('BOOTSTRAP_ADMIN_EMAIL missing')
 const client = new ConvexHttpClient(url)
-const uploadBytes = async (label: string, bytes: Uint8Array, filename: string, mime: string) => {
+interface FinalizeResult {
+  docId?: string
+  ok: boolean
+  reason?: string
+  signature?: string
+}
+const uploadBytes = async (label: string, bytes: Uint8Array, filename: string, mime: string): Promise<FinalizeResult> => {
   const uploadUrl = await client.mutation(api.testing.docsGenerateUploadUrl, { testSecret })
   const res = await fetch(uploadUrl, { body: bytes, headers: { 'Content-Type': mime }, method: 'POST' })
   if (!res.ok) die(`[${label}] storage upload failed: ${res.status}`)
   const { storageId } = (await res.json()) as { storageId: string }
-  const result = await client.action(api.testing.docsFinalize, {
+  const result = (await client.action(api.testing.docsFinalize, {
     filename,
     mime,
     scope: 'shared',
-    storageId,
+    storageId: storageId as never,
     testSecret,
     uploaderEmail: uploader
-  })
+  })) as FinalizeResult
   console.log(`[${label}] result=${JSON.stringify(result)}`)
   return result
 }

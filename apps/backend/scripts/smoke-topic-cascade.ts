@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
-/* eslint-disable no-console */
+/* eslint-disable no-console, @typescript-eslint/no-unnecessary-condition */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
+/* oxlint-disable eslint(no-await-in-loop), eslint(no-shadow), eslint(no-unused-expressions), eslint(max-params), eslint(no-unused-vars), promise(param-names), unicorn(prefer-native-coercion-functions), unicorn(prefer-ternary) */
 /** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
 import { ConvexHttpClient } from 'convex/browser'
@@ -51,9 +52,7 @@ const sugId = await c.mutation(api.testing.seedSuggestion, {
   topicId: topicId as never
 })
 await c.mutation(api.testing.seedAssignment, { createdBy: ADMIN, testSecret, topicId: topicId as never, userId: U })
-const a1 = (await c.mutation(api.testing.startAttemptProbe, { testSecret, topicId: topicId as never, userId: U })) as {
-  attemptId: string
-}
+await c.mutation(api.testing.startAttemptProbe, { testSecret, topicId: topicId as never, userId: U })
 console.log('[cascade] delete topic')
 const r = await c.mutation(api.testing.adminDeleteTopicProbe, {
   adminEmail: ADMIN,

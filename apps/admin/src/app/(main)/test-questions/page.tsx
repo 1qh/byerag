@@ -1,4 +1,5 @@
 'use client'
+import { cn } from '@a/ui'
 import { api } from 'backend/convex/_generated/api'
 import { useMutation, useQuery } from 'convex/react'
 import { useState } from 'react'
@@ -41,7 +42,7 @@ const TestQuestionsPage = (): React.ReactElement => {
           </h3>
           {items.map(r => (
             <div
-              className={`rounded-md border p-4 space-y-2 ${r.pairKind === 'conflict' ? 'border-yellow-500' : ''}`}
+              className={cn('rounded-md border p-4 space-y-2', r.pairKind === 'conflict' && 'border-yellow-500')}
               key={r._id}>
               {r.pairKind ? (
                 <div className='text-xs text-yellow-700'>
@@ -54,7 +55,7 @@ const TestQuestionsPage = (): React.ReactElement => {
               <div className='font-medium'>{r.prompt ?? '(no prompt)'}</div>
               <ol className='list-decimal list-inside text-sm space-y-1'>
                 {(r.choices ?? []).map((c, i) => (
-                  <li className={i === r.correctIndex ? 'font-semibold' : ''} key={c}>
+                  <li className={cn(i === r.correctIndex && 'font-semibold')} key={c}>
                     {c} {i === r.correctIndex && <span className='text-green-600'>✓</span>}
                   </li>
                 ))}
@@ -64,7 +65,8 @@ const TestQuestionsPage = (): React.ReactElement => {
                   className='rounded-md border bg-primary px-3 py-1 text-primary-foreground text-sm disabled:opacity-50'
                   disabled={pending.has(r._id)}
                   onClick={() => {
-                    undefined
+                    // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React event handler cannot be async (no-misused-promises); .catch is the documented byerag pattern
+                    act(r._id, 'approve').catch((error: unknown) => toast.error(String(error)))
                   }}
                   type='button'>
                   {pending.has(r._id) ? '…' : 'Approve'}
@@ -73,7 +75,8 @@ const TestQuestionsPage = (): React.ReactElement => {
                   className='rounded-md border bg-destructive px-3 py-1 text-destructive-foreground text-sm disabled:opacity-50'
                   disabled={pending.has(r._id)}
                   onClick={() => {
-                    undefined
+                    // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React event handler cannot be async (no-misused-promises); .catch is the documented byerag pattern
+                    act(r._id, 'reject').catch((error: unknown) => toast.error(String(error)))
                   }}
                   type='button'>
                   {pending.has(r._id) ? '…' : 'Reject'}

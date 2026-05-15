@@ -57,7 +57,8 @@ const ScanOverrideModal = ({ docId, filename, onClose, signature }: ScanOverride
             className='rounded border px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-foreground'
             disabled={busy}
             onClick={() => {
-              undefined
+              // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React event handler cannot be async (no-misused-promises); .catch is the documented byerag pattern
+              onNo().catch((error: unknown) => toast.error(String(error)))
             }}
             ref={noBtnRef}
             type='button'>
@@ -67,7 +68,8 @@ const ScanOverrideModal = ({ docId, filename, onClose, signature }: ScanOverride
             className='rounded border bg-destructive px-3 py-1 text-destructive-foreground text-sm'
             disabled={busy}
             onClick={() => {
-              undefined
+              // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React event handler cannot be async (no-misused-promises); .catch is the documented byerag pattern
+              onYes().catch((error: unknown) => toast.error(String(error)))
             }}
             type='button'>
             Yes

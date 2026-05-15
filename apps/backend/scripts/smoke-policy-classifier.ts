@@ -30,8 +30,8 @@ const die = (msg: string): never => {
 }
 if (!(url && testSecret && bootstrapEmail)) die('env missing')
 const sleep = async (ms: number): Promise<void> =>
-  new Promise(r => {
-    setTimeout(r, ms)
+  new Promise(resolve => {
+    setTimeout(resolve, ms)
   })
 const c = new ConvexHttpClient(url)
 interface Case {

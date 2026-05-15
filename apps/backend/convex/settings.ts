@@ -1,5 +1,5 @@
-/* eslint-disable no-await-in-loop, unicorn/prefer-ternary, unicorn/no-new-array, unicorn/prefer-array-find */
-/* oxlint-disable unicorn/prefer-ternary, unicorn/no-new-array, unicorn/prefer-array-find, eslint(no-unused-vars) */
+/* eslint-disable no-await-in-loop */
+/* oxlint-disable eslint(no-unused-vars) */
 /** biome-ignore-all lint/nursery/noContinue: control flow shape */
 /** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
@@ -50,8 +50,9 @@ const set = internalMutation({
       .query('settings')
       .withIndex('by_key', q => q.eq('key', key))
       .first()
-    if (existing) await ctx.db.patch(existing._id, { updatedAt: Date.now(), updatedBy, value })
-    else await ctx.db.insert('settings', { key, updatedAt: Date.now(), updatedBy, value })
+    await (existing
+      ? ctx.db.patch(existing._id, { updatedAt: Date.now(), updatedBy, value })
+      : ctx.db.insert('settings', { key, updatedAt: Date.now(), updatedBy, value }))
   }
 })
 const requireAdminEmail = async (ctx: QueryCtx): Promise<null | string> => {
@@ -85,8 +86,9 @@ const setForAdmin = mutation({
       .query('settings')
       .withIndex('by_key', q => q.eq('key', key))
       .first()
-    if (existing) await ctx.db.patch(existing._id, { updatedAt: Date.now(), updatedBy: adminEmail, value })
-    else await ctx.db.insert('settings', { key, updatedAt: Date.now(), updatedBy: adminEmail, value })
+    await (existing
+      ? ctx.db.patch(existing._id, { updatedAt: Date.now(), updatedBy: adminEmail, value })
+      : ctx.db.insert('settings', { key, updatedAt: Date.now(), updatedBy: adminEmail, value }))
     await ctx.db.insert('auditLogs', {
       args: JSON.stringify({ key, valueLen: value.length }),
       command: 'settings.set',
