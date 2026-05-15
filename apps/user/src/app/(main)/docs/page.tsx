@@ -1,5 +1,5 @@
 'use client'
-import { DocUpload } from '@a/react/components/doc-upload'
+import { DocUpload } from '@a/react/components'
 import { api } from 'backend/convex/_generated/api'
 import { useQuery } from 'convex/react'
 const DocsPage = (): React.ReactElement => {

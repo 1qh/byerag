@@ -66,13 +66,27 @@ const action = defineTool({
         ids: topChunks.map(h => h._id)
       })) as ChunkRow[]
       const byChunkId = new Map(chunks.map(c => [c._id, c]))
-      return topChunks
-        .map(h => {
-          const row = byChunkId.get(h._id)
-          if (!row) return null
-          return { _score: h._score, chunkSeq: row.seq, docId: row.docId, snippet: row.text.slice(0, 200) }
+      const granularOut: {
+        _id: Id<'docs'>
+        _score: number
+        chunkSeq: number
+        filename: string
+        scope: 'mine' | 'shared'
+        snippet: string
+      }[] = []
+      for (const h of topChunks) {
+        const row = byChunkId.get(h._id)
+        if (!row) continue
+        granularOut.push({
+          _id: row.docId,
+          _score: h._score,
+          chunkSeq: row.seq,
+          filename: '',
+          scope: 'shared',
+          snippet: row.text.slice(0, 200)
         })
-        .filter((x): x is { _score: number; chunkSeq: number; docId: Id<'docs'>; snippet: string } => x !== null)
+      }
+      return granularOut
     }
     const hits: { _id: Id<'docs'>; _score: number }[] = []
     if (wantShared) {
@@ -94,16 +108,27 @@ const action = defineTool({
     const top = hits.toSorted((a, b) => b._score - a._score).slice(0, cap)
     const rows = (await ctx.runQuery(internal.docs.getRowsSnippet, { ids: top.map(h => h._id) })) as SnippetRow[]
     const byId = new Map(rows.map(r => [r._id, r]))
-    return top
-      .map(h => {
-        const row = byId.get(h._id)
-        if (!row) return null
-        return { _id: h._id, _score: h._score, filename: row.filename, scope: row.scope, snippet: row.snippet }
+    const out: {
+      _id: Id<'docs'>
+      _score: number
+      chunkSeq: number
+      filename: string
+      scope: 'mine' | 'shared'
+      snippet: string
+    }[] = []
+    for (const h of top) {
+      const row = byId.get(h._id)
+      if (!row) continue
+      out.push({
+        _id: h._id,
+        _score: h._score,
+        chunkSeq: 0,
+        filename: row.filename,
+        scope: row.scope,
+        snippet: row.snippet
       })
-      .filter(
-        (x): x is { _id: Id<'docs'>; _score: number; filename: string; scope: 'mine' | 'shared'; snippet: string } =>
-          x !== null
-      )
+    }
+    return out
   }
 })
 export { action }

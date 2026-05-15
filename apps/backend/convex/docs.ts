@@ -360,6 +360,39 @@ const generateUploadUrl = mutation({
     return ctx.storage.generateUploadUrl()
   }
 })
+interface DocViewer {
+  _id: Id<'docs'>
+  content: string
+  filename: string
+  lang: null | string
+  mime: string
+  scope: 'mine' | 'shared'
+  truncated: boolean
+  version: number
+}
+const read = query({
+  args: { bytes: v.optional(v.number()), docId: v.id('docs') },
+  handler: async (ctx, { docId, bytes }): Promise<DocViewer | null> => {
+    const identity = await ctx.auth.getUserIdentity()
+    const email = identity?.email?.toLowerCase()
+    if (!email) return null
+    const row = await ctx.db.get(docId)
+    if (!row) return null
+    if (row.scope === 'mine' && row.owner !== email) return null
+    const cap = Math.min(bytes ?? 200_000, 2_000_000)
+    const text = row.extractedText ?? ''
+    return {
+      _id: row._id,
+      content: text.slice(0, cap),
+      filename: row.filename,
+      lang: row.lang ?? null,
+      mime: row.mime,
+      scope: row.scope,
+      truncated: text.length > cap,
+      version: row.version
+    }
+  }
+})
 interface DocListItem {
   _id: Id<'docs'>
   filename: string
@@ -768,6 +801,7 @@ export {
   persistChunks,
   purgeQuarantineStaging,
   purgeSoftDeleted,
+  read,
   requestReview,
   setExtracted,
   setPolicy,

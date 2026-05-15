@@ -63,25 +63,4 @@ const classifyProbeError = action({
     return ctx.runAction(internal.docsPolicy.classify, { docId, simulateError: true })
   }
 })
-const mintOAuthJwt = action({
-  args: { sessionId: v.string(), testSecret: v.string(), userId: v.string() },
-  handler: async (_ctx, { userId, sessionId, testSecret }): Promise<{ token: string }> => {
-    verifyTestSecret(testSecret)
-    const jose = await import('jose')
-    const privateKeyPem = process.env['JWT_PRIVATE_KEY']
-    const siteUrl = process.env['CONVEX_SITE_URL']
-    if (!privateKeyPem) throw new Error('JWT_PRIVATE_KEY missing')
-    if (!siteUrl) throw new Error('CONVEX_SITE_URL missing')
-    const normalized = privateKeyPem.replaceAll(String.raw`\n`, '\n')
-    const key = await jose.importPKCS8(normalized, 'RS256')
-    const token = await new jose.SignJWT({ sub: `${userId}|${sessionId}` })
-      .setProtectedHeader({ alg: 'RS256' })
-      .setIssuedAt()
-      .setIssuer(siteUrl)
-      .setAudience('convex')
-      .setExpirationTime(new Date(Date.now() + 60 * 60 * 1000))
-      .sign(key)
-    return { token }
-  }
-})
-export { classifyProbeError, docsSimilarProbe, killAllSandboxes, mintOAuthJwt }
+export { classifyProbeError, docsSimilarProbe, killAllSandboxes }

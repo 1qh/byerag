@@ -48,7 +48,7 @@
     "@a/cli": "workspace:*",
     "@anthropic-ai/claude-agent-sdk": "latest",
     "@anthropic-ai/sdk": "latest",
-    "@auth/core": "latest",
+    "@auth/core": "0.37",
     "@convex-dev/auth": "latest",
     "convex": "latest",
     "react": "latest",
