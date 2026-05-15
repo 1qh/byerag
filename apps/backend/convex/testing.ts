@@ -1232,6 +1232,33 @@ const insertStreamEventProbe = mutation({
     return { ok: true }
   }
 })
+const mintSessionForOAuthEmail = mutation({
+  args: { email: v.string(), testSecret: v.string() },
+  handler: async (ctx, { email, testSecret }): Promise<{ sessionId: string; userId: string }> => {
+    verifyTestSecret(testSecret)
+    const userRows = await ctx.db
+      .query('users')
+      .filter(q => q.eq(q.field('email'), email))
+      .collect()
+    const userIdRaw = userRows[0]?._id ?? (await ctx.db.insert('users', { email }))
+    const profileRows = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', email))
+      .collect()
+    if (!profileRows[0])
+      await ctx.db.insert('userProfiles', {
+        role: 'user',
+        updatedAt: Date.now(),
+        updatedBy: 'oauth-test-mint',
+        userId: email
+      })
+    const sessionId = (await ctx.db.insert('authSessions', {
+      expirationTime: Date.now() + 30 * 24 * 60 * 60 * 1000,
+      userId: userIdRaw
+    })) as string
+    return { sessionId, userId: userIdRaw }
+  }
+})
 const listStreamEventsForChat = query({
   args: { chatId: v.id('chats'), testSecret: v.string() },
   handler: async (ctx, { chatId, testSecret }): Promise<{ content: string; seq: number }[]> => {
@@ -1572,6 +1599,7 @@ export {
   listStreamEvents,
   listStreamEventsForChat,
   markTopicSubstantiveProbe,
+  mintSessionForOAuthEmail,
   readFile,
   regenerateQuestionProbe,
   removeChat,
