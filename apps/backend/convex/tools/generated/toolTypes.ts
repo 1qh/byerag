@@ -61,6 +61,7 @@ interface DocsReadResult {
 }
 interface DocsSimilarArgs {
   dim: "256" | "512" | "768"
+  granular?: boolean | boolean
   limit: number
   query: string
   scope: "both" | "mine" | "shared"
@@ -68,6 +69,7 @@ interface DocsSimilarArgs {
 interface DocsSimilarResult {
   _id: unknown
   _score: number
+  chunkSeq: number
   filename: string
   scope: "mine" | "shared"
   snippet: string

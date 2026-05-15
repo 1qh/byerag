@@ -72,7 +72,7 @@ const REGISTRY: Record<string, RegistryEntry<'admin' | 'user'>> = {
     argSpecs: (docsSimilar_mod as unknown as { argSpecs: ArgSpecs }).argSpecs,
     fn: internal.tools.docs.similar.action as FunctionReference<'action', 'internal'>,
     inferredDescription: null,
-    inferredSchema: {"element":{"kind":"object","shape":{"_id":{"optional":false,"schema":{"kind":"unknown","text":"Id<\"docs\">"}},"_score":{"optional":false,"schema":{"kind":"number"}},"filename":{"optional":false,"schema":{"kind":"string"}},"scope":{"optional":false,"schema":{"kind":"enum","values":["mine","shared"]}},"snippet":{"optional":false,"schema":{"kind":"string"}}}},"kind":"array"},
+    inferredSchema: {"element":{"kind":"object","shape":{"_id":{"optional":false,"schema":{"kind":"unknown","text":"Id<\"docs\">"}},"_score":{"optional":false,"schema":{"kind":"number"}},"chunkSeq":{"optional":false,"schema":{"kind":"number"}},"filename":{"optional":false,"schema":{"kind":"string"}},"scope":{"optional":false,"schema":{"kind":"enum","values":["mine","shared"]}},"snippet":{"optional":false,"schema":{"kind":"string"}}}},"kind":"array"},
     kind: 'action',
     meta: (docsSimilar_mod as unknown as { meta: ToolMeta }).meta,
     path: ["docs","similar"],

@@ -1,22 +1,13 @@
 'use client'
+import type { Id } from 'backend/convex/_generated/dataModel'
 import { api } from 'backend/convex/_generated/api'
 import { useQuery } from 'convex/react'
 import { use } from 'react'
 const DocViewerPage = ({ params }: { params: Promise<{ docId: string }> }): React.ReactElement => {
   const { docId } = use(params)
-  const result = useQuery(api.tools.docs.read.action as never, { id: docId }) as
-    | undefined
-    | {
-        _id: string
-        content: string
-        filename: string
-        lang: null | string
-        mime: string
-        scope: string
-        truncated: boolean
-        version: number
-      }
+  const result = useQuery(api.docs.read, { docId: docId as Id<'docs'> })
   if (result === undefined) return <div className='p-6'>Loading…</div>
+  if (result === null) return <div className='p-6 text-destructive'>Doc not found or access denied.</div>
   const lines = result.content.split('\n')
   return (
     <div className='space-y-3 p-6'>

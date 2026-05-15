@@ -1,19 +1,8 @@
 import { v } from 'convex/values'
+import type { MutationCtx } from './_generated/server'
 import { mutation, query } from './_generated/server'
 const POOL_MIN = 5
-const requireAdminEmail = async (ctx: {
-  auth: { getUserIdentity: () => Promise<null | { email?: string }> }
-  db: {
-    query: (t: 'userProfiles') => {
-      withIndex: (
-        n: 'by_userId',
-        f: (q: { eq: (k: string, v: string) => unknown }) => unknown
-      ) => {
-        first: () => Promise<null | { role?: string }>
-      }
-    }
-  }
-}): Promise<string> => {
+const requireAdminEmail = async (ctx: MutationCtx): Promise<string> => {
   const identity = await ctx.auth.getUserIdentity()
   const email = identity?.email?.toLowerCase()
   if (!email) throw new Error('not authenticated')
