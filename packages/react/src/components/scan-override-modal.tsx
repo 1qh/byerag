@@ -17,33 +17,29 @@ const ScanOverrideModal = ({ docId, filename, onClose, signature }: ScanOverride
   useEffect(() => {
     noBtnRef.current?.focus()
   }, [])
-  const onYes = (): void => {
+  const onYes = async (): Promise<void> => {
     setBusy(true)
-    override({ docId: docId as never })
-      .then(() => {
-        toast.success(`override accepted for ${filename}`)
-        onClose()
-      })
-      .catch((error: unknown) => {
-        toast.error(String(error))
-      })
-      .finally(() => {
-        setBusy(false)
-      })
+    try {
+      await override({ docId: docId as never })
+      toast.success(`override accepted for ${filename}`)
+      onClose()
+    } catch (error: unknown) {
+      toast.error(String(error))
+    } finally {
+      setBusy(false)
+    }
   }
-  const onNo = (): void => {
+  const onNo = async (): Promise<void> => {
     setBusy(true)
-    cancel({ docId: docId as never })
-      .then(() => {
-        toast.info(`discarded ${filename}`)
-        onClose()
-      })
-      .catch((error: unknown) => {
-        toast.error(String(error))
-      })
-      .finally(() => {
-        setBusy(false)
-      })
+    try {
+      await cancel({ docId: docId as never })
+      toast.info(`discarded ${filename}`)
+      onClose()
+    } catch (error: unknown) {
+      toast.error(String(error))
+    } finally {
+      setBusy(false)
+    }
   }
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/40'>
@@ -60,7 +56,9 @@ const ScanOverrideModal = ({ docId, filename, onClose, signature }: ScanOverride
           <button
             className='rounded border px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-foreground'
             disabled={busy}
-            onClick={onNo}
+            onClick={() => {
+              void onNo()
+            }}
             ref={noBtnRef}
             type='button'>
             No
@@ -68,7 +66,9 @@ const ScanOverrideModal = ({ docId, filename, onClose, signature }: ScanOverride
           <button
             className='rounded border bg-destructive px-3 py-1 text-destructive-foreground text-sm'
             disabled={busy}
-            onClick={onYes}
+            onClick={() => {
+              void onYes()
+            }}
             type='button'>
             Yes
           </button>
