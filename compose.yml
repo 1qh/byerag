@@ -61,6 +61,7 @@ services:
     restart: unless-stopped
     volumes:
       - clamav-data:/var/lib/clamav
+      - ./apps/backend/clamav/clamd.conf:/etc/clamav/clamd.conf:ro
     networks: [internal]
     healthcheck:
       test: ['CMD', 'clamdcheck.sh']

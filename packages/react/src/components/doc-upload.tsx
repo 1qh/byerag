@@ -65,7 +65,6 @@ const DocUpload = ({ isAdmin, scope }: DocUploadProps): React.ReactElement => {
       if (r.reason === 'quarantined') {
         if (isAdmin && r.docId) setScanQ({ docId: r.docId, filename, signature: r.signature ?? 'unknown' })
         else toast.error(`Your file was rejected because it appeared suspicious. Reason: ${r.signature ?? 'unknown'}.`)
-
         return
       }
       toast.error(`upload failed: ${r.reason ?? 'unknown'}`)
