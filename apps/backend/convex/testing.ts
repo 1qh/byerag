@@ -542,6 +542,25 @@ const costCyclePivotProbe = query({
     return [...agg.values()].toSorted((a, b) => b.cents - a.cents)
   }
 })
+const seedApprovedSharedDoc = mutation({
+  args: { filename: v.string(), testSecret: v.string(), uploaderEmail: v.string() },
+  handler: async (ctx, { filename, uploaderEmail, testSecret }): Promise<{ docId: string }> => {
+    verifyTestSecret(testSecret)
+    const id = await ctx.db.insert('docs', {
+      fileSize: 32,
+      filename,
+      mime: 'text/plain',
+      policyStatus: 'approved',
+      scanStatus: 'clean',
+      scope: 'shared',
+      sha256: `seed-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      uploadedAt: Date.now(),
+      uploadedBy: uploaderEmail,
+      version: 1
+    })
+    return { docId: id }
+  }
+})
 const wipeCostRecords = mutation({
   args: { testSecret: v.string() },
   handler: async (ctx, { testSecret }): Promise<void> => {
@@ -1614,6 +1633,7 @@ export {
   runPurgeSoftDeleted,
   runQuarantinePurge,
   scanOverrideProbe,
+  seedApprovedSharedDoc,
   seedAssignment,
   seedCostRecord,
   seedQuestionWithDoc,
