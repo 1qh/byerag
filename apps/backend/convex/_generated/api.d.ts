@@ -41,6 +41,7 @@ import type * as redactor from "../redactor.js";
 import type * as sandboxClient from "../sandboxClient.js";
 import type * as sandboxKill from "../sandboxKill.js";
 import type * as sandboxLaunch from "../sandboxLaunch.js";
+import type * as sandboxMaterialize from "../sandboxMaterialize.js";
 import type * as sandboxes from "../sandboxes.js";
 import type * as secretHash from "../secretHash.js";
 import type * as settings from "../settings.js";
@@ -117,6 +118,7 @@ declare const fullApi: ApiFromModules<{
   sandboxClient: typeof sandboxClient;
   sandboxKill: typeof sandboxKill;
   sandboxLaunch: typeof sandboxLaunch;
+  sandboxMaterialize: typeof sandboxMaterialize;
   sandboxes: typeof sandboxes;
   secretHash: typeof secretHash;
   settings: typeof settings;

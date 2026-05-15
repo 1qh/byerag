@@ -1232,6 +1232,17 @@ const insertStreamEventProbe = mutation({
     return { ok: true }
   }
 })
+const listStreamEventsForChat = query({
+  args: { chatId: v.id('chats'), testSecret: v.string() },
+  handler: async (ctx, { chatId, testSecret }): Promise<{ content: string; seq: number }[]> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db
+      .query('streamEvents')
+      .withIndex('by_chat', q => q.eq('chatId', chatId))
+      .take(50)
+    return rows.map(r => ({ content: r.content, seq: r.seq }))
+  }
+})
 const ageQuarantineRow = mutation({
   args: { ageMs: v.number(), docId: v.id('docs'), testSecret: v.string() },
   handler: async (ctx, { ageMs, docId, testSecret }): Promise<void> => {
@@ -1559,6 +1570,7 @@ export {
   listQuestionsForTopic,
   listSandboxIds,
   listStreamEvents,
+  listStreamEventsForChat,
   markTopicSubstantiveProbe,
   readFile,
   regenerateQuestionProbe,
