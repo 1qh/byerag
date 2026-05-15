@@ -249,18 +249,12 @@ const countRecentQuarantines = internalQuery({
   args: { sha256: v.string(), sinceMs: v.number(), uploadedBy: v.string() },
   handler: async (ctx, { sha256, uploadedBy, sinceMs }): Promise<number> => {
     const cutoff = Date.now() - sinceMs
-    const rows = await ctx.db
+    const candidates = await ctx.db
       .query('docs')
-      .filter(q =>
-        q.and(
-          q.eq(q.field('sha256'), sha256),
-          q.eq(q.field('uploadedBy'), uploadedBy),
-          q.eq(q.field('scanStatus'), 'quarantined'),
-          q.gte(q.field('uploadedAt'), cutoff)
-        )
-      )
-      .collect()
-    return rows.length
+      .withIndex('by_sha256_scope_owner', q => q.eq('sha256', sha256))
+      .take(50)
+    return candidates.filter(r => r.uploadedBy === uploadedBy && r.scanStatus === 'quarantined' && r.uploadedAt >= cutoff)
+      .length
   }
 })
 const getChunkRows = internalQuery({
