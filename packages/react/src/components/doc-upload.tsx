@@ -84,7 +84,7 @@ const DocUpload = ({ isAdmin, scope }: DocUploadProps): React.ReactElement => {
   return (
     <div className='flex flex-col gap-2'>
       <label className='inline-flex cursor-pointer items-center gap-2 rounded border px-3 py-1 text-sm hover:bg-muted'>
-        <input className='hidden' disabled={busy} onChange={onPick} type='file' />
+        <input aria-label={`Upload file to ${scope}`} className='hidden' disabled={busy} onChange={onPick} type='file' />
         {busy ? 'Uploading…' : `Upload to ${scope}`}
       </label>
       {scanQ ? (

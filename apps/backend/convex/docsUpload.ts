@@ -124,6 +124,15 @@ const finalize = internalAction({
     const uploadedBy = canonicalizeEmail(args.uploaderEmail)
     const owner = args.scope === 'mine' ? uploadedBy : undefined
     const sha256 = await sha256Hex(bytes)
+    const recentQuarantines = await ctx.runQuery(internal.docs.countRecentQuarantines, {
+      sha256,
+      sinceMs: 60 * 60 * 1000,
+      uploadedBy
+    })
+    if (recentQuarantines >= 3) {
+      await ctx.storage.delete(args.storageId)
+      throw new Error('too many rejected uploads')
+    }
     const earlyScan: ScanResult = await scanBytes(bytes).catch(
       (error: unknown) => ({ ok: false, signature: `clamav-error:${String(error)}` }) satisfies ScanResult
     )
@@ -182,15 +191,6 @@ const finalize = internalAction({
         ok: false,
         reason: 'filename-conflict'
       }
-    }
-    const recentQ = await ctx.runQuery(internal.docs.countRecentQuarantines, {
-      sha256,
-      sinceMs: 60 * 60 * 1000,
-      uploadedBy
-    })
-    if (recentQ >= 3) {
-      await ctx.storage.delete(args.storageId)
-      throw new Error('too many rejected uploads')
     }
     const version = conflict ? (conflict.version ?? 1) + 1 : 1
     const docIdRaw = await ctx.runMutation(internal.docs.insertRow, {

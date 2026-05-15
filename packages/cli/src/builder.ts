@@ -1,3 +1,4 @@
+/* oxlint-disable unicorn/consistent-function-scoping -- generic-typed factory chains: inner arrow fns carry type-parameter context erased at runtime */
 import type { Infer, PropertyValidators, Validator } from 'convex/values'
 import { v } from 'convex/values'
 import type { ArgSpec, ArgSpecs, CostClass, ToolMeta } from './types'
@@ -128,10 +129,12 @@ type FailFn<Codes extends readonly string[]> = ((
   details?: Record<string, unknown>
 ) => never) & { codes: Codes }
 type HandlerArgs<Args extends ArgSpecs> = { [K in keyof Args]: ArgValue<Args[K]> }
+/* oxlint-disable-next-line unicorn/consistent-function-scoping -- generic-typed factory: inner fn carries Codes[number] type erased at runtime */
+const makeFailInner = (code: string, message: string, details?: Record<string, unknown>): never => {
+  throw new ToolError(message, { code, details })
+}
 const makeFail = <const Codes extends readonly string[]>(...codes: Codes): FailFn<Codes> => {
-  const fn = (code: Codes[number], message: string, details?: Record<string, unknown>): never => {
-    throw new ToolError(message, { code, details })
-  }
+  const fn = makeFailInner as (code: Codes[number], message: string, details?: Record<string, unknown>) => never
   return Object.assign(fn, { codes })
 }
 interface ActionCtxExtras<Args extends ArgSpecs, Codes extends readonly string[], TAuth>
@@ -258,6 +261,7 @@ interface DefineToolOpts<Args extends ArgSpecs, Codes extends readonly string[],
 const createBuilder = <TAuth, TActionCtx, TQueryCtx, TMutationCtx, TAct, TQry, TMut>(
   deps: BuilderDeps<TAuth, TActionCtx, TQueryCtx, TMutationCtx, TAct, TQry, TMut>
 ) => {
+  // oxlint-disable-next-line unicorn/consistent-function-scoping -- captures deps.authValidator closure
   const buildFullArgs = (argSpecs: ArgSpecs): PropertyValidators => {
     const convexArgs: PropertyValidators = {}
     for (const [k, spec] of Object.entries(argSpecs)) convexArgs[k] = spec.required === false ? v.optional(spec.v) : spec.v
