@@ -1,4 +1,8 @@
-/** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB deletes */
+/* eslint-disable no-continue, @typescript-eslint/no-unnecessary-condition */
+/** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops */
+/** biome-ignore-all lint/nursery/noContinue: control flow shape */
+/** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
+/* oxlint-disable eslint(no-await-in-loop), eslint(complexity), eslint(no-shadow), eslint(no-unused-vars), unicorn(no-array-reduce), eslint(max-params) */
 /** biome-ignore-all lint/suspicious/useAwait: vitest async */
 /** biome-ignore-all lint/style/noProcessEnv: TEST_SECRET standalone test env */
 /** biome-ignore-all lint/complexity/useLiteralKeys: env bracket */
@@ -170,8 +174,9 @@ const seedUserProfile = mutation({
       .withIndex('by_userId', q => q.eq('userId', userId))
       .collect()
     const existing = rows[0]
-    if (existing) await ctx.db.patch(existing._id, { role, updatedAt: Date.now(), updatedBy: 'test-seed' })
-    else await ctx.db.insert('userProfiles', { role, updatedAt: Date.now(), updatedBy: 'test-seed', userId })
+    await (existing
+      ? ctx.db.patch(existing._id, { role, updatedAt: Date.now(), updatedBy: 'test-seed' })
+      : ctx.db.insert('userProfiles', { role, updatedAt: Date.now(), updatedBy: 'test-seed', userId }))
   }
 })
 const setUserRoleProbe = mutation({
@@ -221,8 +226,9 @@ const setSetting = mutation({
       .withIndex('by_key', q => q.eq('key', key))
       .collect()
     const existing = rows[0]
-    if (existing) await ctx.db.patch(existing._id, { updatedAt: Date.now(), updatedBy: author, value })
-    else await ctx.db.insert('settings', { key, updatedAt: Date.now(), updatedBy: author, value })
+    await (existing
+      ? ctx.db.patch(existing._id, { updatedAt: Date.now(), updatedBy: author, value })
+      : ctx.db.insert('settings', { key, updatedAt: Date.now(), updatedBy: author, value }))
     if (adminEmail)
       await ctx.db.insert('auditLogs', {
         args: JSON.stringify({ key, valueLen: value.length }),
@@ -424,15 +430,15 @@ const submitAttemptProbe = mutation({
         )
         .collect()
       const priorPass = passRows[0]
-      if (priorPass) await ctx.db.patch(priorPass._id, { attemptId, passedAt: finishedAt })
-      else
-        await ctx.db.insert('testPasses', {
-          attemptId,
-          kind: attempt.kind,
-          passedAt: finishedAt,
-          topicId: attempt.topicId,
-          userId: attempt.userId
-        })
+      await (priorPass
+        ? ctx.db.patch(priorPass._id, { attemptId, passedAt: finishedAt })
+        : ctx.db.insert('testPasses', {
+            attemptId,
+            kind: attempt.kind,
+            passedAt: finishedAt,
+            topicId: attempt.topicId,
+            userId: attempt.userId
+          }))
     }
     return { passed, score }
   }
@@ -447,8 +453,9 @@ const claimContextProbe = mutation({
       .collect()
     const existing = rows[0]
     const now = Date.now()
-    if (existing) await ctx.db.patch(existing._id, { activeContextHeartbeatAt: now, activeContextToken: token })
-    else await ctx.db.insert('userContexts', { activeContextHeartbeatAt: now, activeContextToken: token, userId })
+    await (existing
+      ? ctx.db.patch(existing._id, { activeContextHeartbeatAt: now, activeContextToken: token })
+      : ctx.db.insert('userContexts', { activeContextHeartbeatAt: now, activeContextToken: token, userId }))
   }
 })
 const heartbeatProbe = mutation({
@@ -645,7 +652,8 @@ const regenerateQuestionProbe = mutation({
       .query('testQuestionSuggestions')
       .withIndex('by_target', x => x.eq('targetQuestionId', questionId))
       .collect()
-    const lastRegen = prior.reduce((acc, s) => Math.max(acc, s.regenCount ?? 0), 0)
+    let lastRegen = 0
+    for (const s of prior) lastRegen = Math.max(lastRegen, s.regenCount ?? 0)
     if (lastRegen >= 5) throw new Error('regenCount cap reached (5)')
     const regenCount = lastRegen + 1
     const sid = await ctx.db.insert('testQuestionSuggestions', {
@@ -855,9 +863,9 @@ const adminDeleteDocProbe = mutation({
 })
 const seedSuggestionWithDoc = mutation({
   args: { docId: v.id('docs'), testSecret: v.string(), topicId: v.id('topics') },
-  handler: async (ctx, { topicId, docId, testSecret }): Promise<string> => (
-    verifyTestSecret(testSecret),
-    ctx.db.insert('testQuestionSuggestions', {
+  handler: async (ctx, { topicId, docId, testSecret }): Promise<string> => {
+    verifyTestSecret(testSecret)
+    return ctx.db.insert('testQuestionSuggestions', {
       choices: ['A', 'B', 'C'],
       correctIndex: 0,
       createdAt: Date.now(),
@@ -868,13 +876,13 @@ const seedSuggestionWithDoc = mutation({
       status: 'pending',
       topicId
     })
-  )
+  }
 })
 const seedQuestionWithDoc = mutation({
   args: { docId: v.id('docs'), testSecret: v.string(), topicId: v.id('topics') },
-  handler: async (ctx, { topicId, docId, testSecret }): Promise<string> => (
-    verifyTestSecret(testSecret),
-    ctx.db.insert('testQuestions', {
+  handler: async (ctx, { topicId, docId, testSecret }): Promise<string> => {
+    verifyTestSecret(testSecret)
+    return ctx.db.insert('testQuestions', {
       choices: ['A', 'B', 'C'],
       correctIndex: 0,
       createdAt: Date.now(),
@@ -884,7 +892,7 @@ const seedQuestionWithDoc = mutation({
       sourceDocIds: [docId],
       topicId
     })
-  )
+  }
 })
 const adminDeleteTopicProbe = mutation({
   args: { adminEmail: v.string(), testSecret: v.string(), topicId: v.id('topics') },
@@ -1000,7 +1008,7 @@ const createOrUpdateUserProbe = mutation({
 })
 const listMyTopicsProbe = query({
   args: { testSecret: v.string(), userId: v.string() },
-  handler: async (ctx, { testSecret, userId }): Promise<{ _id: string; name: string; poolSize: number }[]> => {
+  handler: async (ctx, { testSecret }): Promise<{ _id: string; name: string; poolSize: number }[]> => {
     verifyTestSecret(testSecret)
     const topics = await ctx.db
       .query('topics')
@@ -1053,9 +1061,9 @@ const seedSuggestion = mutation({
     testSecret: v.string(),
     topicId: v.id('topics')
   },
-  handler: async (ctx, { topicId, prompt, choices, correctIndex, testSecret }): Promise<string> => (
-    verifyTestSecret(testSecret),
-    ctx.db.insert('testQuestionSuggestions', {
+  handler: async (ctx, { topicId, prompt, choices, correctIndex, testSecret }): Promise<string> => {
+    verifyTestSecret(testSecret)
+    return ctx.db.insert('testQuestionSuggestions', {
       choices,
       correctIndex,
       createdAt: Date.now(),
@@ -1066,7 +1074,7 @@ const seedSuggestion = mutation({
       status: 'pending',
       topicId
     })
-  )
+  }
 })
 const approveSuggestionProbe = mutation({
   args: { adminEmail: v.string(), suggestionId: v.id('testQuestionSuggestions'), testSecret: v.string() },
@@ -1226,8 +1234,9 @@ const insertStreamEventProbe = mutation({
       .withIndex('by_chat', q => q.eq('chatId', chatId))
       .collect()
     const rt = runtimeRows[0]
-    if (rt) await ctx.db.patch(rt._id, { streamEventCount: rt.streamEventCount + 1 })
-    else await ctx.db.insert('chatRuntime', { chatId, streamEventCount: 1 })
+    await (rt
+      ? ctx.db.patch(rt._id, { streamEventCount: rt.streamEventCount + 1 })
+      : ctx.db.insert('chatRuntime', { chatId, streamEventCount: 1 }))
     await ctx.db.insert('streamEvents', { chatId, content, seq })
     return { ok: true }
   }
@@ -1266,8 +1275,9 @@ const ensureChatRuntime = mutation({
       .withIndex('by_chat', q => q.eq('chatId', chatId))
       .collect()
     const existing = rows[0]
-    if (existing) await ctx.db.patch(existing._id, { proxyCallsThisTurn: 0, streamEventCount: 0 })
-    else await ctx.db.insert('chatRuntime', { chatId, proxyCallsThisTurn: 0, streamEventCount: 0 })
+    await (existing
+      ? ctx.db.patch(existing._id, { proxyCallsThisTurn: 0, streamEventCount: 0 })
+      : ctx.db.insert('chatRuntime', { chatId, proxyCallsThisTurn: 0, streamEventCount: 0 }))
   }
 })
 const consumeProxyBudgetProbe = action({

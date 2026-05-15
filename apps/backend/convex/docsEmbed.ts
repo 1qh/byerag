@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-shadow, no-await-in-loop, unicorn/prefer-ternary, unicorn/no-new-array, unicorn/prefer-array-find */
-/* oxlint-disable unicorn/prefer-ternary, unicorn/no-new-array, unicorn/prefer-array-find, eslint(no-unused-vars) */
+/* eslint-disable @typescript-eslint/no-shadow, no-await-in-loop */
+/* oxlint-disable eslint(no-unused-vars) */
 /** biome-ignore-all lint/nursery/noContinue: control flow shape */
 /** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
@@ -52,7 +52,7 @@ const ollamaEmbed = async (input: string, prefix: 'search_document' | 'search_qu
     signal: AbortSignal.timeout(EMBED_TIMEOUT_MS)
   })
   if (!res.ok) throw new Error(`ollama ${res.status}: ${(await res.text()).slice(0, 200)}`)
-  const json: EmbedResponse = await res.json()
+  const json = (await res.json()) as EmbedResponse
   const vec = json.data?.[0]?.embedding
   if (vec?.length !== EMBED_DIM) throw new Error(`embed dim mismatch: got ${vec?.length ?? 'undefined'}`)
   return vec
@@ -60,13 +60,13 @@ const ollamaEmbed = async (input: string, prefix: 'search_document' | 'search_qu
 const embedQuery = async (input: string): Promise<number[]> => ollamaEmbed(input, 'search_query')
 const matryoshkaTruncate = (vec: number[], dim: number): number[] => {
   if (dim >= EMBED_DIM) return vec
-  const out = new Array<number>(EMBED_DIM).fill(0)
+  const out: number[] = Array.from({ length: EMBED_DIM }, () => 0)
   for (let i = 0; i < dim; i += 1) out[i] = vec[i] ?? 0
   return out
 }
 const centroid = (vecs: number[][]): number[] => {
   if (vecs.length === 0) return []
-  const out = new Array<number>(EMBED_DIM).fill(0)
+  const out: number[] = Array.from({ length: EMBED_DIM }, () => 0)
   for (const v of vecs) for (let i = 0; i < EMBED_DIM; i += 1) out[i] = (out[i] ?? 0) + (v[i] ?? 0)
   for (let i = 0; i < EMBED_DIM; i += 1) out[i] = (out[i] ?? 0) / vecs.length
   return out

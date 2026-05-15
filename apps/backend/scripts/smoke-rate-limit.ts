@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
-/* eslint-disable no-console */
+/* eslint-disable no-console, no-await-in-loop */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
+/* oxlint-disable eslint(no-await-in-loop), eslint(no-shadow), eslint(no-unused-expressions), eslint(max-params), eslint(no-unused-vars), promise(param-names), unicorn(prefer-native-coercion-functions), unicorn(prefer-ternary) */
 /** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
 import { ConvexHttpClient } from 'convex/browser'
@@ -46,16 +47,12 @@ for (let i = 1; i <= MAX + 2; i += 1) {
 }
 const firstN = results.slice(0, MAX)
 const overflow = results.slice(MAX)
-check(
-  'first MAX calls all allowed',
-  firstN.every(r => r),
-  `firstN=${JSON.stringify(firstN)}`
-)
+check('first MAX calls all allowed', firstN.every(Boolean), `firstN=${JSON.stringify(firstN)}`)
 check(
   'overflow calls rejected',
   overflow.every(r => !r),
   `overflow=${JSON.stringify(overflow)}`
 )
-check('total allowed === MAX', results.filter(r => r).length === MAX, `count=${results.filter(r => r).length}`)
+check('total allowed === MAX', results.filter(Boolean).length === MAX, `count=${results.filter(Boolean).length}`)
 console.log(`\n[rate-limit] SUMMARY pass=${pass} fail=${fail} total=3`)
 if (fail > 0) process.exit(1)

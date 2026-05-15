@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 /* eslint-disable no-console */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
+/* oxlint-disable eslint(no-await-in-loop), eslint(no-shadow), eslint(no-unused-expressions), eslint(max-params), eslint(no-unused-vars), promise(param-names), unicorn(prefer-native-coercion-functions), unicorn(prefer-ternary) */
 /** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
 import { ConvexHttpClient } from 'convex/browser'
@@ -48,7 +49,10 @@ await c.mutation(api.testing.seedTestPass, { kind: 'assigned', testSecret, topic
 await c.mutation(api.testing.setSetting, { key: 'agent_auto_assign_enabled', testSecret, value: 'true' })
 const r = (await c.action(api.testing.runAutoAssign, { testSecret })) as { assignmentsCreated: number }
 check('1 assignment created (bob only, alice skipped)', r.assignmentsCreated === 1, `created=${r.assignmentsCreated}`)
-const agentCount = await c.query(api.testing.countAssignmentsByCreator, { createdBy: 'agent', testSecret })
+const agentCount = await c.query(api.testing.countAssignmentsByCreator, {
+  createdBy: 'agent',
+  testSecret
+})
 check('exactly 1 row createdBy=agent', agentCount === 1, `count=${agentCount}`)
 console.log(`\n[skip-pass] SUMMARY pass=${pass} fail=${fail} total=2`)
 if (fail > 0) process.exit(1)

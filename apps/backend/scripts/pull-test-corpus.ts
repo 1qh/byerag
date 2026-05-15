@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-/* eslint-disable no-useless-assignment, unicorn/prefer-ternary, unicorn/no-new-array, unicorn/prefer-array-find */
+/* eslint-disable no-useless-assignment */
 /** biome-ignore-all lint/nursery/noContinue: control flow shape */
 /** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
@@ -83,7 +83,7 @@ const callKimi = async (prompt: string): Promise<string> => {
     signal: AbortSignal.timeout(45_000)
   })
   if (!res.ok) throw new Error(`kimi ${res.status}: ${(await res.text()).slice(0, 200)}`)
-  const json: KimiResponse = await res.json()
+  const json = (await res.json()) as KimiResponse
   return json.content?.find(c => c.type === 'text')?.text ?? ''
 }
 const embed = async (text: string, prefix: 'search_document' | 'search_query'): Promise<number[]> => {
@@ -94,7 +94,7 @@ const embed = async (text: string, prefix: 'search_document' | 'search_query'): 
     signal: AbortSignal.timeout(30_000)
   })
   if (!res.ok) throw new Error(`ollama ${res.status}`)
-  const j: OllamaEmbedResponse = await res.json()
+  const j = (await res.json()) as OllamaEmbedResponse
   const v = j.data?.[0]?.embedding
   if (!v?.length) throw new Error('embed empty')
   return v

@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 /* eslint-disable no-console */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
+/* oxlint-disable eslint(no-await-in-loop), eslint(no-shadow), eslint(no-unused-expressions), eslint(max-params), eslint(no-unused-vars), promise(param-names), unicorn(prefer-native-coercion-functions), unicorn(prefer-ternary) */
 /** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
 import { ConvexHttpClient } from 'convex/browser'
@@ -41,7 +42,9 @@ console.log('[departments] wipe + seed')
 await c.mutation(api.testing.wipeUserProfiles, { testSecret })
 await c.mutation(api.testing.seedUserProfile, { role: 'user', testSecret, userId: USER })
 await c.mutation(api.testing.seedUserProfile, { role: 'admin', testSecret, userId: ADMIN })
-const initial = await c.query(api.testing.getUserProfile, { testSecret, userId: USER })
+const initial = (await c.query(api.testing.getUserProfile, { testSecret, userId: USER })) as null | {
+  department?: string
+}
 check(
   'initial department is null/undefined',
   initial?.department === undefined,

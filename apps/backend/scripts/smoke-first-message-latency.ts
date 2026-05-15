@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
-/* eslint-disable no-console */
+/* eslint-disable no-console, no-await-in-loop */
+/** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
 /** biome-ignore-all lint/style/noProcessEnv: smoke reads .env */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
 import { ConvexHttpClient } from 'convex/browser'
@@ -28,8 +29,8 @@ if (!(url && testSecret)) {
 }
 const c = new ConvexHttpClient(url)
 const sleep = async (ms: number): Promise<void> =>
-  new Promise(r => {
-    setTimeout(r, ms)
+  new Promise(resolve => {
+    setTimeout(resolve, ms)
   })
 const t0 = Date.now()
 const r = (await c.mutation(api.testing.sendWithSecret, {

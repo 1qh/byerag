@@ -1,5 +1,4 @@
-/* eslint-disable unicorn/prefer-ternary, unicorn/no-new-array, unicorn/prefer-array-find */
-/* oxlint-disable unicorn/prefer-ternary, unicorn/no-new-array, unicorn/prefer-array-find, eslint(no-unused-vars) */
+/* oxlint-disable eslint(no-unused-vars) */
 /** biome-ignore-all lint/nursery/noContinue: control flow shape */
 /** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
@@ -208,20 +207,19 @@ const settleReservation = internalMutation({
         .query('costRecords')
         .withIndex('by_owner_model_dayKey', q => q.eq('owner', owner).eq('model', 'kimi-for-coding').eq('dayKey', k))
         .first()
-      if (existing)
-        await ctx.db.patch(existing._id, { callCount: existing.callCount + 1, cents: existing.cents + actualCents })
-      else
-        await ctx.db.insert('costRecords', {
-          cacheCreationInputTokens: 0,
-          cacheReadInputTokens: 0,
-          callCount: 1,
-          cents: actualCents,
-          dayKey: k,
-          inputTokens: 0,
-          model: 'kimi-for-coding',
-          outputTokens: 0,
-          owner
-        })
+      await (existing
+        ? ctx.db.patch(existing._id, { callCount: existing.callCount + 1, cents: existing.cents + actualCents })
+        : ctx.db.insert('costRecords', {
+            cacheCreationInputTokens: 0,
+            cacheReadInputTokens: 0,
+            callCount: 1,
+            cents: actualCents,
+            dayKey: k,
+            inputTokens: 0,
+            model: 'kimi-for-coding',
+            outputTokens: 0,
+            owner
+          }))
     }
     const reserved = await findRowForDay(ctx, owner, rDay)
     const today = dayKey(Date.now())

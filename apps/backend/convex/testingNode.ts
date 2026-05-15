@@ -1,6 +1,9 @@
+/** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops */
+/** biome-ignore-all lint/nursery/noContinue: control flow shape */
+/** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
+/* oxlint-disable eslint(no-await-in-loop), eslint(complexity), eslint(no-shadow), eslint(no-unused-vars), eslint(no-sequences), unicorn(no-array-reduce), unicorn(prefer-ternary), eslint(max-params) */
 /** biome-ignore-all lint/style/noProcessEnv: TEST_SECRET standalone test env */
 /** biome-ignore-all lint/complexity/useLiteralKeys: env bracket */
-/** biome-ignore-all lint/performance/noAwaitInLoops: sequential sandbox kill loop */
 /* eslint-disable @typescript-eslint/dot-notation, no-await-in-loop */
 /* oxlint-disable eslint(dot-notation), eslint(no-await-in-loop) */
 'use node'
@@ -60,7 +63,8 @@ const classifyProbeError = action({
   args: { docId: v.id('docs'), testSecret: v.string() },
   handler: async (ctx, { docId, testSecret }): Promise<{ classified: boolean; reason?: string }> => {
     verifyTestSecret(testSecret)
-    return ctx.runAction(internal.docsPolicy.classify, { docId, simulateError: true })
+    const result = await ctx.runAction(internal.docsPolicy.classify, { docId, simulateError: true })
+    return result
   }
 })
 export { classifyProbeError, docsSimilarProbe, killAllSandboxes }

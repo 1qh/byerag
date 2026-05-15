@@ -1,3 +1,8 @@
+/* eslint-disable no-await-in-loop */
+/** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops */
+/** biome-ignore-all lint/nursery/noContinue: control flow shape */
+/** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
+/* oxlint-disable eslint(no-await-in-loop), eslint(complexity), eslint(no-shadow), eslint(no-unused-vars), eslint(no-sequences), unicorn(no-array-reduce), unicorn(prefer-ternary) */
 /** biome-ignore-all lint/style/noProcessEnv: clamav host env */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: CLAMAV_HOST optional */
 /** biome-ignore-all lint/suspicious/useAwait: scanBytes wraps net.Socket callback in Promise */
@@ -84,12 +89,14 @@ interface UploadResult {
   signature?: string
 }
 const SUFFIX_RE = /^(?<stem>.+?)(?:\.(?<ext>[^.]+))?$/u
-const buildKeepBothFilename = async (
-  base: string,
-  scope: 'mine' | 'shared',
-  owner: string | undefined,
+interface KeepBothOpts {
+  base: string
   findByFilename: (filename: string) => Promise<unknown>
-): Promise<string> => {
+  owner: string | undefined
+  scope: 'mine' | 'shared'
+}
+const buildKeepBothFilename = async (opts: KeepBothOpts): Promise<string> => {
+  const { base, findByFilename } = opts
   const m = SUFFIX_RE.exec(base)
   const stem = m?.groups?.stem ?? base
   const ext = m?.groups?.ext ? `.${m.groups.ext}` : ''
@@ -143,9 +150,12 @@ const finalize = internalAction({
     })
     let conflict = conflictRaw
     if (conflict && args.keepBoth) {
-      effectiveFilename = await buildKeepBothFilename(args.filename, args.scope, owner, async fn =>
-        ctx.runQuery(internal.docs.findByFilename, { filename: fn, owner, scope: args.scope })
-      )
+      effectiveFilename = await buildKeepBothFilename({
+        base: args.filename,
+        findByFilename: async fn => ctx.runQuery(internal.docs.findByFilename, { filename: fn, owner, scope: args.scope }),
+        owner,
+        scope: args.scope
+      })
       conflict = null
     }
     if (conflict && !args.replace) {

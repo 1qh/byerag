@@ -2,27 +2,26 @@
 import { api } from 'backend/convex/_generated/api'
 import { useMutation, useQuery } from 'convex/react'
 import { useState } from 'react'
+import { toast } from 'sonner'
 const TrainingPage = (): React.ReactElement => {
   const topics = useQuery(api.training.listMyTopics)
   const startAttempt = useMutation(api.trainingAttempts.startAttempt)
-  const [starting, setStarting] = useState<Set<string>>(new Set())
-  const onStart = (topicId: string): void => {
+  const [starting, setStarting] = useState<Set<string>>(() => new Set())
+  const onStart = async (topicId: string): Promise<void> => {
     setStarting(p => new Set(p).add(topicId))
-    startAttempt({ topicId: topicId as never })
-      .then(r => {
-        window.location.href = `/training/${r.attemptId}`
+    try {
+      const r = await startAttempt({ topicId: topicId as never })
+      globalThis.location.assign(`/training/${r.attemptId}`)
+    } catch (error: unknown) {
+      // eslint-disable-next-line no-console
+      console.error('start failed', error)
+    } finally {
+      setStarting(p => {
+        const n = new Set(p)
+        n.delete(topicId)
+        return n
       })
-      .catch(error => {
-        // eslint-disable-next-line no-console
-        console.error('start failed', error)
-      })
-      .finally(() =>
-        setStarting(p => {
-          const n = new Set(p)
-          n.delete(topicId)
-          return n
-        })
-      )
+    }
   }
   if (topics === undefined) return <div className='p-6'>Loading…</div>
   if (topics.length === 0) return <div className='p-6 text-muted-foreground'>No topics available yet.</div>
@@ -56,7 +55,10 @@ const TrainingPage = (): React.ReactElement => {
                 <button
                   className='rounded-md border bg-primary px-3 py-1 text-primary-foreground text-sm disabled:opacity-50'
                   disabled={t.poolSize < 5 || starting.has(t._id) || t.myStatus.startsWith('passed-')}
-                  onClick={() => onStart(t._id)}
+                  onClick={() => {
+                    // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React event handler cannot be async (no-misused-promises); .catch is the documented byerag pattern
+                    onStart(t._id).catch((error: unknown) => toast.error(String(error)))
+                  }}
                   type='button'>
                   {starting.has(t._id) ? 'Starting…' : 'Start (5 random)'}
                 </button>

@@ -37,9 +37,12 @@ const check = (label: string, ok: boolean, detail: string): void => {
 }
 await c.mutation(api.testing.wipeDocs, { testSecret })
 const u = await c.mutation(api.testing.docsGenerateUploadUrl, { testSecret })
-await fetch(u, { body: new Blob(['x']), headers: { 'Content-Type': 'application/octet-stream' }, method: 'POST' }).then(
-  async r => r.json()
-)
+const warmRes = await fetch(u, {
+  body: new Blob(['x']),
+  headers: { 'Content-Type': 'application/octet-stream' },
+  method: 'POST'
+})
+await warmRes.json()
 const u2 = await c.mutation(api.testing.docsGenerateUploadUrl, { testSecret })
 const res = await fetch(u2, {
   body: new Blob(['x']),

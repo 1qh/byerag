@@ -1,5 +1,4 @@
-/* eslint-disable unicorn/prefer-ternary, unicorn/no-new-array, unicorn/prefer-array-find */
-/* oxlint-disable unicorn/prefer-ternary, unicorn/no-new-array, unicorn/prefer-array-find, eslint(no-unused-vars) */
+/* oxlint-disable eslint(no-unused-vars) */
 /** biome-ignore-all lint/nursery/noContinue: control flow shape */
 /** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
@@ -32,27 +31,26 @@ const upsert = internalMutation({
       .query('costRecords')
       .withIndex('by_owner_model_dayKey', q => q.eq('owner', args.owner).eq('model', args.model).eq('dayKey', k))
       .first()
-    if (existing)
-      await ctx.db.patch(existing._id, {
-        cacheCreationInputTokens: existing.cacheCreationInputTokens + args.cacheCreationInputTokens,
-        cacheReadInputTokens: existing.cacheReadInputTokens + args.cacheReadInputTokens,
-        callCount: existing.callCount + 1,
-        cents: existing.cents + args.cents,
-        inputTokens: existing.inputTokens + args.inputTokens,
-        outputTokens: existing.outputTokens + args.outputTokens
-      })
-    else
-      await ctx.db.insert('costRecords', {
-        cacheCreationInputTokens: args.cacheCreationInputTokens,
-        cacheReadInputTokens: args.cacheReadInputTokens,
-        callCount: 1,
-        cents: args.cents,
-        dayKey: k,
-        inputTokens: args.inputTokens,
-        model: args.model,
-        outputTokens: args.outputTokens,
-        owner: args.owner
-      })
+    await (existing
+      ? ctx.db.patch(existing._id, {
+          cacheCreationInputTokens: existing.cacheCreationInputTokens + args.cacheCreationInputTokens,
+          cacheReadInputTokens: existing.cacheReadInputTokens + args.cacheReadInputTokens,
+          callCount: existing.callCount + 1,
+          cents: existing.cents + args.cents,
+          inputTokens: existing.inputTokens + args.inputTokens,
+          outputTokens: existing.outputTokens + args.outputTokens
+        })
+      : ctx.db.insert('costRecords', {
+          cacheCreationInputTokens: args.cacheCreationInputTokens,
+          cacheReadInputTokens: args.cacheReadInputTokens,
+          callCount: 1,
+          cents: args.cents,
+          dayKey: k,
+          inputTokens: args.inputTokens,
+          model: args.model,
+          outputTokens: args.outputTokens,
+          owner: args.owner
+        }))
   }
 })
 export { upsert }

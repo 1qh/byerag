@@ -8,8 +8,8 @@ const PolicyPage = (): React.ReactElement => {
   const save = useMutation(api.settings.setForAdmin)
   const [text, setText] = useState<string>('')
   const [saving, setSaving] = useState(false)
-
   useEffect(() => {
+    // eslint-disable-next-line @eslint-react/hooks-extra/no-direct-set-state-in-use-effect -- sync server value into local edit state
     if (typeof current === 'string') setText(current)
   }, [current])
   if (current === undefined) return <div className='p-6'>Loading…</div>
@@ -38,7 +38,8 @@ const PolicyPage = (): React.ReactElement => {
         className='rounded-md border bg-primary px-4 py-2 text-primary-foreground disabled:opacity-50'
         disabled={saving || text === (current ?? '')}
         onClick={() => {
-          undefined
+          // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React event handler cannot be async (no-misused-promises); .catch is the documented byerag pattern
+          onSave().catch((error: unknown) => toast.error(String(error)))
         }}
         type='button'>
         {saving ? 'Saving…' : 'Save'}

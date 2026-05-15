@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
-/* eslint-disable no-console */
+/* eslint-disable no-console, no-await-in-loop */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
+/* oxlint-disable eslint(no-await-in-loop), eslint(no-shadow), eslint(no-unused-expressions), eslint(max-params), eslint(no-unused-vars), promise(param-names), unicorn(prefer-native-coercion-functions), unicorn(prefer-ternary) */
 /** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
 import { ConvexHttpClient } from 'convex/browser'
@@ -57,8 +58,8 @@ const firstN = results.slice(0, PROXY_CALLS_PER_TURN_CAP)
 const overflow = results.slice(PROXY_CALLS_PER_TURN_CAP)
 check(
   'first 200 calls all allowed',
-  firstN.every(r => r),
-  `firstN passed=${firstN.filter(r => r).length}/${PROXY_CALLS_PER_TURN_CAP}`
+  firstN.every(Boolean),
+  `firstN passed=${firstN.filter(Boolean).length}/${PROXY_CALLS_PER_TURN_CAP}`
 )
 check(
   'calls past cap rejected',
@@ -67,8 +68,8 @@ check(
 )
 check(
   'total allowed === cap',
-  results.filter(r => r).length === PROXY_CALLS_PER_TURN_CAP,
-  `count=${results.filter(r => r).length}`
+  results.filter(Boolean).length === PROXY_CALLS_PER_TURN_CAP,
+  `count=${results.filter(Boolean).length}`
 )
 console.log('[turn-budget] reset turn → next call allowed again')
 await c.mutation(api.testing.ensureChatRuntime, { chatId: chatId as never, testSecret })

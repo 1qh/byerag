@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
-/* eslint-disable no-console */
+/* eslint-disable no-console, no-await-in-loop */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
+/* oxlint-disable eslint(no-await-in-loop), eslint(no-shadow), eslint(no-unused-expressions), eslint(max-params), eslint(no-unused-vars), promise(param-names), unicorn(prefer-native-coercion-functions), unicorn(prefer-ternary) */
 /** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
 import { ConvexHttpClient } from 'convex/browser'
@@ -35,7 +36,7 @@ const check = (label: string, ok: boolean, detail: string): void => {
   if (ok) pass += 1
   else fail += 1
 }
-const ADMIN = 'regen-admin@example.com'
+const admin = 'regen-admin@example.com'
 console.log('[regen] wipe + seed topic pool=5')
 await c.mutation(api.testing.wipeTrainingTables, { testSecret })
 const topicId = await c.mutation(api.testing.seedTopicWithPool, { name: 'Regen', poolSize: 5, testSecret })
@@ -50,7 +51,7 @@ if (!qid) {
 console.log('[regen] regenerate 5 times (cap)')
 for (let i = 1; i <= 5; i += 1) {
   const r = (await c.mutation(api.testing.regenerateQuestionProbe, {
-    adminEmail: ADMIN,
+    adminEmail: admin,
     hint: `pass ${i}`,
     questionId: qid as never,
     testSecret
@@ -62,7 +63,7 @@ let capped = false
 let msg = ''
 try {
   await c.mutation(api.testing.regenerateQuestionProbe, {
-    adminEmail: ADMIN,
+    adminEmail: admin,
     hint: 'past cap',
     questionId: qid as never,
     testSecret

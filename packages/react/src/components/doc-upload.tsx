@@ -27,6 +27,7 @@ const DocUpload = ({ isAdmin, scope }: DocUploadProps): React.ReactElement => {
   const [busy, setBusy] = useState(false)
   const [conflict, setConflict] = useState<ConflictState | null>(null)
   const [scanQ, setScanQ] = useState<null | ScanState>(null)
+  // oxlint-disable-next-line unicorn/consistent-function-scoping -- captures component state (setBusy, finalize, scope)
   const submit = async (file: File, mode: { keepBoth?: boolean; replace?: boolean }): Promise<void> => {
     setBusy(true)
     try {
@@ -76,7 +77,8 @@ const DocUpload = ({ isAdmin, scope }: DocUploadProps): React.ReactElement => {
   }
   const onPick = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const file = e.target.files?.[0]
-    if (file) undefined
+    // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React event handler cannot be async (no-misused-promises); .catch is the documented byerag pattern
+    if (file) submit(file, {}).catch((error: unknown) => toast.error(String(error)))
     e.target.value = ''
   }
   return (
@@ -104,7 +106,8 @@ const DocUpload = ({ isAdmin, scope }: DocUploadProps): React.ReactElement => {
             <button
               className='rounded border px-2 py-1'
               onClick={() => {
-                undefined
+                // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React event handler cannot be async (no-misused-promises); .catch is the documented byerag pattern
+                submit(conflict.file, { replace: true }).catch((error: unknown) => toast.error(String(error)))
               }}
               type='button'>
               Replace
@@ -112,7 +115,8 @@ const DocUpload = ({ isAdmin, scope }: DocUploadProps): React.ReactElement => {
             <button
               className='rounded border px-2 py-1'
               onClick={() => {
-                undefined
+                // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React event handler cannot be async (no-misused-promises); .catch is the documented byerag pattern
+                submit(conflict.file, { keepBoth: true }).catch((error: unknown) => toast.error(String(error)))
               }}
               type='button'>
               Keep both

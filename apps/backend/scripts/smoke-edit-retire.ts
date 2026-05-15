@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 /* eslint-disable no-console */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
+/* oxlint-disable eslint(no-await-in-loop), eslint(no-shadow), eslint(no-unused-expressions), eslint(max-params), eslint(no-unused-vars), promise(param-names), unicorn(prefer-native-coercion-functions), unicorn(prefer-ternary) */
 /** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
 import { ConvexHttpClient } from 'convex/browser'
@@ -42,7 +43,7 @@ const topicId = await c.mutation(api.testing.seedTopicWithPool, { name: 'ER', po
 const questions = (await c.query(api.testing.listQuestionsForTopic, { testSecret, topicId: topicId as never })) as {
   _id: string
 }[]
-const qid = questions[0]?._id
+const qid: string | undefined = questions[0]?._id
 if (!qid) {
   console.error('no questions')
   process.exit(1)
