@@ -153,6 +153,26 @@ const setUserDepartmentProbe = mutation({
     return { ok: true }
   }
 })
+const whoAmIProbe = query({
+  args: { testSecret: v.string() },
+  handler: async (ctx, { testSecret }): Promise<null | Record<string, unknown>> => {
+    verifyTestSecret(testSecret)
+    const id = await ctx.auth.getUserIdentity()
+    return id
+  }
+})
+const listUsersProbe = query({
+  args: { testSecret: v.string() },
+  handler: async (ctx, { testSecret }): Promise<{ _id: string; email?: string; isAnonymous?: boolean }[]> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db.query('users').collect()
+    return rows.map(r => ({
+      _id: r._id,
+      email: (r as { email?: string }).email,
+      isAnonymous: (r as { isAnonymous?: boolean }).isAnonymous
+    }))
+  }
+})
 const getUserProfile = query({
   args: { testSecret: v.string(), userId: v.string() },
   handler: async (ctx, { userId, testSecret }): Promise<null | { department?: string; role: string }> => {
@@ -1581,6 +1601,7 @@ export {
   listSandboxIds,
   listStreamEvents,
   listStreamEventsForChat,
+  listUsersProbe,
   markTopicSubstantiveProbe,
   readFile,
   regenerateQuestionProbe,
@@ -1616,6 +1637,7 @@ export {
   topStripProbe,
   unassignAllForTopicProbe,
   uploadFile,
+  whoAmIProbe,
   wipeAllForOwner,
   wipeCostRecords,
   wipeDocs,
