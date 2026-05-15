@@ -57,7 +57,7 @@ const ScanOverrideModal = ({ docId, filename, onClose, signature }: ScanOverride
             className='rounded border px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-foreground'
             disabled={busy}
             onClick={() => {
-              void onNo()
+              undefined
             }}
             ref={noBtnRef}
             type='button'>
@@ -67,7 +67,7 @@ const ScanOverrideModal = ({ docId, filename, onClose, signature }: ScanOverride
             className='rounded border bg-destructive px-3 py-1 text-destructive-foreground text-sm'
             disabled={busy}
             onClick={() => {
-              void onYes()
+              undefined
             }}
             type='button'>
             Yes

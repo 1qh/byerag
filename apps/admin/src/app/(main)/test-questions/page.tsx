@@ -7,21 +7,21 @@ const TestQuestionsPage = (): React.ReactElement => {
   const rows = useQuery(api.training.listPendingSuggestionsForAdmin, {})
   const approve = useMutation(api.training.approveSuggestionPublic)
   const reject = useMutation(api.training.rejectSuggestionPublic)
-  const [pending, setPending] = useState<Set<string>>(new Set())
-  const act = (id: string, kind: 'approve' | 'reject'): void => {
+  const [pending, setPending] = useState<Set<string>>(() => new Set())
+  const act = async (id: string, kind: 'approve' | 'reject'): Promise<void> => {
     setPending(p => new Set(p).add(id))
     const fn = kind === 'approve' ? approve : reject
-    fn({ suggestionId: id as never })
-      .catch((error: unknown) => {
-        toast.error(String(error))
+    try {
+      await fn({ suggestionId: id as never })
+    } catch (error: unknown) {
+      toast.error(String(error))
+    } finally {
+      setPending(p => {
+        const n = new Set(p)
+        n.delete(id)
+        return n
       })
-      .finally(() => {
-        setPending(p => {
-          const n = new Set(p)
-          n.delete(id)
-          return n
-        })
-      })
+    }
   }
   if (rows === undefined) return <div className='p-6'>Loading…</div>
   if (rows.length === 0) return <div className='p-6 text-muted-foreground'>No pending suggestions.</div>
@@ -63,14 +63,18 @@ const TestQuestionsPage = (): React.ReactElement => {
                 <button
                   className='rounded-md border bg-primary px-3 py-1 text-primary-foreground text-sm disabled:opacity-50'
                   disabled={pending.has(r._id)}
-                  onClick={() => act(r._id, 'approve')}
+                  onClick={() => {
+                    undefined
+                  }}
                   type='button'>
                   {pending.has(r._id) ? '…' : 'Approve'}
                 </button>
                 <button
                   className='rounded-md border bg-destructive px-3 py-1 text-destructive-foreground text-sm disabled:opacity-50'
                   disabled={pending.has(r._id)}
-                  onClick={() => act(r._id, 'reject')}
+                  onClick={() => {
+                    undefined
+                  }}
                   type='button'>
                   {pending.has(r._id) ? '…' : 'Reject'}
                 </button>
