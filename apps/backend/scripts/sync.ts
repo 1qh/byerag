@@ -6,7 +6,7 @@
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: process.argv only */
 /** biome-ignore-all lint/nursery/noContinue: env parser */
 import { $, file } from 'bun'
-import { generateKeyPairSync } from 'node:crypto'
+import { createPrivateKey, createPublicKey, generateKeyPairSync } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { APPS } from '../convex/apps/manifest'
 const APP_TARGET_VARS = Object.values(APPS).flatMap(a => a.syncTargetKeys)
@@ -131,6 +131,25 @@ const makeSetVar =
       })
     }
   }
+const jwksFromPrivateKey = (privPem: string): string => {
+  const priv = createPrivateKey(privPem)
+  const pub = createPublicKey(priv)
+  const pubJwk = { ...pub.export({ format: 'jwk' }), alg: 'RS256', kid: 'convex-self-hosted', use: 'sig' }
+  return JSON.stringify({ keys: [pubJwk] })
+}
+const isEmptyJwks = (s: string | undefined): boolean => {
+  if (!s) return true
+  try {
+    const parsed = JSON.parse(s) as { keys?: unknown[] }
+    return !Array.isArray(parsed.keys) || parsed.keys.length === 0
+  } catch {
+    return true
+  }
+}
+const fetchBackendVar = async (name: string): Promise<string> => {
+  const res = await $`bunx convex env get ${name}`.quiet().nothrow()
+  return res.exitCode === 0 ? res.stdout.toString().trim() : ''
+}
 const ensureAuthKeys = async (
   setVar: (name: string, value: string) => Promise<void>,
   vars: Record<string, string>
@@ -146,22 +165,41 @@ const ensureAuthKeys = async (
       .split('\n')
       .map(l => l.split('=')[0] ?? '')
   )
-  if (existing.has('JWT_PRIVATE_KEY') && existing.has('JWKS')) {
+  const backendHasPriv = existing.has('JWT_PRIVATE_KEY')
+  const backendHasJwks = existing.has('JWKS')
+  if (backendHasPriv && backendHasJwks) {
+    const backendJwks = await fetchBackendVar('JWKS')
+    if (isEmptyJwks(backendJwks)) {
+      console.log('⚠ Backend JWKS is empty — regenerating from existing JWT_PRIVATE_KEY (sessions preserved)...')
+      const privPem = vars.JWT_PRIVATE_KEY ?? (await fetchBackendVar('JWT_PRIVATE_KEY'))
+      if (!privPem) die('JWKS empty but JWT_PRIVATE_KEY unrecoverable — manual recovery required.')
+      const jwks = jwksFromPrivateKey(privPem)
+      await setVar('JWKS', jwks)
+      writeKeyInEnv('JWKS', jwks)
+      return
+    }
     if (vars.JWT_PRIVATE_KEY && vars.JWKS) console.log('✔ JWT keys already set (skipped to preserve sessions)')
     else console.log('⚠ JWT keys on backend but missing from .env — fetch via `bunx convex env get` and add to .env')
     return
   }
-  if (vars.JWT_PRIVATE_KEY && vars.JWKS) {
+  if (vars.JWT_PRIVATE_KEY && vars.JWKS && !isEmptyJwks(vars.JWKS)) {
     console.log('Pushing JWT keys from .env to fresh backend...')
     await setVar('JWT_PRIVATE_KEY', vars.JWT_PRIVATE_KEY)
     await setVar('JWKS', vars.JWKS)
     return
   }
+  if (vars.JWT_PRIVATE_KEY && isEmptyJwks(vars.JWKS)) {
+    console.log('Regenerating JWKS from existing .env JWT_PRIVATE_KEY...')
+    const jwks = jwksFromPrivateKey(vars.JWT_PRIVATE_KEY)
+    await setVar('JWT_PRIVATE_KEY', vars.JWT_PRIVATE_KEY)
+    await setVar('JWKS', jwks)
+    writeKeyInEnv('JWKS', jwks)
+    return
+  }
   console.log('Generating JWT keys for Convex Auth (fresh) and persisting to .env...')
   const pair = generateKeyPairSync('rsa', { modulusLength: 2048 })
   const privPem = pair.privateKey.export({ format: 'pem', type: 'pkcs8' }).trim()
-  const pubJwk = { ...pair.publicKey.export({ format: 'jwk' }), alg: 'RS256', kid: 'convex-self-hosted', use: 'sig' }
-  const jwks = JSON.stringify({ keys: [pubJwk] })
+  const jwks = jwksFromPrivateKey(privPem)
   await setVar('JWT_PRIVATE_KEY', privPem)
   await setVar('JWKS', jwks)
   writeKeyInEnv('JWT_PRIVATE_KEY', `"${privPem}"`)
