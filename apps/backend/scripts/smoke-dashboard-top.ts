@@ -30,10 +30,6 @@ if (!(url && testSecret && uploader)) {
   process.exit(2)
 }
 const c = new ConvexHttpClient(url)
-const sleep = async (ms: number): Promise<void> =>
-  new Promise(resolve => {
-    setTimeout(resolve, ms)
-  })
 let pass = 0
 let fail = 0
 const check = (label: string, ok: boolean, detail: string): void => {
@@ -44,37 +40,17 @@ const check = (label: string, ok: boolean, detail: string): void => {
 console.log('[dashboard-top] wipe + seed 3 users + 2 shared docs + 2 cost rows')
 await c.mutation(api.testing.wipeUserProfiles, { testSecret })
 await c.mutation(api.testing.wipeDocs, { testSecret })
+await c.mutation(api.testing.wipeCostRecords, { testSecret })
 await c.mutation(api.testing.seedUserProfile, { role: 'user', testSecret, userId: 'u1@example.com' })
 await c.mutation(api.testing.seedUserProfile, { role: 'user', testSecret, userId: 'u2@example.com' })
 await c.mutation(api.testing.seedUserProfile, { role: 'user', testSecret, userId: 'u3@example.com' })
 await c.mutation(api.testing.seedUserProfile, { role: 'admin', testSecret, userId: 'admin@example.com' })
-for (const i of [1, 2]) {
-  const uploadUrl = await c.mutation(api.testing.docsGenerateUploadUrl, { testSecret })
-  const res = await fetch(uploadUrl, {
-    body: new Blob([`Doc ${i} content for corpus.`]),
-    headers: { 'Content-Type': 'text/plain' },
-    method: 'POST'
-  })
-  const { storageId } = (await res.json()) as { storageId: string }
-  await c.action(api.testing.docsFinalize, {
+for (const i of [1, 2])
+  await c.mutation(api.testing.seedApprovedSharedDoc, {
     filename: `doc-${i}.txt`,
-    mime: 'text/plain',
-    scope: 'shared',
-    storageId: storageId as never,
     testSecret,
     uploaderEmail: uploader
   })
-}
-console.log('[dashboard-top] await approved status on both docs')
-const deadline = Date.now() + 90_000
-while (Date.now() < deadline) {
-  const r = (await c.query(api.testing.topStripProbe, { testSecret })) as {
-    docsInCorpus: number
-    totalUsers: number
-  }
-  if (r.docsInCorpus >= 2) break
-  await sleep(2000)
-}
 const today = new Date().toISOString().slice(0, 10)
 await c.mutation(api.testing.seedCostRecord, {
   cents: 250,

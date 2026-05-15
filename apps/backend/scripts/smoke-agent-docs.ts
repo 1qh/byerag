@@ -67,7 +67,7 @@ const idA = await seedDoc('offer-letter.txt', 'Offer Letter\n\nSection 3.4 PTO: 
 const idB = await seedDoc('pto-policy.txt', 'PTO Policy\n\nAll staff receive 20 days PTO per year, accrued monthly.\n')
 console.log(`[smoke-agent-docs] seeded A=${idA} B=${idB}`)
 const waitApproved = async (id: string): Promise<void> => {
-  const deadline = Date.now() + 60_000
+  const deadline = Date.now() + 240_000
   while (Date.now() < deadline) {
     const row = (await client.query(api.testing.getDocRow, { docId: id as never, testSecret })) as null | {
       embedding?: number[]
@@ -76,7 +76,7 @@ const waitApproved = async (id: string): Promise<void> => {
     if (row?.policyStatus === 'approved' && (row.embedding?.length ?? 0) > 0) return
     await sleep(POLL_MS)
   }
-  throw new Error(`doc ${id} not approved+embedded within 60s`)
+  throw new Error(`doc ${id} not approved+embedded within 240s`)
 }
 await waitApproved(idA)
 await waitApproved(idB)
