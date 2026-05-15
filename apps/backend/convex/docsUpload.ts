@@ -118,16 +118,33 @@ const finalize = internalAction({
     uploaderEmail: v.string()
   },
   handler: async (ctx, args): Promise<UploadResult> => {
-    if (!ALLOWED_MIMES.has(args.mime)) {
-      await ctx.storage.delete(args.storageId)
-      return { ok: false, reason: `unsupported-mime:${args.mime}` }
-    }
     const blob = await ctx.storage.get(args.storageId)
     if (!blob) return { ok: false, reason: 'blob-missing' }
     const bytes = new Uint8Array(await blob.arrayBuffer())
     const uploadedBy = canonicalizeEmail(args.uploaderEmail)
     const owner = args.scope === 'mine' ? uploadedBy : undefined
     const sha256 = await sha256Hex(bytes)
+    const earlyScan: ScanResult = await scanBytes(bytes).catch(
+      (error: unknown) => ({ ok: false, signature: `clamav-error:${String(error)}` }) satisfies ScanResult
+    )
+    if (!earlyScan.ok) {
+      const idRaw = await ctx.runMutation(internal.docs.insertQuarantined, {
+        fileSize: bytes.byteLength,
+        filename: args.filename,
+        mime: args.mime,
+        owner,
+        scope: args.scope,
+        sha256,
+        signature: earlyScan.signature ?? 'unknown',
+        storageId: args.storageId,
+        uploadedBy
+      })
+      return { docId: idRaw, ok: false, reason: 'quarantined', signature: earlyScan.signature }
+    }
+    if (!ALLOWED_MIMES.has(args.mime)) {
+      await ctx.storage.delete(args.storageId)
+      return { ok: false, reason: `unsupported-mime:${args.mime}` }
+    }
     const dupRaw = await ctx.runQuery(internal.docs.findBySha256, {
       owner,
       scope: args.scope,
@@ -174,24 +191,6 @@ const finalize = internalAction({
     if (recentQ >= 3) {
       await ctx.storage.delete(args.storageId)
       throw new Error('too many rejected uploads')
-    }
-    const scan: ScanResult = await scanBytes(bytes).catch(
-      (error: unknown) => ({ ok: false, signature: `clamav-error:${String(error)}` }) satisfies ScanResult
-    )
-    if (!scan.ok) {
-      const idRaw = await ctx.runMutation(internal.docs.insertQuarantined, {
-        fileSize: bytes.byteLength,
-        filename: effectiveFilename,
-        mime: args.mime,
-        owner,
-        scope: args.scope,
-        sha256,
-        signature: scan.signature ?? 'unknown',
-        storageId: args.storageId,
-        uploadedBy
-      })
-      const id = idRaw
-      return { docId: id, ok: false, reason: 'quarantined', signature: scan.signature }
     }
     const version = conflict ? (conflict.version ?? 1) + 1 : 1
     const docIdRaw = await ctx.runMutation(internal.docs.insertRow, {
