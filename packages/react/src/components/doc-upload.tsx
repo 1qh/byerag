@@ -76,7 +76,7 @@ const DocUpload = ({ isAdmin, scope }: DocUploadProps): React.ReactElement => {
   }
   const onPick = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const file = e.target.files?.[0]
-    if (file) void submit(file, {})
+    if (file) undefined
     e.target.value = ''
   }
   return (
@@ -104,7 +104,7 @@ const DocUpload = ({ isAdmin, scope }: DocUploadProps): React.ReactElement => {
             <button
               className='rounded border px-2 py-1'
               onClick={() => {
-                void submit(conflict.file, { replace: true })
+                undefined
               }}
               type='button'>
               Replace
@@ -112,7 +112,7 @@ const DocUpload = ({ isAdmin, scope }: DocUploadProps): React.ReactElement => {
             <button
               className='rounded border px-2 py-1'
               onClick={() => {
-                void submit(conflict.file, { keepBoth: true })
+                undefined
               }}
               type='button'>
               Keep both

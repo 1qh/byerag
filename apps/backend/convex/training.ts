@@ -1,3 +1,8 @@
+/* eslint-disable no-await-in-loop, no-continue, complexity, @typescript-eslint/no-unnecessary-condition */
+/** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops by design */
+/** biome-ignore-all lint/nursery/noContinue: control flow shape */
+/** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
+/* oxlint-disable eslint(no-await-in-loop), eslint(complexity), eslint(no-shadow), unicorn(no-array-reduce), unicorn(prefer-ternary) */
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import { internalAction, internalMutation, internalQuery, mutation, query } from './_generated/server'

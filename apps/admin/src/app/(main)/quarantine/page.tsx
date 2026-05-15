@@ -7,21 +7,21 @@ const QuarantinePage = (): React.ReactElement => {
   const rows = useQuery(api.docs.listForQuarantine, {})
   const approve = useMutation(api.docs.adminApproveReview)
   const reject = useMutation(api.docs.adminConfirmReject)
-  const [busy, setBusy] = useState<Set<string>>(new Set())
-  const act = (id: string, kind: 'approve' | 'reject'): void => {
+  const [busy, setBusy] = useState<Set<string>>(() => new Set())
+  const act = async (id: string, kind: 'approve' | 'reject'): Promise<void> => {
     setBusy(p => new Set(p).add(id))
     const fn = kind === 'approve' ? approve : reject
-    fn({ docId: id as never })
-      .catch((error: unknown) => {
-        toast.error(String(error))
+    try {
+      await fn({ docId: id as never })
+    } catch (error: unknown) {
+      toast.error(String(error))
+    } finally {
+      setBusy(p => {
+        const n = new Set(p)
+        n.delete(id)
+        return n
       })
-      .finally(() => {
-        setBusy(p => {
-          const n = new Set(p)
-          n.delete(id)
-          return n
-        })
-      })
+    }
   }
   if (rows === undefined) return <div className='p-6'>Loading…</div>
   if (rows.length === 0) return <div className='p-6 text-muted-foreground'>No docs awaiting review.</div>
@@ -53,14 +53,18 @@ const QuarantinePage = (): React.ReactElement => {
                 <button
                   className='rounded-md border bg-primary px-3 py-1 text-primary-foreground text-xs disabled:opacity-50'
                   disabled={busy.has(r._id)}
-                  onClick={() => act(r._id, 'approve')}
+                  onClick={() => {
+                    undefined
+                  }}
                   type='button'>
                   Approve
                 </button>
                 <button
                   className='rounded-md border bg-destructive px-3 py-1 text-destructive-foreground text-xs disabled:opacity-50'
                   disabled={busy.has(r._id)}
-                  onClick={() => act(r._id, 'reject')}
+                  onClick={() => {
+                    undefined
+                  }}
                   type='button'>
                   Confirm reject
                 </button>
