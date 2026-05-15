@@ -10,6 +10,7 @@ volumes:
   postgres-data:
   convex-data:
   clamav-data:
+  workspaces:
 services:
   postgres:
     image: postgres:17-alpine
@@ -47,6 +48,7 @@ services:
     volumes:
       - convex-data:/convex/data
       - /var/run/docker.sock:/var/run/docker.sock
+      - workspaces:/workspaces
     ports:
       - '127.0.0.1:3210:3210'
       - '127.0.0.1:3211:3211'

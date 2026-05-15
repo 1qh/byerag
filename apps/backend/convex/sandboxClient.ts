@@ -11,6 +11,7 @@ interface ConnectOpts {
 }
 interface CreateOpts {
   lifecycle?: { autoResume: boolean; onTimeout: 'kill' | 'pause' }
+  owner?: string
   timeoutMs?: number
 }
 interface DockerRes {
@@ -234,16 +235,28 @@ const ensureRunning = async (id: string): Promise<void> => {
   if (info.State.Paused) await dockerRequest({ method: 'POST', path: `/containers/${id}/unpause` })
   else if (!info.State.Running) await dockerRequest({ method: 'POST', path: `/containers/${id}/start` })
 }
+const SAFE_OWNER_RE = /[^a-z0-9_.-]/giu
+const sanitizeOwner = (owner: string): string => owner.toLowerCase().replaceAll(SAFE_OWNER_RE, '_').slice(0, 64)
 const createSandbox = async (templateId: string, opts: CreateOpts = {}): Promise<Sandbox> => {
   const image = templateId || env.SANDBOX_IMAGE
+  const binds: string[] = ['byerag_workspaces:/workspaces:ro']
+  const ownerSlug = opts.owner ? sanitizeOwner(opts.owner) : undefined
   const create = dockerJson<{ Id: string }>({
     body: {
       AttachStderr: false,
       AttachStdin: false,
       AttachStdout: false,
-      Cmd: ['sleep', 'infinity'],
+      Cmd: [
+        'sh',
+        '-c',
+        `mkdir -p /workspace/shared /workspace/mine && cp -R /workspaces/shared/. /workspace/shared/ 2>/dev/null; ${
+          ownerSlug ? `cp -R /workspaces/mine/${ownerSlug}/. /workspace/mine/ 2>/dev/null;` : ''
+        } chmod -R a-w /workspace/shared /workspace/mine 2>/dev/null; exec sleep infinity`
+      ],
+      Env: ownerSlug ? [`BYERAG_OWNER=${ownerSlug}`] : undefined,
       HostConfig: {
         AutoRemove: false,
+        Binds: binds,
         CapDrop: ['ALL'],
         Memory: 1_073_741_824,
         NanoCpus: 2_000_000_000,

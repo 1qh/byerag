@@ -97,7 +97,8 @@ const run = internalAction({
         })
         if (!allowed) throw new Error('sandbox create rate limited')
         await emit('sandbox_create', { template: env.SANDBOX_IMAGE })
-        sandbox = await createSandbox(env.SANDBOX_IMAGE, { timeoutMs: SANDBOX_TIMEOUT_MS })
+        await ctx.runAction(internal.sandboxMaterialize.materializeOwner, { owner: email })
+        sandbox = await createSandbox(env.SANDBOX_IMAGE, { owner: email, timeoutMs: SANDBOX_TIMEOUT_MS })
         const result: { accepted: boolean; existingSandboxId?: string } = await ctx.runMutation(
           internal.sandboxes.upsert,
           { owner: email, sandboxId: sandbox.sandboxId }

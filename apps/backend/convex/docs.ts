@@ -210,6 +210,41 @@ interface ChunkRow {
   seq: number
   text: string
 }
+const listMineForSandbox = internalQuery({
+  args: { owner: v.string() },
+  handler: async (ctx, { owner }): Promise<{ filename: string; storageId: Id<'_storage'> }[]> => {
+    const rows = await ctx.db
+      .query('docs')
+      .withIndex('by_owner', q => q.eq('owner', owner))
+      .filter(q =>
+        q.and(
+          q.eq(q.field('scope'), 'mine'),
+          q.eq(q.field('deletedAt'), undefined),
+          q.eq(q.field('scanStatus'), 'clean'),
+          q.eq(q.field('policyStatus'), 'approved')
+        )
+      )
+      .take(500)
+    return rows.flatMap(r => (r.storageId ? [{ filename: r.filename, storageId: r.storageId }] : []))
+  }
+})
+const listSharedForSandbox = internalQuery({
+  args: {},
+  handler: async (ctx): Promise<{ filename: string; storageId: Id<'_storage'> }[]> => {
+    const rows = await ctx.db
+      .query('docs')
+      .withIndex('by_scope', q => q.eq('scope', 'shared'))
+      .filter(q =>
+        q.and(
+          q.eq(q.field('deletedAt'), undefined),
+          q.eq(q.field('scanStatus'), 'clean'),
+          q.eq(q.field('policyStatus'), 'approved')
+        )
+      )
+      .take(2000)
+    return rows.flatMap(r => (r.storageId ? [{ filename: r.filename, storageId: r.storageId }] : []))
+  }
+})
 const countRecentQuarantines = internalQuery({
   args: { sha256: v.string(), sinceMs: v.number(), uploadedBy: v.string() },
   handler: async (ctx, { sha256, uploadedBy, sinceMs }): Promise<number> => {
@@ -726,7 +761,9 @@ export {
   insertRow,
   listForQuarantine,
   listMine,
+  listMineForSandbox,
   listShared,
+  listSharedForSandbox,
   markClassifierError,
   persistChunks,
   purgeQuarantineStaging,
