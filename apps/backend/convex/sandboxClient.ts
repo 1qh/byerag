@@ -261,6 +261,7 @@ const createSandbox = async (templateId: string, opts: CreateOpts = {}): Promise
         Memory: 1_073_741_824,
         NanoCpus: 2_000_000_000,
         NetworkMode: 'byerag_sandbox-egress',
+        Runtime: env.SANDBOX_RUNTIME,
         SecurityOpt: ['no-new-privileges:true']
       },
       Image: image,
