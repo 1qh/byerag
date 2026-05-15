@@ -304,6 +304,7 @@ interface UploadResult {
 const upload = action({
   args: {
     filename: v.string(),
+    keepBoth: v.optional(v.boolean()),
     mime: v.string(),
     replace: v.optional(v.boolean()),
     scope: v.union(v.literal('shared'), v.literal('mine')),
@@ -314,6 +315,14 @@ const upload = action({
     if (!identity?.email) throw new Error('not authenticated')
     const uploaderEmail = identity.email.toLowerCase()
     return ctx.runAction(internal.docsUpload.finalize, { ...args, uploaderEmail })
+  }
+})
+const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx): Promise<string> => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity?.email) throw new Error('not authenticated')
+    return ctx.storage.generateUploadUrl()
   }
 })
 interface DocListItem {
@@ -705,6 +714,7 @@ export {
   countRecentQuarantines,
   findByFilename,
   findBySha256,
+  generateUploadUrl,
   getChunkRows,
   getCitationBadge,
   getForClassify,
