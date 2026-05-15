@@ -3,6 +3,7 @@ import { api } from 'backend/convex/_generated/api'
 import { useAction, useMutation } from 'convex/react'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { ScanOverrideModal } from './scan-override-modal'
 interface ConflictState {
   existingId: string
   file: File
@@ -11,14 +12,21 @@ interface ConflictState {
   scope: Scope
 }
 interface DocUploadProps {
+  isAdmin?: boolean
   scope: Scope
 }
+interface ScanState {
+  docId: string
+  filename: string
+  signature: string
+}
 type Scope = 'mine' | 'shared'
-const DocUpload = ({ scope }: DocUploadProps): React.ReactElement => {
+const DocUpload = ({ isAdmin, scope }: DocUploadProps): React.ReactElement => {
   const genUrl = useMutation(api.docs.generateUploadUrl)
   const finalize = useAction(api.docs.upload)
   const [busy, setBusy] = useState(false)
   const [conflict, setConflict] = useState<ConflictState | null>(null)
+  const [scanQ, setScanQ] = useState<null | ScanState>(null)
   const submit = async (file: File, mode: { keepBoth?: boolean; replace?: boolean }): Promise<void> => {
     setBusy(true)
     try {
@@ -55,7 +63,9 @@ const DocUpload = ({ scope }: DocUploadProps): React.ReactElement => {
         return
       }
       if (r.reason === 'quarantined') {
-        toast.error(`Your file was rejected because it appeared suspicious. Reason: ${r.signature ?? 'unknown'}.`)
+        if (isAdmin && r.docId) setScanQ({ docId: r.docId, filename, signature: r.signature ?? 'unknown' })
+        else toast.error(`Your file was rejected because it appeared suspicious. Reason: ${r.signature ?? 'unknown'}.`)
+
         return
       }
       toast.error(`upload failed: ${r.reason ?? 'unknown'}`)
@@ -68,7 +78,6 @@ const DocUpload = ({ scope }: DocUploadProps): React.ReactElement => {
   const onPick = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const file = e.target.files?.[0]
     if (file) submit(file, {}).catch(() => undefined)
-
     e.target.value = ''
   }
   return (
@@ -77,6 +86,16 @@ const DocUpload = ({ scope }: DocUploadProps): React.ReactElement => {
         <input className='hidden' disabled={busy} onChange={onPick} type='file' />
         {busy ? 'Uploading…' : `Upload to ${scope}`}
       </label>
+      {scanQ ? (
+        <ScanOverrideModal
+          docId={scanQ.docId}
+          filename={scanQ.filename}
+          onClose={() => {
+            setScanQ(null)
+          }}
+          signature={scanQ.signature}
+        />
+      ) : null}
       {conflict ? (
         <div className='space-y-2 rounded border bg-muted p-3 text-sm'>
           <div>
