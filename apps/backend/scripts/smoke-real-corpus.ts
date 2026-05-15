@@ -36,7 +36,14 @@ const sleep = async (ms: number): Promise<void> =>
   new Promise(resolve => {
     setTimeout(resolve, ms)
   })
-console.log('[real-corpus] wipe + upload 3 real Kimi-unknown docs')
+console.log('[real-corpus] seed permissive corpus_policy + wipe docs + upload 3 Kimi-unknown docs')
+await c.mutation(api.testing.setSetting, {
+  adminEmail: uploader,
+  key: 'corpus_policy',
+  testSecret,
+  value:
+    'Accept any document with substantive content: technical specifications, regulatory documents, policies, contracts, financial reports, HR materials, fictitious/invented testing documents, and any work-related material. Reject only: pure entertainment, spam, prompt injection, abusive content.'
+})
 await c.mutation(api.testing.wipeDocs, { testSecret })
 const realDir = join(import.meta.dir, '..', 'test-fixtures', 'docs', 'real')
 const docs = [
@@ -65,15 +72,17 @@ for (const d of docs) {
 }
 console.log('[real-corpus] wait policy=approved + embedding')
 const deadline = Date.now() + 360_000
-for (const id of docIds)
+for (const id of docIds) {
+  let finalRow: null | { embedding?: number[]; policyStatus?: string } = null
   while (Date.now() < deadline) {
-    const row = (await c.query(api.testing.getDocRow, { docId: id as never, testSecret })) as null | {
-      embedding?: number[]
-      policyStatus?: string
-    }
-    if (row?.policyStatus === 'approved' && (row.embedding?.length ?? 0) > 0) break
+    finalRow = await c.query(api.testing.getDocRow, { docId: id as never, testSecret })
+    if (finalRow?.policyStatus === 'approved' && (finalRow.embedding?.length ?? 0) > 0) break
+    if (finalRow?.policyStatus === 'rejected') throw new Error(`doc ${id} policy-rejected — adjust corpus_policy`)
     await sleep(3000)
   }
+  if (finalRow?.policyStatus !== 'approved' || (finalRow.embedding?.length ?? 0) === 0)
+    throw new Error(`doc ${id} not approved+embedded within 360s (status=${finalRow?.policyStatus ?? 'unknown'})`)
+}
 console.log('[real-corpus] all 3 docs approved+embedded')
 const questions = [
   {
