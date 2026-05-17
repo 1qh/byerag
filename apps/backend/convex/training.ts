@@ -2,7 +2,7 @@
 /** biome-ignore-all lint/nursery/noContinue: control flow shape */
 /** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
 /* oxlint-disable eslint(no-await-in-loop), eslint(complexity), eslint(no-shadow), unicorn(no-array-reduce), unicorn(prefer-ternary) */
-/* eslint-disable no-await-in-loop, complexity, no-continue, @typescript-eslint/no-unnecessary-condition -- sequential Convex DB ops by design; control flow shape; widened types from generated API */
+/* eslint-disable no-await-in-loop, complexity, no-continue -- sequential Convex DB ops by design; control flow shape; widened types from generated API */
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import { action, internalAction, internalMutation, internalQuery, mutation, query } from './_generated/server'
@@ -315,7 +315,6 @@ const persistSuggestionsWithEmbedding = internalMutation({
         pairedWith: pairedWith as never,
         prompt: q.prompt,
         promptEmbedding: q.promptEmbedding.length > 0 ? q.promptEmbedding : undefined,
-        regenCount: 0,
         sourceDocIds: [docId],
         status: 'pending',
         topicId: topicId as never
@@ -381,7 +380,6 @@ const persistSuggestions = internalMutation({
         correctIndex: q.correctIndex,
         createdAt: Date.now(),
         kind: 'new',
-        regenCount: 0,
         sourceDocIds: [docId],
         status: 'pending',
         topicId: topicId as never
@@ -404,7 +402,6 @@ const listPendingSuggestionsForAdmin = query({
       pairedWith?: string
       pairKind?: 'cap-swap' | 'conflict'
       prompt?: string
-      regenCount?: number
       sourceDocs: { _id: string; filename: string }[]
       topicId: string
       topicName: string
@@ -432,7 +429,6 @@ const listPendingSuggestionsForAdmin = query({
       pairedWith?: string
       pairKind?: 'cap-swap' | 'conflict'
       prompt?: string
-      regenCount?: number
       sourceDocs: { _id: string; filename: string }[]
       topicId: string
       topicName: string
@@ -452,7 +448,6 @@ const listPendingSuggestionsForAdmin = query({
         pairKind: r.pairKind,
         pairedWith: r.pairedWith,
         prompt: r.prompt,
-        regenCount: r.regenCount,
         sourceDocs: await Promise.all(
           r.sourceDocIds.map(async id => {
             let filename = docCache.get(id)
@@ -496,87 +491,6 @@ const listAttemptsForAdmin = query({
       startedAt: r.startedAt,
       status: r.status
     }))
-  }
-})
-const getSuggestionForRegen = internalQuery({
-  args: { suggestionId: v.id('testQuestionSuggestions') },
-  handler: async (
-    ctx,
-    { suggestionId }
-  ): Promise<null | { priorPrompt: string; regenCount: number; sourceDocId: string; topicId: string }> => {
-    const s = await ctx.db.get(suggestionId)
-    if (!s) return null
-    const sourceDocId = s.sourceDocIds[0]
-    if (!sourceDocId) return null
-    return { priorPrompt: s.prompt ?? '', regenCount: s.regenCount ?? 0, sourceDocId, topicId: s.topicId }
-  }
-})
-const insertRegeneratedSuggestion = internalMutation({
-  args: {
-    choices: v.array(v.string()),
-    correctIndex: v.number(),
-    hint: v.optional(v.string()),
-    prompt: v.string(),
-    promptEmbedding: v.array(v.float64()),
-    regenCount: v.number(),
-    sourceDocId: v.id('docs'),
-    topicId: v.id('topics')
-  },
-  handler: async (
-    ctx,
-    { choices, correctIndex, hint, prompt, promptEmbedding, regenCount, sourceDocId, topicId }
-  ): Promise<{ suggestionId: string }> => {
-    const suggestionId = await ctx.db.insert('testQuestionSuggestions', {
-      choices,
-      correctIndex,
-      createdAt: Date.now(),
-      hint,
-      kind: 'new',
-      prompt,
-      promptEmbedding: promptEmbedding.length > 0 ? promptEmbedding : undefined,
-      regenCount,
-      sourceDocIds: [sourceDocId],
-      status: 'pending',
-      topicId
-    })
-    return { suggestionId }
-  }
-})
-const regenerateSuggestionPublic = mutation({
-  args: { hint: v.optional(v.string()), suggestionId: v.id('testQuestionSuggestions') },
-  handler: async (ctx, { suggestionId, hint }): Promise<{ regenCount: number }> => {
-    const identity = await ctx.auth.getUserIdentity()
-    const email = identity?.email?.toLowerCase()
-    if (!email) throw new Error('not authenticated')
-    const profileRows = await ctx.db
-      .query('userProfiles')
-      .withIndex('by_userId', q => q.eq('userId', email))
-      .collect()
-    const profile = profileRows[0]
-    if (profile?.role !== 'admin') throw new Error('admin only')
-    const s = await ctx.db.get(suggestionId)
-    if (!s) throw new Error('suggestion not found')
-    if (s.status !== 'pending') throw new Error('already resolved')
-    if (s.kind !== 'new') throw new Error('only new-kind suggestions can be regenerated')
-    const regenCount = s.regenCount ?? 0
-    if (regenCount >= 5) throw new Error('regenCount cap reached (5)')
-    await ctx.db.patch(suggestionId, {
-      resolvedAction: 'reject',
-      resolvedAt: Date.now(),
-      resolvedBy: email,
-      resolvedReason: 'admin-action',
-      status: 'resolved'
-    })
-    await ctx.scheduler.runAfter(0, internal.trainingGen.regenerateOne, { hint, suggestionId })
-    await ctx.db.insert('auditLogs', {
-      args: JSON.stringify({ hint: hint?.slice(0, 80), regenCount: regenCount + 1, suggestionId }),
-      command: 'training.suggestion.regenerate',
-      mode: 'session',
-      ok: true,
-      owner: email,
-      severity: 'medium'
-    })
-    return { regenCount: regenCount + 1 }
   }
 })
 const rejectSuggestionPublic = mutation({
@@ -726,52 +640,6 @@ const resolvePairAction = mutation({
     return { approvedQuestionId, retiredQuestionId }
   }
 })
-const adminRegenerateQuestion = mutation({
-  args: { hint: v.optional(v.string()), questionId: v.id('testQuestions') },
-  handler: async (ctx, { questionId, hint }): Promise<{ regenCount: number; suggestionId: string }> => {
-    const identity = await ctx.auth.getUserIdentity()
-    const email = identity?.email?.toLowerCase()
-    if (!email) throw new Error('not authenticated')
-    const profileRows = await ctx.db
-      .query('userProfiles')
-      .withIndex('by_userId', q => q.eq('userId', email))
-      .collect()
-    const profile = profileRows[0]
-    if (profile?.role !== 'admin') throw new Error('admin only')
-    const q = await ctx.db.get(questionId)
-    if (!q) throw new Error('question not found')
-    const priorSuggestions = await ctx.db
-      .query('testQuestionSuggestions')
-      .withIndex('by_target', x => x.eq('targetQuestionId', questionId))
-      .collect()
-    let lastRegen = 0
-    for (const s of priorSuggestions) {
-      const rc = s.regenCount ?? 0
-      if (rc > lastRegen) lastRegen = rc
-    }
-    if (lastRegen >= 5) throw new Error('regenCount cap reached (5)')
-    const regenCount = lastRegen + 1
-    const sid = await ctx.db.insert('testQuestionSuggestions', {
-      createdAt: Date.now(),
-      hint,
-      kind: 'revision',
-      regenCount,
-      sourceDocIds: q.sourceDocIds,
-      status: 'pending',
-      targetQuestionId: questionId,
-      topicId: q.topicId
-    })
-    await ctx.db.insert('auditLogs', {
-      args: JSON.stringify({ hint: hint?.slice(0, 80), questionId, regenCount }),
-      command: 'training.question.regenerate',
-      mode: 'session',
-      ok: true,
-      owner: email,
-      severity: 'medium'
-    })
-    return { regenCount, suggestionId: sid }
-  }
-})
 const adminEditQuestion = mutation({
   args: {
     choices: v.array(v.string()),
@@ -911,8 +779,6 @@ const inferBatchSubstantive = query({
       if (row) kinds.add(row.kind)
     }
     if (kinds.has('retire')) return 'substantive'
-    if (kinds.has('revision') && !kinds.has('new')) return 'substantive'
-    if (kinds.has('new') && !kinds.has('revision') && !kinds.has('retire')) return 'cosmetic'
     return 'cosmetic'
   }
 })
@@ -989,16 +855,13 @@ const markTopicSubstantive = mutation({
 export {
   adminDeleteTopic,
   adminEditQuestion,
-  adminRegenerateQuestion,
   adminRetireQuestion,
   approveSuggestion,
   approveSuggestionPublic,
   assignEligibleNow,
   autoAssign,
-  getSuggestionForRegen,
   inferBatchSubstantive,
   insertAuto,
-  insertRegeneratedSuggestion,
   isAdminByEmail,
   isAutoAssignEnabled,
   listAttemptsForAdmin,
@@ -1009,7 +872,6 @@ export {
   markTopicSubstantive,
   persistSuggestions,
   persistSuggestionsWithEmbedding,
-  regenerateSuggestionPublic,
   rejectSuggestionPublic,
   resolvePairAction,
   retireEmptyTopics,
