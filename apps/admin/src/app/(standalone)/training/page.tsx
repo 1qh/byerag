@@ -188,11 +188,11 @@ const TrainingPage = (): React.ReactElement => {
   if (summary === null) return <div className='p-6 text-destructive'>Admin role required.</div>
   if (summary === undefined) return <div className='p-6'>Loading…</div>
   const dueDays = dueSetting ?? '14'
-  const latestEvent = activity?.events[0]
+  const latestRow = activity?.rows[0]
   const agentLine =
     autoAssign === 'true'
-      ? latestEvent
-        ? `· last assigned ${latestEvent.assignmentsCreated} test${latestEvent.assignmentsCreated === 1 ? '' : 's'} ${relTime(latestEvent.at)}`
+      ? latestRow
+        ? `· last assigned ${latestRow.test} to ${latestRow.userId} ${relTime(latestRow.at)}`
         : activity?.lastCheck
           ? `· running · everyone eligible already assigned (checked ${relTime(activity.lastCheck)})`
           : '· running'
@@ -272,14 +272,7 @@ const TrainingPage = (): React.ReactElement => {
         </div>
         {agentOpen ? (
           <div className='mt-2 border-t pt-2 text-muted-foreground'>
-            <p>When on, the agent works continuously on its own — no schedule to set. It:</p>
-            <ul className='mt-1 list-disc space-y-0.5 pl-5'>
-              <li>assigns every eligible test to every employee automatically</li>
-              <li>catches new hires and assigns them within minutes of joining</li>
-              <li>assigns a test the moment it reaches enough questions to go live</li>
-              <li>re-fills anything accidentally un-assigned, so nobody slips through</li>
-            </ul>
-            <div className='mt-2 mb-1 flex items-center gap-2'>
+            <div className='mb-1 flex items-center gap-2'>
               <span className='font-medium text-foreground'>Recent activity</span>
               <Input
                 className='h-7 w-48'
@@ -291,32 +284,30 @@ const TrainingPage = (): React.ReactElement => {
                 value={actSearch}
               />
             </div>
-            {activity && activity.events.length > 0 ? (
+            {activity && activity.rows.length > 0 ? (
               <>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>When</TableHead>
-                      <TableHead>Source</TableHead>
-                      <TableHead className='text-right'>Assigned</TableHead>
-                      <TableHead>Tests</TableHead>
+                      <TableHead>User</TableHead>
+                      <TableHead>Test</TableHead>
+                      <TableHead>Assigned at</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {activity.events.map(e => (
-                      <TableRow key={`${e.at}-${e.mode}`}>
-                        <TableCell className='text-foreground'>{relTime(e.at)}</TableCell>
-                        <TableCell>{e.mode === 'admin' ? 'Manual' : 'Agent'}</TableCell>
-                        <TableCell className='text-right tabular-nums'>{e.assignmentsCreated}</TableCell>
+                    {activity.rows.map(r => (
+                      <TableRow key={`${r.userId}-${r.test}-${r.at}`}>
+                        <TableCell className='text-foreground'>{r.userId}</TableCell>
+                        <TableCell className='text-foreground'>{r.test}</TableCell>
                         <TableCell className='text-foreground'>
-                          {e.topics.length > 0 ? e.topics.join(', ') : `${e.topicsProcessed} topics`}
+                          {new Date(r.at).toLocaleString('en-GB', { timeZone: 'Asia/Ho_Chi_Minh' })}
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
                 <div className='mt-1 flex items-center justify-between'>
-                  <span>{activity.total} events</span>
+                  <span>{activity.total} assignments</span>
                   <div className='flex items-center gap-2'>
                     <Button disabled={actPage === 0} onClick={() => setActPage(p => p - 1)} size='sm' variant='outline'>
                       Prev
