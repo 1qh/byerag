@@ -420,7 +420,7 @@ const assignmentsTable = query({
     )
     const rank = { open: 1, overdue: 0, passed: 2 }
     const sorted = filtered.toSorted((a, b) => rank[a.status] - rank[b.status] || b.at - a.at)
-    const pageSize = 25
+    const pageSize = 10
     const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize))
     const p = Math.min(Math.max(0, page ?? 0), pageCount - 1)
     return {
