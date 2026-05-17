@@ -22,7 +22,7 @@ const StandaloneLayout = ({ children }: { children: ReactNode }): React.ReactEle
     <Authenticated>
       <aside className='sticky top-0 flex h-dvh w-56 shrink-0 flex-col gap-3 overflow-y-auto border-r p-3'>
         <Link className='font-semibold' href='/'>
-          byerag
+          agent
         </Link>
         <UserSidebarNav />
         <SidebarAccount />
