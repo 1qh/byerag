@@ -107,65 +107,6 @@ const parseQuestions = (raw: string): ParsedQuestion[] => {
     return []
   }
 }
-const buildRegeneratePrompt = (filename: string, text: string, prior: string, hint?: string): string =>
-  `Source document: ${filename}\n\n${text}\n\nThe previous question was: "${prior}"\nGenerate ONE different Vietnamese multiple-choice question from this document.${hint ? ` Hint from reviewer: ${hint}` : ''} Output a single JSON object: {"topicName": "<short Vietnamese category>", "prompt": "<question Vietnamese>", "choices": ["A", "B", "C"], "correctIndex": 0|1|2}. Exactly 3 choices. Output JSON object only (no array).`
-const JSON_OBJECT_RE = /\{[\s\S]*\}/u
-const parseOneQuestion = (raw: string): null | ParsedQuestion => {
-  const m = JSON_OBJECT_RE.exec(raw)
-  const candidate = m ? m[0] : raw.trim()
-  try {
-    const x = JSON.parse(candidate) as RawQuestion
-    const choices =
-      Array.isArray(x.choices) && x.choices.length === 3 && x.choices.every(c => typeof c === 'string') ? x.choices : []
-    const correctIndex =
-      typeof x.correctIndex === 'number' && x.correctIndex >= 0 && x.correctIndex <= 2 ? x.correctIndex : 0
-    const prompt = typeof x.prompt === 'string' ? x.prompt.slice(0, 1000) : ''
-    const topicName = typeof x.topicName === 'string' ? x.topicName.trim().slice(0, 80) : ''
-    if (choices.length !== 3 || prompt.length === 0 || topicName.length === 0) return null
-    return { choices, correctIndex, prompt, topicName }
-  } catch {
-    return null
-  }
-}
-const regenerateOne = internalAction({
-  args: { hint: v.optional(v.string()), suggestionId: v.id('testQuestionSuggestions') },
-  handler: async (ctx, { suggestionId, hint }): Promise<{ generated: number; reason?: string }> => {
-    const sug = await ctx.runQuery(internal.training.getSuggestionForRegen, { suggestionId })
-    if (!sug) return { generated: 0, reason: 'suggestion-not-found' }
-    const doc = (await ctx.runQuery(internal.docs.getForConflict, { docId: sug.sourceDocId as never })) as null | {
-      extractedText: string
-      filename: string
-    }
-    if (!doc) return { generated: 0, reason: 'doc-not-found' }
-    const text = doc.extractedText.slice(0, MAX_PROMPT_DOC_CHARS)
-    let res: KimiResult
-    try {
-      res = await callKimi(buildRegeneratePrompt(doc.filename, text, sug.priorPrompt, hint))
-    } catch (error) {
-      return { generated: 0, reason: `kimi-error:${String(error).slice(0, 100)}` }
-    }
-    await recordKimiUsage(ctx, res.usage)
-    const parsed = parseOneQuestion(res.text)
-    if (!parsed) return { generated: 0, reason: 'parse-empty' }
-    let promptEmbedding: number[] = []
-    try {
-      promptEmbedding = await embedQuery(parsed.prompt)
-    } catch {
-      promptEmbedding = []
-    }
-    await ctx.runMutation(internal.training.insertRegeneratedSuggestion, {
-      choices: parsed.choices,
-      correctIndex: parsed.correctIndex,
-      hint,
-      prompt: parsed.prompt,
-      promptEmbedding,
-      regenCount: sug.regenCount + 1,
-      sourceDocId: sug.sourceDocId as never,
-      topicId: sug.topicId as never
-    })
-    return { generated: 1 }
-  }
-})
 const generate = internalAction({
   args: { docId: v.id('docs') },
   handler: async (ctx, { docId }): Promise<{ conflictsFlagged?: number; generated: number; reason?: string }> => {
@@ -219,4 +160,4 @@ const generate = internalAction({
     return { conflictsFlagged: result.conflictsFlagged, generated: parsed.length }
   }
 })
-export { generate, regenerateOne }
+export { generate }

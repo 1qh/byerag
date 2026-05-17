@@ -40,18 +40,15 @@ const topicId = await c.mutation(api.testing.seedTopicWithPool, {
   poolSize: 5,
   testSecret
 })
-const seedSugWithKind = async (kind: 'new' | 'retire' | 'revision'): Promise<string> =>
+const seedSugWithKind = async (kind: 'new' | 'retire'): Promise<string> =>
   c.mutation(api.testing.seedSuggestionWithKind, { kind, testSecret, topicId: topicId as never })
 const newId = await seedSugWithKind('new')
-const revId = await seedSugWithKind('revision')
 const retireId = await seedSugWithKind('retire')
 const r1 = (await c.query(api.training.inferBatchSubstantive, { suggestionIds: [newId as never] })) as string
 check('only-new → cosmetic', r1 === 'cosmetic', `r=${r1}`)
-const r2 = (await c.query(api.training.inferBatchSubstantive, { suggestionIds: [revId as never] })) as string
-check('only-revision → substantive', r2 === 'substantive', `r=${r2}`)
 const r3 = (await c.query(api.training.inferBatchSubstantive, {
   suggestionIds: [retireId as never, newId as never]
 })) as string
 check('has-retire → substantive (overrides new)', r3 === 'substantive', `r=${r3}`)
-console.log(`\n[batch-substantive] SUMMARY pass=${pass} fail=${fail} total=3`)
+console.log(`\n[batch-substantive] SUMMARY pass=${pass} fail=${fail} total=2`)
 if (fail > 0) process.exit(1)
