@@ -51,11 +51,21 @@ check(
   `department=${initial?.department ?? 'undefined'}`
 )
 console.log('[departments] set HR')
-await c.mutation(api.testing.setUserDepartmentProbe, { adminEmail: ADMIN, department: 'Safety, Health and Environment', testSecret, userId: USER })
+await c.mutation(api.testing.setUserDepartmentProbe, {
+  adminEmail: ADMIN,
+  department: 'Safety, Health and Environment',
+  testSecret,
+  userId: USER
+})
 const afterHR = (await c.query(api.testing.getUserProfile, { testSecret, userId: USER })) as null | { department?: string }
 check('department=HR', afterHR?.department === 'Safety, Health and Environment', `department=${afterHR?.department}`)
 console.log('[departments] change to IT')
-await c.mutation(api.testing.setUserDepartmentProbe, { adminEmail: ADMIN, department: 'Safety, Health and Environment', testSecret, userId: USER })
+await c.mutation(api.testing.setUserDepartmentProbe, {
+  adminEmail: ADMIN,
+  department: 'Safety, Health and Environment',
+  testSecret,
+  userId: USER
+})
 const afterIT = (await c.query(api.testing.getUserProfile, { testSecret, userId: USER })) as null | { department?: string }
 check('department=IT', afterIT?.department === 'Safety, Health and Environment', `department=${afterIT?.department}`)
 console.log('[departments] unset department (null)')

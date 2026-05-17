@@ -135,6 +135,33 @@ const autoAssign = internalAction({
     const t0 = Date.now()
     const enabled = await ctx.runQuery(internal.training.isAutoAssignEnabled, {})
     if (!enabled) return { assignmentsCreated: 0, durationMs: Date.now() - t0, reason: 'disabled', topicsProcessed: 0 }
+    const VN = 7 * 60 * 60 * 1000
+    const hourStr = (await ctx.runQuery(internal.settings.get, { key: 'agent_auto_assign_hour' })) ?? ''
+    const wdStr = (await ctx.runQuery(internal.settings.get, { key: 'agent_auto_assign_weekdays' })) ?? ''
+    const lastRunStr = await ctx.runQuery(internal.settings.get, { key: 'agent_auto_assign_last_run' })
+    const nowVN = new Date(Date.now() + VN)
+    if (hourStr !== '') {
+      const schedHour = Number.parseInt(hourStr, 10)
+      const wdays = wdStr
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean)
+      if (nowVN.getUTCHours() !== schedHour)
+        return { assignmentsCreated: 0, durationMs: Date.now() - t0, reason: 'not-scheduled-hour', topicsProcessed: 0 }
+      if (wdays.length > 0 && !wdays.includes(String(nowVN.getUTCDay())))
+        return { assignmentsCreated: 0, durationMs: Date.now() - t0, reason: 'not-scheduled-weekday', topicsProcessed: 0 }
+      if (lastRunStr) {
+        const lastBucket = Math.floor((Number.parseInt(lastRunStr, 10) + VN) / (60 * 60 * 1000))
+        const nowBucket = Math.floor((Date.now() + VN) / (60 * 60 * 1000))
+        if (lastBucket === nowBucket)
+          return {
+            assignmentsCreated: 0,
+            durationMs: Date.now() - t0,
+            reason: 'already-ran-this-hour',
+            topicsProcessed: 0
+          }
+      }
+    }
     const topics = (await ctx.runQuery(internal.training.listEligibleTopics, {})) as {
       _id: string
       name: string
@@ -156,7 +183,7 @@ const autoAssign = internalAction({
       }
     const durationMs = Date.now() - t0
     await ctx.runMutation(internal.settings.set, {
-      key: 'agent_last_check',
+      key: 'agent_auto_assign_last_run',
       updatedBy: AGENT_OWNER,
       value: String(Date.now())
     })
