@@ -6,8 +6,8 @@ import { Button } from '@a/ui/components/button'
 import {
   Sidebar,
   SidebarContent,
-  SidebarHeader,
   SidebarGroupLabel,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
