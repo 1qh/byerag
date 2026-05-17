@@ -23,7 +23,7 @@ import {
 import { Switch } from '@a/ui/components/switch'
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@a/ui/components/table'
 import { api } from 'backend/convex/_generated/api'
-import { useMutation, useQuery } from 'convex/react'
+import { useAction, useMutation, useQuery } from 'convex/react'
 import Link from 'next/link'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -77,9 +77,11 @@ const DashboardPage = (): React.ReactElement => {
   const assignUsers = useMutation(api.trainingAssignments.assignUsersForTopic)
   const unassignAll = useMutation(api.trainingAssignments.unassignAllForTopic)
   const rearm = useMutation(api.training.markTopicSubstantive)
+  const assignNow = useAction(api.training.assignEligibleNow)
   const [pending, setPending] = useState<null | PendingAction>(null)
   const [running, setRunning] = useState(false)
   const [autoBusy, setAutoBusy] = useState(false)
+  const [assignNowBusy, setAssignNowBusy] = useState(false)
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(() => new Set())
   const toggleUser = (userId: string): void =>
     setSelectedUsers(p => {
@@ -97,6 +99,18 @@ const DashboardPage = (): React.ReactElement => {
       toast.error(String(error))
     } finally {
       setAutoBusy(false)
+    }
+  }
+  const runAssignNow = async (): Promise<void> => {
+    setAssignNowBusy(true)
+    try {
+      const r = await assignNow()
+      toast.success(`Agent assigned ${r.assignmentsCreated} new across ${r.topicsProcessed} topics`)
+      setGradeNonce(Date.now())
+    } catch (error: unknown) {
+      toast.error(String(error))
+    } finally {
+      setAssignNowBusy(false)
     }
   }
   const runPending = async (): Promise<void> => {
@@ -255,6 +269,16 @@ const DashboardPage = (): React.ReactElement => {
                 Daily 03:00 UTC cron fills every eligible (user, topic) cell
               </span>
             </label>
+            <Button
+              disabled={assignNowBusy}
+              onClick={() => {
+                // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
+                runAssignNow().catch((error: unknown) => toast.error(String(error)))
+              }}
+              size='sm'
+              variant='outline'>
+              {assignNowBusy ? 'Assigning…' : 'Assign eligible now'}
+            </Button>
           </div>
         </div>
         <div className='flex flex-wrap gap-3 text-muted-foreground text-xs'>
