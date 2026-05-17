@@ -28,7 +28,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { api } from 'backend/convex/_generated/api'
 import { useAction, useMutation, useQuery } from 'convex/react'
 import { Bot } from 'lucide-react'
-import { Fragment, useId, useState } from 'react'
+import { Fragment, useId, useRef, useState } from 'react'
 import { toast } from 'sonner'
 const ACTIONS_TRIGGER = <Button aria-label='Topic actions' size='icon-sm' variant='ghost' />
 type ActionKind = 'rearm' | 'unassign'
