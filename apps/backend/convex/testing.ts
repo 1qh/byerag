@@ -1010,6 +1010,93 @@ const seedTestPass = mutation({
     })
   }
 })
+const seedDepartmentCohort = mutation({
+  args: { testSecret: v.string() },
+  handler: async (
+    ctx,
+    { testSecret }
+  ): Promise<{ assignments: number; passes: number; topics: number; users: number }> => {
+    verifyTestSecret(testSecret)
+    const DEPT = 'Safety, Health and Environment'
+    const topicRows = (
+      await ctx.db
+        .query('topics')
+        .withIndex('by_deletedAt', q => q.eq('deletedAt', undefined))
+        .take(500)
+    ).toSorted((a, b) => a.createdAt - b.createdAt)
+    const topics: string[] = []
+    for (const t of topicRows) {
+      const pool = await ctx.db
+        .query('testQuestions')
+        .withIndex('by_topic_deletedAt', q => q.eq('topicId', t._id).eq('deletedAt', undefined))
+        .take(6)
+      if (pool.length >= 5) topics.push(t._id)
+    }
+    let assignments = 0
+    let passes = 0
+    for (let i = 1; i <= 10; i += 1) {
+      const userId = `she${i}@user.test`
+      const prof = await ctx.db
+        .query('userProfiles')
+        .withIndex('by_userId', q => q.eq('userId', userId))
+        .first()
+      if (prof)
+        await ctx.db.patch(prof._id, { department: DEPT, role: 'user', updatedAt: Date.now(), updatedBy: 'seed' })
+      else
+        await ctx.db.insert('userProfiles', {
+          department: DEPT,
+          role: 'user',
+          updatedAt: Date.now(),
+          updatedBy: 'seed',
+          userId
+        })
+      for (const topicId of topics) {
+        const live = await ctx.db
+          .query('testAssignments')
+          .withIndex('by_user_topic', q => q.eq('userId', userId).eq('topicId', topicId as never))
+          .filter(q => q.eq(q.field('deletedAt'), undefined))
+          .collect()
+        if (!live[0]) {
+          await ctx.db.insert('testAssignments', {
+            createdAt: Date.now(),
+            createdBy: 'seed-admin',
+            topicId: topicId as never,
+            userId
+          })
+          assignments += 1
+        }
+      }
+      if (i <= 3)
+        for (const topicId of topics.slice(0, 3)) {
+          const had = await ctx.db
+            .query('testPasses')
+            .withIndex('by_user_topic_kind', q =>
+              q.eq('userId', userId).eq('topicId', topicId as never).eq('kind', 'assigned')
+            )
+            .first()
+          if (had) continue
+          const attemptId = await ctx.db.insert('testAttempts', {
+            kind: 'assigned',
+            questionSnapshots: [],
+            score: 5,
+            startedAt: Date.now(),
+            status: 'passed',
+            topicId: topicId as never,
+            userId
+          })
+          await ctx.db.insert('testPasses', {
+            attemptId,
+            kind: 'assigned',
+            passedAt: Date.now(),
+            topicId: topicId as never,
+            userId
+          })
+          passes += 1
+        }
+    }
+    return { assignments, passes, topics: topics.length, users: 10 }
+  }
+})
 const createOrUpdateUserProbe = mutation({
   args: { bootstrapAdmins: v.array(v.string()), email: v.string(), testSecret: v.string() },
   handler: async (ctx, { email, bootstrapAdmins, testSecret }): Promise<{ role: string; userId: string }> => {
@@ -1782,6 +1869,7 @@ export {
   seedSuggestion,
   seedSuggestionWithDoc,
   seedSuggestionWithKind,
+  seedDepartmentCohort,
   seedTestPass,
   seedTopicWithPool,
   seedUserProfile,
