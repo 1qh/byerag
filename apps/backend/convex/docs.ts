@@ -375,6 +375,7 @@ interface DocViewer {
   mime: string
   scope: 'mine' | 'shared'
   truncated: boolean
+  url: null | string
   version: number
 }
 const read = query({
@@ -396,6 +397,7 @@ const read = query({
       mime: row.mime,
       scope: row.scope,
       truncated: text.length > cap,
+      url: row.storageId ? await ctx.storage.getUrl(row.storageId) : null,
       version: row.version
     }
   }
