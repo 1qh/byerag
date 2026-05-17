@@ -370,9 +370,7 @@ const assignmentsTable = query({
       }
       const passed = await ctx.db
         .query('testPasses')
-        .withIndex('by_user_topic_kind', q =>
-          q.eq('userId', a.userId).eq('topicId', a.topicId).eq('kind', 'assigned')
-        )
+        .withIndex('by_user_topic_kind', q => q.eq('userId', a.userId).eq('topicId', a.topicId).eq('kind', 'assigned'))
         .collect()
       let st: AssignRow['status'] = 'open'
       let overdueDays = 0
