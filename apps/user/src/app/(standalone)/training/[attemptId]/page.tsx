@@ -95,7 +95,7 @@ const AttemptPage = ({ params }: { params: Promise<{ attemptId: string }> }): Re
             value={answers[i] === undefined ? null : String(answers[i])}>
             {q.choicesShuffled.map((c, j) => (
               <Label className='text-sm' key={c}>
-                <RadioGroupItem aria-label={c} value={String(j)} />
+                <RadioGroupItem value={String(j)} />
                 {c}
               </Label>
             ))}
