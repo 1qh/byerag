@@ -30,7 +30,7 @@ import { useAction, useMutation, useQuery } from 'convex/react'
 import { useEffect, useId, useRef, useState } from 'react'
 import { toast } from 'sonner'
 const ACTIONS_TRIGGER = <Button aria-label='Topic actions' size='icon-sm' variant='ghost' />
-const DEPARTMENTS = ['HR', 'Sales', 'IT', 'Unassigned'] as const
+const DEPARTMENTS = ['Safety, Health and Environment'] as const
 type ActionKind = 'rearm' | 'unassign'
 interface PendingAction {
   kind: ActionKind
@@ -133,7 +133,7 @@ const TrainingPage = (): React.ReactElement => {
   const [composerOpen, setComposerOpen] = useState(false)
   const [cTopic, setCTopic] = useState('')
   const [cAudience, setCAudience] = useState<'all' | 'department'>('all')
-  const [cDept, setCDept] = useState<string>('HR')
+  const [cDept, setCDept] = useState<string>('Safety, Health and Environment')
   const [cDueDays, setCDueDays] = useState('')
   const [cBusy, setCBusy] = useState(false)
   const assignmentsRef = useRef<HTMLElement>(null)
