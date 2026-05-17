@@ -43,9 +43,13 @@ const topStrip = query({
   handler: async (
     ctx
   ): Promise<null | {
+    activeChats: number
     cycleCents: number
     cycleStart: string
     docsInCorpus: number
+    pendingSuggestions: number
+    policyPendingDocs: number
+    quarantineDocs: number
     totalUsers: number
   }> => {
     const adminEmail = await requireAdmin(ctx)
@@ -71,7 +75,37 @@ const topStrip = query({
     const costRows = await ctx.db.query('costRecords').take(5000)
     let cycleCents = 0
     for (const r of costRows) if (r.dayKey >= cycle.start && r.dayKey <= cycle.end) cycleCents += r.cents
-    return { cycleCents, cycleStart: cycle.start, docsInCorpus, totalUsers }
+    const pendingSugs = await ctx.db
+      .query('testQuestionSuggestions')
+      .filter(q => q.eq(q.field('status'), 'pending'))
+      .take(1000)
+    const pendingSuggestions = pendingSugs.length
+    const policyPendingRows = await ctx.db
+      .query('docs')
+      .withIndex('by_policyStatus', q => q.eq('policyStatus', 'pending'))
+      .filter(q => q.eq(q.field('deletedAt'), undefined))
+      .take(1000)
+    const policyPendingDocs = policyPendingRows.length
+    const allActiveDocs = await ctx.db
+      .query('docs')
+      .withIndex('by_deletedAt', q => q.eq('deletedAt', undefined))
+      .take(5000)
+    const quarantineDocs = allActiveDocs.filter(d => d.scanStatus === 'quarantined').length
+    const activeChatRows = await ctx.db
+      .query('chats')
+      .withIndex('by_streaming_startedAt', q => q.eq('streaming', true))
+      .take(1000)
+    const activeChats = activeChatRows.filter(c => c.deletedAt === undefined).length
+    return {
+      activeChats,
+      cycleCents,
+      cycleStart: cycle.start,
+      docsInCorpus,
+      pendingSuggestions,
+      policyPendingDocs,
+      quarantineDocs,
+      totalUsers
+    }
   }
 })
 const costCycleHistory = query({
@@ -138,94 +172,229 @@ const costCyclePivot = query({
     return [...agg.values()].toSorted((a, b) => b.cents - a.cents)
   }
 })
-const gradebook = query({
+const DEFAULT_DUE_DAYS = 14
+const DAY_MS = 86_400_000
+const getDueDays = async (ctx: QueryCtx): Promise<number> => {
+  // biome-ignore lint/nursery/noPlaywrightUselessAwait: Convex .first() returns thenable
+  const row = await ctx.db
+    .query('settings')
+    .withIndex('by_key', q => q.eq('key', 'assignment_due_days'))
+    .first()
+  const n = row ? Number.parseInt(row.value, 10) : Number.NaN
+  return Number.isFinite(n) && n > 0 ? n : DEFAULT_DUE_DAYS
+}
+interface TopicTrain {
+  assigned: number
+  name: string
+  overdue: number
+  passed: number
+  poolSize: number
+  topicId: string
+}
+interface UserTestDetail {
+  name: string
+  overdueDays: number
+  status: 'open' | 'overdue' | 'passed'
+}
+interface UserTrain {
+  assigned: number
+  department?: string
+  details: UserTestDetail[]
+  overdue: number
+  passed: number
+  userId: string
+}
+const computeTrain = async (ctx: QueryCtx): Promise<{ now: number; topics: TopicTrain[]; users: UserTrain[] }> => {
+  const now = Date.now()
+  const dueMs = (await getDueDays(ctx)) * DAY_MS
+  const userRows = await ctx.db
+    .query('userProfiles')
+    .withIndex('by_role', q => q.eq('role', 'user'))
+    .take(2000)
+  const topicRowsAll = await ctx.db
+    .query('topics')
+    .withIndex('by_deletedAt', q => q.eq('deletedAt', undefined))
+    .take(500)
+  const topicRows = topicRowsAll.toSorted((a, b) => a.createdAt - b.createdAt)
+  const topicsWithPool: { _id: string; name: string; poolSize: number }[] = []
+  for (const t of topicRows) {
+    const pool = await ctx.db
+      .query('testQuestions')
+      .withIndex('by_topic_deletedAt', q => q.eq('topicId', t._id).eq('deletedAt', undefined))
+      .take(200)
+    if (pool.length >= 5) topicsWithPool.push({ _id: t._id, name: t.name, poolSize: pool.length })
+  }
+  const users: UserTrain[] = userRows.map(u => ({
+    assigned: 0,
+    department: u.department,
+    details: [],
+    overdue: 0,
+    passed: 0,
+    userId: u.userId
+  }))
+  const topics: TopicTrain[] = topicsWithPool.map(t => ({
+    assigned: 0,
+    name: t.name,
+    overdue: 0,
+    passed: 0,
+    poolSize: t.poolSize,
+    topicId: t._id
+  }))
+  for (const u of users)
+    for (const t of topics) {
+      const passRows = await ctx.db
+        .query('testPasses')
+        .withIndex('by_user_topic_kind', q =>
+          q
+            .eq('userId', u.userId)
+            .eq('topicId', t.topicId as never)
+            .eq('kind', 'assigned')
+        )
+        .collect()
+      const assignmentRows = await ctx.db
+        .query('testAssignments')
+        .withIndex('by_user_topic', q => q.eq('userId', u.userId).eq('topicId', t.topicId as never))
+        .filter(q => q.eq(q.field('deletedAt'), undefined))
+        .collect()
+      if (assignmentRows.length === 0) continue
+      u.assigned += 1
+      t.assigned += 1
+      if (passRows[0]) {
+        u.passed += 1
+        t.passed += 1
+        u.details.push({ name: t.name, overdueDays: 0, status: 'passed' })
+        continue
+      }
+      const earliest = Math.min(...assignmentRows.map(r => r.createdAt))
+      if (now > earliest + dueMs) {
+        u.overdue += 1
+        t.overdue += 1
+        u.details.push({
+          name: t.name,
+          overdueDays: Math.floor((now - (earliest + dueMs)) / DAY_MS),
+          status: 'overdue'
+        })
+      } else u.details.push({ name: t.name, overdueDays: 0, status: 'open' })
+    }
+  return { now, topics, users }
+}
+const trainingSummary = query({
   args: {},
   handler: async (
     ctx
-  ): Promise<{
-    cells: { glyph: '·' | '✓' | '✗' | 'ⓐ'; topicId: string; userId: string }[]
-    colFooters: { assigned: number; passedAssigned: number; topicId: string }[]
-    rowTotals: { assignedCount: number; passedCount: number; userId: string }[]
-    topics: { _id: string; name: string; poolSize: number }[]
-    users: { department?: string; userId: string }[]
-  } | null> => {
+  ): Promise<null | {
+    atRisk: { assigned: number; overdue: number; passed: number; userId: string }[]
+    overallPassRate: number
+    overdueOffenders: { overdue: number; userId: string }[]
+    tests: TopicTrain[]
+    totalOverdue: number
+    totalUsers: number
+    usersFullyCompliantPct: number
+    weakestTest: null | { name: string; passRate: number; topicId: string }
+  }> => {
     const adminEmail = await requireAdmin(ctx)
     if (!adminEmail) return null
-    const userRows = await ctx.db
-      .query('userProfiles')
-      .withIndex('by_role', q => q.eq('role', 'user'))
-      .take(2000)
-    const users = userRows.map(u => ({ department: u.department, userId: u.userId }))
-    const topicRowsAll = await ctx.db
-      .query('topics')
-      .withIndex('by_deletedAt', q => q.eq('deletedAt', undefined))
-      .take(500)
-    const topicRows = topicRowsAll.toSorted((a, b) => a.createdAt - b.createdAt)
-    const topicsWithPool: { _id: string; name: string; poolSize: number }[] = []
-    for (const t of topicRows) {
-      const pool = await ctx.db
-        .query('testQuestions')
-        .withIndex('by_topic_deletedAt', q => q.eq('topicId', t._id).eq('deletedAt', undefined))
-        .take(200)
-      if (pool.length >= 5) topicsWithPool.push({ _id: t._id, name: t.name, poolSize: pool.length })
+    const { topics, users } = await computeTrain(ctx)
+    const totalUsers = users.length
+    const withAssignments = users.filter(u => u.assigned > 0)
+    const compliant = withAssignments.filter(u => u.passed === u.assigned).length
+    const usersFullyCompliantPct =
+      withAssignments.length === 0 ? 0 : Math.round((compliant / withAssignments.length) * 100)
+    const sumAssigned = topics.reduce((s, t) => s + t.assigned, 0)
+    const sumPassed = topics.reduce((s, t) => s + t.passed, 0)
+    const overallPassRate = sumAssigned === 0 ? 0 : Math.round((sumPassed / sumAssigned) * 100)
+    const totalOverdue = users.reduce((s, u) => s + u.overdue, 0)
+    const overdueOffenders = users
+      .filter(u => u.overdue > 0)
+      .toSorted((a, b) => b.overdue - a.overdue)
+      .slice(0, 3)
+      .map(u => ({ overdue: u.overdue, userId: u.userId }))
+    const atRisk = users
+      .filter(u => u.assigned - u.passed > 0)
+      .toSorted((a, b) => b.overdue - a.overdue || b.assigned - b.passed - (a.assigned - a.passed))
+      .slice(0, 5)
+      .map(u => ({ assigned: u.assigned, overdue: u.overdue, passed: u.passed, userId: u.userId }))
+    const assignedTopics = topics.filter(t => t.assigned > 0)
+    const weakest = assignedTopics.toSorted(
+      (a, b) => a.passed / a.assigned - b.passed / b.assigned || b.assigned - a.assigned
+    )[0]
+    const weakestTest = weakest
+      ? { name: weakest.name, passRate: Math.round((weakest.passed / weakest.assigned) * 100), topicId: weakest.topicId }
+      : null
+    return {
+      atRisk,
+      overallPassRate,
+      overdueOffenders,
+      tests: topics,
+      totalOverdue,
+      totalUsers,
+      usersFullyCompliantPct,
+      weakestTest
     }
-    const cells: { glyph: '·' | '✓' | '✗' | 'ⓐ'; topicId: string; userId: string }[] = []
-    for (const u of users)
-      for (const t of topicsWithPool) {
-        const passRows = await ctx.db
-          .query('testPasses')
-          .withIndex('by_user_topic_kind', q =>
-            q
-              .eq('userId', u.userId)
-              .eq('topicId', t._id as never)
-              .eq('kind', 'assigned')
-          )
-          .collect()
-        const selfPassRows = await ctx.db
-          .query('testPasses')
-          .withIndex('by_user_topic_kind', q =>
-            q
-              .eq('userId', u.userId)
-              .eq('topicId', t._id as never)
-              .eq('kind', 'self')
-          )
-          .collect()
-        if (passRows[0] || selfPassRows[0]) {
-          cells.push({ glyph: '✓', topicId: t._id, userId: u.userId })
-          continue
-        }
-        const assignmentRows = await ctx.db
-          .query('testAssignments')
-          .withIndex('by_user_topic', q => q.eq('userId', u.userId).eq('topicId', t._id as never))
-          .filter(q => q.eq(q.field('deletedAt'), undefined))
-          .collect()
-        if (assignmentRows.length === 0) {
-          cells.push({ glyph: '·', topicId: t._id, userId: u.userId })
-          continue
-        }
-        const adminRow = assignmentRows.find(r => r.createdBy !== 'agent')
-        cells.push({ glyph: adminRow ? '✗' : 'ⓐ', topicId: t._id, userId: u.userId })
-      }
-    const rowTotals = users.map(u => {
-      const myCells = cells.filter(c => c.userId === u.userId)
-      const assignedCount = myCells.filter(c => c.glyph !== '·').length
-      const passedCount = myCells.filter(c => c.glyph === '✓').length
-      return { assignedCount, passedCount, userId: u.userId }
-    })
-    const colFooters = topicsWithPool.map(t => {
-      const colCells = cells.filter(c => c.topicId === t._id)
-      const assigned = colCells.filter(c => c.glyph !== '·').length
-      const passedAssigned = colCells.filter(c => c.glyph === '✓').length
-      return { assigned, passedAssigned, topicId: t._id }
-    })
-    const usersSorted = users.toSorted((a, b) => {
-      const ra = rowTotals.find(r => r.userId === a.userId)
-      const rb = rowTotals.find(r => r.userId === b.userId)
-      const ta = ra && ra.assignedCount > 0 ? ra.passedCount / ra.assignedCount : 0
-      const tb = rb && rb.assignedCount > 0 ? rb.passedCount / rb.assignedCount : 0
-      return ta - tb
-    })
-    return { cells, colFooters, rowTotals, topics: topicsWithPool, users: usersSorted }
   }
 })
-export { costCycleHistory, costCyclePivot, gradebook, topStrip }
+const trainingUsers = query({
+  args: { page: v.optional(v.number()), search: v.optional(v.string()) },
+  handler: async (ctx, { page, search }): Promise<null | { pageCount: number; rows: UserTrain[]; total: number }> => {
+    const adminEmail = await requireAdmin(ctx)
+    if (!adminEmail) return null
+    const { users } = await computeTrain(ctx)
+    const term = (search ?? '').trim().toLowerCase()
+    const filtered = term ? users.filter(u => u.userId.toLowerCase().includes(term)) : users
+    const sorted = filtered.toSorted(
+      (a, b) =>
+        b.overdue - a.overdue || b.assigned - b.passed - (a.assigned - a.passed) || a.userId.localeCompare(b.userId)
+    )
+    const pageSize = 25
+    const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize))
+    const p = Math.min(Math.max(0, page ?? 0), pageCount - 1)
+    return { pageCount, rows: sorted.slice(p * pageSize, p * pageSize + pageSize), total: sorted.length }
+  }
+})
+const agentActivity = query({
+  args: {},
+  handler: async (
+    ctx
+  ): Promise<null | {
+    events: { assignmentsCreated: number; at: number; mode: string; topicsProcessed: number; triggeredBy?: string }[]
+    lastCheck: null | number
+  }> => {
+    const adminEmail = await requireAdmin(ctx)
+    if (!adminEmail) return null
+    const cronRows = await ctx.db
+      .query('auditLogs')
+      .withIndex('by_command', q => q.eq('command', 'training.cron.run'))
+      .order('desc')
+      .take(15)
+    const manualRows = await ctx.db
+      .query('auditLogs')
+      .withIndex('by_command', q => q.eq('command', 'training.assign.runNow'))
+      .order('desc')
+      .take(15)
+    const events = [...cronRows, ...manualRows]
+      .toSorted((a, b) => b._creationTime - a._creationTime)
+      .slice(0, 10)
+      .map(r => {
+        let parsed: { assignmentsCreated?: number; topicsProcessed?: number; triggeredBy?: string } = {}
+        try {
+          parsed = JSON.parse(r.args) as typeof parsed
+        } catch {
+          parsed = {}
+        }
+        return {
+          assignmentsCreated: parsed.assignmentsCreated ?? 0,
+          at: r._creationTime,
+          mode: r.mode,
+          topicsProcessed: parsed.topicsProcessed ?? 0,
+          triggeredBy: parsed.triggeredBy
+        }
+      })
+    const lastRow = ctx.db
+      .query('settings')
+      .withIndex('by_key', q => q.eq('key', 'agent_last_check'))
+      .first()
+    const lastCheck = lastRow ? Number.parseInt(lastRow.value, 10) : null
+    return { events, lastCheck: Number.isFinite(lastCheck) ? lastCheck : null }
+  }
+})
+export { agentActivity, costCycleHistory, costCyclePivot, topStrip, trainingSummary, trainingUsers }

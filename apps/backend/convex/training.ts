@@ -123,24 +123,12 @@ const assignEligibleNow = action({
 })
 const autoAssign = internalAction({
   args: {},
-  handler: async (ctx): Promise<{ assignmentsCreated: number; durationMs: number; topicsProcessed: number }> => {
+  handler: async (
+    ctx
+  ): Promise<{ assignmentsCreated: number; durationMs: number; reason?: string; topicsProcessed: number }> => {
     const t0 = Date.now()
     const enabled = await ctx.runQuery(internal.training.isAutoAssignEnabled, {})
-    if (!enabled) {
-      await ctx.runMutation(internal.training.writeAuditRow, {
-        args: JSON.stringify({
-          assignmentsCreated: 0,
-          durationMs: Date.now() - t0,
-          reason: 'flag-disabled',
-          topicsProcessed: 0
-        }),
-        command: 'training.cron.run',
-        mode: 'system',
-        ok: true,
-        owner: AGENT_OWNER
-      })
-      return { assignmentsCreated: 0, durationMs: Date.now() - t0, topicsProcessed: 0 }
-    }
+    if (!enabled) return { assignmentsCreated: 0, durationMs: Date.now() - t0, reason: 'disabled', topicsProcessed: 0 }
     const topics = (await ctx.runQuery(internal.training.listEligibleTopics, {})) as { _id: string; poolSize: number }[]
     const users = (await ctx.runQuery(internal.training.listRoleUsers, {})) as { userId: string }[]
     let created = 0
@@ -153,13 +141,19 @@ const autoAssign = internalAction({
         if (r.inserted) created += 1
       }
     const durationMs = Date.now() - t0
-    await ctx.runMutation(internal.training.writeAuditRow, {
-      args: JSON.stringify({ assignmentsCreated: created, durationMs, topicsProcessed: topics.length }),
-      command: 'training.cron.run',
-      mode: 'system',
-      ok: true,
-      owner: AGENT_OWNER
+    await ctx.runMutation(internal.settings.set, {
+      key: 'agent_last_check',
+      updatedBy: AGENT_OWNER,
+      value: String(Date.now())
     })
+    if (created > 0)
+      await ctx.runMutation(internal.training.writeAuditRow, {
+        args: JSON.stringify({ assignmentsCreated: created, durationMs, topicsProcessed: topics.length }),
+        command: 'training.cron.run',
+        mode: 'system',
+        ok: true,
+        owner: AGENT_OWNER
+      })
     return { assignmentsCreated: created, durationMs, topicsProcessed: topics.length }
   }
 })
