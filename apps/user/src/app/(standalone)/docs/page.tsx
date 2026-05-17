@@ -2,8 +2,10 @@
 import type { Id } from 'backend/convex/_generated/dataModel'
 import { DocUpload, DocViewer } from '@a/react/components'
 import { cn } from '@a/ui'
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@a/ui/components/resizable'
 import { api } from 'backend/convex/_generated/api'
 import { useQuery } from 'convex/react'
+import { FileText } from 'lucide-react'
 import { useState } from 'react'
 interface DocRow {
   _id: Id<'docs'>
@@ -40,25 +42,32 @@ const DocsPage = (): React.ReactElement => {
   const shared = useQuery(api.docs.listShared, {})
   const [selected, setSelected] = useState<Id<'docs'> | null>(null)
   return (
-    <div className='flex h-dvh'>
-      <aside className='flex w-80 shrink-0 flex-col gap-4 overflow-y-auto border-r p-4'>
-        <section className='space-y-2'>
-          <h2 className='font-semibold text-lg'>My docs</h2>
-          <DocUpload scope='mine' />
-          <DocList docs={mine} onSelect={setSelected} selected={selected} />
-        </section>
-        <section className='space-y-2'>
-          <h2 className='font-semibold text-lg'>Shared corpus (read-only)</h2>
-          <DocList docs={shared} onSelect={setSelected} selected={selected} />
-        </section>
-      </aside>
-      <main className='flex-1 overflow-auto'>
-        {selected ? (
-          <DocViewer docId={selected} />
-        ) : (
-          <p className='p-6 text-muted-foreground'>Select a doc on the left to view.</p>
-        )}
-      </main>
+    <div className='h-dvh'>
+      <ResizablePanelGroup direction='horizontal'>
+        <ResizablePanel className='flex flex-col gap-4 overflow-y-auto p-4' defaultSize={30} maxSize={50} minSize={22}>
+          <section className='space-y-2'>
+            <h2 className='font-semibold text-lg'>My docs</h2>
+            <DocUpload scope='mine' />
+            <DocList docs={mine} onSelect={setSelected} selected={selected} />
+          </section>
+          <section className='space-y-2'>
+            <h2 className='font-semibold text-lg'>Shared corpus (read-only)</h2>
+            <DocList docs={shared} onSelect={setSelected} selected={selected} />
+          </section>
+        </ResizablePanel>
+        <ResizableHandle withHandle />
+        <ResizablePanel className='overflow-auto' defaultSize={70}>
+          {selected ? (
+            <DocViewer docId={selected} />
+          ) : (
+            <div className='flex h-full flex-col items-center justify-center gap-3 text-muted-foreground'>
+              <FileText aria-hidden className='size-10 opacity-40' />
+              <p className='font-medium'>Select a document to preview</p>
+              <p className='text-sm'>Pick one of your files or a shared doc on the left.</p>
+            </div>
+          )}
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   )
 }

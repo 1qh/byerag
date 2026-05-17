@@ -14,8 +14,10 @@ import {
 } from '@a/ui/components/alert-dialog'
 import { Button } from '@a/ui/components/button'
 import { Checkbox } from '@a/ui/components/checkbox'
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@a/ui/components/resizable'
 import { api } from 'backend/convex/_generated/api'
 import { useMutation, useQuery } from 'convex/react'
+import { FileText } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 const DocsPage = (): React.ReactElement => {
@@ -55,55 +57,62 @@ const DocsPage = (): React.ReactElement => {
     setDeleting(false)
   }
   return (
-    <div className='flex h-dvh'>
-      <aside className='flex w-80 shrink-0 flex-col gap-4 overflow-hidden border-r'>
-        <div className='space-y-2 border-b p-4'>
-          <h2 className='font-semibold text-lg'>Shared corpus</h2>
-          <DocUpload isAdmin scope='shared' />
-        </div>
-        {checked.size > 0 ? (
-          <div className='sticky top-0 z-10 flex items-center gap-2 border-b bg-background px-4 py-2 text-sm'>
-            <span className='flex-1 text-muted-foreground'>{checked.size} selected</span>
-            <Button onClick={() => setConfirmOpen(true)} size='sm' variant='destructive'>
-              Delete
-            </Button>
-            <Button onClick={() => setChecked(new Set())} size='sm' variant='ghost'>
-              Clear
-            </Button>
+    <div className='h-dvh'>
+      <ResizablePanelGroup direction='horizontal'>
+        <ResizablePanel className='flex flex-col gap-4 overflow-hidden' defaultSize={30} maxSize={50} minSize={22}>
+          <div className='space-y-2 border-b p-4'>
+            <h2 className='font-semibold text-lg'>Shared corpus</h2>
+            <DocUpload isAdmin scope='shared' />
           </div>
-        ) : null}
-        <div className='flex items-center gap-2 px-4 text-muted-foreground text-xs'>
-          <Checkbox aria-label='Select all' checked={allOn} disabled={allIds.length === 0} onCheckedChange={toggleAll} />
-          <span>{allIds.length} docs</span>
-        </div>
-        <ul className='flex-1 space-y-1 overflow-auto px-2 pb-4 text-sm'>
-          {shared?.map(d => {
-            const id = d._id as string
-            const isChecked = checked.has(id)
-            return (
-              <li className='flex items-center gap-2 rounded px-2 py-1 hover:bg-muted' key={d._id}>
-                <Checkbox aria-label={`Select ${d.filename}`} checked={isChecked} onCheckedChange={() => toggle(id)} />
-                <button
-                  className={cn(
-                    'flex-1 truncate text-left font-mono',
-                    selected === d._id && 'font-semibold text-foreground'
-                  )}
-                  onClick={() => setSelected(d._id)}
-                  type='button'>
-                  {d.filename} <span className='text-muted-foreground'>v{d.version}</span>
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-      </aside>
-      <main className='flex-1 overflow-auto'>
-        {selected ? (
-          <DocViewer docId={selected} />
-        ) : (
-          <div className='p-6 text-muted-foreground'>Select a doc on the left to view.</div>
-        )}
-      </main>
+          {checked.size > 0 ? (
+            <div className='sticky top-0 z-10 flex items-center gap-2 border-b bg-background px-4 py-2 text-sm'>
+              <span className='flex-1 text-muted-foreground'>{checked.size} selected</span>
+              <Button onClick={() => setConfirmOpen(true)} size='sm' variant='destructive'>
+                Delete
+              </Button>
+              <Button onClick={() => setChecked(new Set())} size='sm' variant='ghost'>
+                Clear
+              </Button>
+            </div>
+          ) : null}
+          <div className='flex items-center gap-2 px-4 text-muted-foreground text-xs'>
+            <Checkbox aria-label='Select all' checked={allOn} disabled={allIds.length === 0} onCheckedChange={toggleAll} />
+            <span>{allIds.length} docs</span>
+          </div>
+          <ul className='flex-1 space-y-1 overflow-auto px-2 pb-4 text-sm'>
+            {shared?.map(d => {
+              const id = d._id as string
+              const isChecked = checked.has(id)
+              return (
+                <li className='flex items-center gap-2 rounded px-2 py-1 hover:bg-muted' key={d._id}>
+                  <Checkbox aria-label={`Select ${d.filename}`} checked={isChecked} onCheckedChange={() => toggle(id)} />
+                  <button
+                    className={cn(
+                      'flex-1 truncate text-left font-mono',
+                      selected === d._id && 'font-semibold text-foreground'
+                    )}
+                    onClick={() => setSelected(d._id)}
+                    type='button'>
+                    {d.filename} <span className='text-muted-foreground'>v{d.version}</span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </ResizablePanel>
+        <ResizableHandle withHandle />
+        <ResizablePanel className='overflow-auto' defaultSize={70}>
+          {selected ? (
+            <DocViewer docId={selected} />
+          ) : (
+            <div className='flex h-full flex-col items-center justify-center gap-3 text-muted-foreground'>
+              <FileText aria-hidden className='size-10 opacity-40' />
+              <p className='font-medium'>Select a document to preview</p>
+              <p className='text-sm'>Pick a file on the left, or upload one to the shared corpus.</p>
+            </div>
+          )}
+        </ResizablePanel>
+      </ResizablePanelGroup>
       <AlertDialog onOpenChange={setConfirmOpen} open={confirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
