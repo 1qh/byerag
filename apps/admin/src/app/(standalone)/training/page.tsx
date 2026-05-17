@@ -11,7 +11,6 @@ import {
   AlertDialogTitle
 } from '@a/ui/components/alert-dialog'
 import { Button } from '@a/ui/components/button'
-import { Checkbox } from '@a/ui/components/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@a/ui/components/dialog'
 import {
   DropdownMenu,
@@ -28,16 +27,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { api } from 'backend/convex/_generated/api'
 import { useAction, useMutation, useQuery } from 'convex/react'
 import { Bot } from 'lucide-react'
-import { Fragment, useId, useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { toast } from 'sonner'
 const ACTIONS_TRIGGER = <Button aria-label='Topic actions' size='icon-sm' variant='ghost' />
+const DEPARTMENTS = ['HR', 'Sales', 'IT', 'Unassigned'] as const
 type ActionKind = 'rearm' | 'unassign'
 interface PendingAction {
   kind: ActionKind
   topicId: string
   topicName: string
 }
-const DEPARTMENTS = ['HR', 'Sales', 'IT', 'Unassigned'] as const
 const ACTION_COPY: Record<ActionKind, { confirm: string; desc: string; title: string }> = {
   rearm: {
     confirm: 'Mark substantive',
@@ -67,46 +66,39 @@ const Card = ({ children, title }: { children: React.ReactNode; title: string })
 )
 const TrainingPage = (): React.ReactElement => {
   const summary = useQuery(api.dashboard.trainingSummary, {})
-  const [search, setSearch] = useState('')
-  const [page, setPage] = useState(0)
-  const [atRiskOnly, setAtRiskOnly] = useState(false)
-  const usersRef = useRef<HTMLElement>(null)
-  const roster = useQuery(api.dashboard.trainingUsers, { atRisk: atRiskOnly, page, search })
   const autoAssign = useQuery(api.settings.getForAdmin, { key: 'agent_auto_assign_enabled' })
-  const [tSearch, setTSearch] = useState('')
-  const [tPage, setTPage] = useState(0)
-  const [actSearch, setActSearch] = useState('')
-  const [actPage, setActPage] = useState(0)
-  const activity = useQuery(api.dashboard.agentActivity, { page: actPage, search: actSearch })
   const dueSetting = useQuery(api.settings.getForAdmin, { key: 'assignment_due_days' })
   const setSetting = useMutation(api.settings.setForAdmin)
   const unassignAll = useMutation(api.trainingAssignments.unassignAllForTopic)
   const rearm = useMutation(api.training.markTopicSubstantive)
   const assignNow = useAction(api.training.assignEligibleNow)
   const assignComposer = useMutation(api.training.assignComposer)
+  const [aSearch, setASearch] = useState('')
+  const [aPage, setAPage] = useState(0)
+  const [aDept, setADept] = useState('')
+  const [aStatus, setAStatus] = useState<'' | 'open' | 'overdue' | 'passed' | 'unfinished'>('')
+  const at = useQuery(api.dashboard.assignmentsTable, {
+    department: aDept || undefined,
+    page: aPage,
+    search: aSearch,
+    status: aStatus || undefined
+  })
+  const [tSearch, setTSearch] = useState('')
+  const [tPage, setTPage] = useState(0)
   const [pending, setPending] = useState<null | PendingAction>(null)
   const [running, setRunning] = useState(false)
   const [autoBusy, setAutoBusy] = useState(false)
   const [assignNowBusy, setAssignNowBusy] = useState(false)
   const [dueDraft, setDueDraft] = useState<null | string>(null)
-  const [selectedUsers, setSelectedUsers] = useState<Set<string>>(() => new Set())
-  const [expanded, setExpanded] = useState<null | string>(null)
-  const [agentOpen, setAgentOpen] = useState(false)
   const [composerOpen, setComposerOpen] = useState(false)
   const [cTopic, setCTopic] = useState('')
-  const [cAudience, setCAudience] = useState<'all' | 'department' | 'selected'>('all')
+  const [cAudience, setCAudience] = useState<'all' | 'department'>('all')
   const [cDept, setCDept] = useState<string>('HR')
   const [cDueDays, setCDueDays] = useState('')
   const [cBusy, setCBusy] = useState(false)
+  const assignmentsRef = useRef<HTMLElement>(null)
   const switchId = useId()
   const dueId = useId()
-  const toggleUser = (userId: string): void =>
-    setSelectedUsers(p => {
-      const n = new Set(p)
-      if (n.has(userId)) n.delete(userId)
-      else n.add(userId)
-      return n
-    })
   const toggleAuto = async (next: boolean): Promise<void> => {
     setAutoBusy(true)
     try {
@@ -178,8 +170,7 @@ const TrainingPage = (): React.ReactElement => {
         audience: cAudience,
         department: cAudience === 'department' ? cDept : undefined,
         dueAtMs,
-        topicId: cTopic as never,
-        userIds: cAudience === 'selected' ? [...selectedUsers] : undefined
+        topicId: cTopic as never
       })
       toast.success(`Assigned ${r.assignmentsCreated} · ${r.skipped} skipped`)
       setComposerOpen(false)
@@ -197,15 +188,22 @@ const TrainingPage = (): React.ReactElement => {
   const tPageCount = Math.max(1, Math.ceil(tFiltered.length / TESTS_PER_PAGE))
   const tClamped = Math.min(tPage, tPageCount - 1)
   const pagedTests = tFiltered.slice(tClamped * TESTS_PER_PAGE, tClamped * TESTS_PER_PAGE + TESTS_PER_PAGE)
-  const latestRow = activity?.rows[0]
+  const latest = at?.latest ?? null
   const agentLine =
     autoAssign === 'true'
-      ? latestRow
-        ? `· last assigned ${latestRow.test} to ${latestRow.userId} ${relTime(latestRow.at)}`
-        : activity?.lastCheck
-          ? `· running · everyone eligible already assigned (checked ${relTime(activity.lastCheck)})`
+      ? latest
+        ? `· last assigned ${latest.test} to ${latest.userId} ${relTime(latest.at)}`
+        : at?.lastCheck
+          ? `· running · everyone eligible already assigned (checked ${relTime(at.lastCheck)})`
           : '· running'
       : '· assignments are manual only'
+  const goAtRisk = (): void => {
+    setAStatus('unfinished')
+    setAPage(0)
+    setASearch('')
+    setADept('')
+    assignmentsRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
   return (
     <div className='space-y-6 p-6'>
       <div className='flex flex-wrap items-center gap-4'>
@@ -262,87 +260,15 @@ const TrainingPage = (): React.ReactElement => {
       </div>
       <div
         className={cn(
-          'rounded-md border px-3 py-2 text-sm',
+          'flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm',
           autoAssign === 'true' ? 'border-primary/40 bg-primary/5' : 'bg-muted/40'
         )}>
-        <div className='flex flex-wrap items-center gap-x-2 gap-y-1'>
-          <Bot
-            aria-hidden
-            className={cn('size-4 shrink-0', autoAssign === 'true' ? 'text-primary' : 'text-muted-foreground')}
-          />
-          <span className='font-medium'>{autoAssign === 'true' ? 'Agent on' : 'Agent auto-assign off'}</span>
-          <span className='text-muted-foreground'>{agentLine}</span>
-          <button
-            className='ml-auto text-muted-foreground text-xs hover:underline'
-            onClick={() => setAgentOpen(o => !o)}
-            type='button'>
-            {agentOpen ? 'Hide details ▴' : 'Details ▾'}
-          </button>
-        </div>
-        {agentOpen ? (
-          <div className='mt-2 border-t pt-2 text-muted-foreground'>
-            <div className='mb-1 flex items-center gap-2'>
-              <span className='font-medium text-foreground'>Recent activity</span>
-              <Input
-                className='h-7 w-48'
-                onChange={e => {
-                  setActSearch(e.target.value)
-                  setActPage(0)
-                }}
-                placeholder='Search by test name…'
-                value={actSearch}
-              />
-            </div>
-            {activity && activity.rows.length > 0 ? (
-              <>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>User</TableHead>
-                      <TableHead>Test</TableHead>
-                      <TableHead>Assigned at</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {activity.rows.map(r => (
-                      <TableRow key={`${r.userId}-${r.test}-${r.at}`}>
-                        <TableCell className='text-foreground'>{r.userId}</TableCell>
-                        <TableCell className='text-foreground'>{r.test}</TableCell>
-                        <TableCell className='text-foreground'>
-                          {new Date(r.at).toLocaleString('en-GB', { timeZone: 'Asia/Ho_Chi_Minh' })}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                <div className='mt-1 flex items-center justify-between'>
-                  <span>{activity.total} assignments</span>
-                  <div className='flex items-center gap-2'>
-                    <Button disabled={actPage === 0} onClick={() => setActPage(p => p - 1)} size='sm' variant='outline'>
-                      Prev
-                    </Button>
-                    <span>
-                      {actPage + 1} / {activity.pageCount}
-                    </span>
-                    <Button
-                      disabled={actPage + 1 >= activity.pageCount}
-                      onClick={() => setActPage(p => p + 1)}
-                      size='sm'
-                      variant='outline'>
-                      Next
-                    </Button>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <p className='mt-1'>
-                {actSearch
-                  ? 'No activity matches that test name.'
-                  : 'No assignments created yet — everyone eligible is already assigned, or auto-assign is off.'}
-              </p>
-            )}
-          </div>
-        ) : null}
+        <Bot
+          aria-hidden
+          className={cn('size-4 shrink-0', autoAssign === 'true' ? 'text-primary' : 'text-muted-foreground')}
+        />
+        <span className='font-medium'>{autoAssign === 'true' ? 'Agent on' : 'Agent auto-assign off'}</span>
+        <span className='text-muted-foreground'>{agentLine}</span>
       </div>
       <section className='grid gap-3 md:grid-cols-3'>
         <Card title='Overview'>
@@ -361,12 +287,7 @@ const TrainingPage = (): React.ReactElement => {
           <button
             className='-m-1 w-full rounded p-1 text-left hover:bg-muted disabled:cursor-default disabled:hover:bg-transparent'
             disabled={summary.atRiskCount === 0}
-            onClick={() => {
-              setAtRiskOnly(true)
-              setPage(0)
-              setSearch('')
-              usersRef.current?.scrollIntoView({ behavior: 'smooth' })
-            }}
+            onClick={goAtRisk}
             type='button'>
             <div className={cn('font-bold text-3xl', summary.atRiskCount > 0 && 'text-yellow-700 dark:text-yellow-400')}>
               {summary.atRiskCount}
@@ -413,7 +334,7 @@ const TrainingPage = (): React.ReactElement => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Test</TableHead>
-                  <TableHead className='text-right'>Pool</TableHead>
+                  <TableHead className='text-right'>Questions</TableHead>
                   <TableHead className='text-right'>Assigned</TableHead>
                   <TableHead className='text-right'>Pass rate</TableHead>
                   <TableHead className='text-right'>Overdue</TableHead>
@@ -479,132 +400,100 @@ const TrainingPage = (): React.ReactElement => {
           </>
         )}
       </section>
-      <section className='space-y-2' ref={usersRef}>
+      <section className='space-y-2' ref={assignmentsRef}>
         <div className='flex flex-wrap items-center gap-3'>
-          <h2 className='font-semibold text-lg'>Users</h2>
+          <h2 className='font-semibold text-lg'>Assignments</h2>
           <Input
-            className='h-8 w-64'
+            className='h-8 w-56'
             onChange={e => {
-              setSearch(e.target.value)
-              setPage(0)
+              setASearch(e.target.value)
+              setAPage(0)
             }}
-            placeholder='Search username…'
-            value={search}
+            placeholder='Search user or test…'
+            value={aSearch}
           />
-          {atRiskOnly ? (
-            <button
-              className='flex items-center gap-1 rounded border border-yellow-500/60 px-2 py-0.5 text-sm text-yellow-700 hover:bg-muted dark:text-yellow-400'
-              onClick={() => {
-                setAtRiskOnly(false)
-                setPage(0)
-              }}
-              type='button'>
-              At-risk only · clear ✕
-            </button>
-          ) : null}
-          {selectedUsers.size > 0 ? (
-            <span className='text-muted-foreground text-sm'>{selectedUsers.size} selected</span>
-          ) : null}
+          <NativeSelect
+            aria-label='Filter by department'
+            className='h-8 w-40'
+            onChange={e => {
+              setADept(e.target.value)
+              setAPage(0)
+            }}
+            value={aDept}>
+            <NativeSelectOption value=''>All departments</NativeSelectOption>
+            {DEPARTMENTS.map(d => (
+              <NativeSelectOption key={d} value={d}>
+                {d}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+          <NativeSelect
+            aria-label='Filter by status'
+            className='h-8 w-44'
+            onChange={e => {
+              setAStatus(e.target.value as '' | 'open' | 'overdue' | 'passed' | 'unfinished')
+              setAPage(0)
+            }}
+            value={aStatus}>
+            <NativeSelectOption value=''>All statuses</NativeSelectOption>
+            <NativeSelectOption value='unfinished'>Unfinished (not passed)</NativeSelectOption>
+            <NativeSelectOption value='overdue'>Overdue</NativeSelectOption>
+            <NativeSelectOption value='open'>Not passed (in time)</NativeSelectOption>
+            <NativeSelectOption value='passed'>Passed</NativeSelectOption>
+          </NativeSelect>
         </div>
-        {roster === undefined ? (
+        {at === undefined ? (
           <div className='text-muted-foreground'>Loading…</div>
-        ) : roster === null || roster.rows.length === 0 ? (
-          <div className='text-muted-foreground'>No matching users.</div>
+        ) : at === null || at.rows.length === 0 ? (
+          <div className='text-muted-foreground'>No assignments match.</div>
         ) : (
           <>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className='w-8' />
                   <TableHead>User</TableHead>
                   <TableHead>Department</TableHead>
-                  <TableHead className='text-right'>Passed / assigned</TableHead>
-                  <TableHead className='text-right'>Overdue</TableHead>
+                  <TableHead>Test</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Assigned</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {roster.rows.map(u => {
-                  const isOpen = expanded === u.userId
-                  return (
-                    <Fragment key={u.userId}>
-                      <TableRow>
-                        <TableCell>
-                          <Checkbox
-                            aria-label={`Select ${u.userId}`}
-                            checked={selectedUsers.has(u.userId)}
-                            onCheckedChange={() => toggleUser(u.userId)}
-                          />
-                        </TableCell>
-                        <TableCell className='font-medium'>
-                          <button
-                            className='flex items-center gap-1 text-left hover:underline'
-                            onClick={() => setExpanded(isOpen ? null : u.userId)}
-                            type='button'>
-                            <span className='text-muted-foreground text-xs'>{isOpen ? '▾' : '▸'}</span>
-                            {u.userId}
-                          </button>
-                        </TableCell>
-                        <TableCell className='text-muted-foreground'>{u.department ?? 'Unassigned'}</TableCell>
-                        <TableCell className='text-right tabular-nums'>
-                          {u.passed}/{u.assigned}
-                        </TableCell>
-                        <TableCell
-                          className={cn(
-                            'text-right tabular-nums',
-                            u.overdue > 0 && 'font-semibold text-yellow-700 dark:text-yellow-400'
-                          )}>
-                          {u.overdue}
-                        </TableCell>
-                      </TableRow>
-                      {isOpen ? (
-                        <TableRow>
-                          <TableCell />
-                          <TableCell className='py-3' colSpan={4}>
-                            {u.details.length === 0 ? (
-                              <span className='text-muted-foreground text-sm'>No tests assigned.</span>
-                            ) : (
-                              <ul className='space-y-1 text-sm'>
-                                {u.details.map(d => (
-                                  <li className='flex items-center gap-2' key={d.name}>
-                                    {d.status === 'passed' ? (
-                                      <span className='text-green-600'>✓</span>
-                                    ) : d.status === 'overdue' ? (
-                                      <span className='text-yellow-700 dark:text-yellow-400'>⏰</span>
-                                    ) : (
-                                      <span className='text-muted-foreground'>●</span>
-                                    )}
-                                    <span>{d.name}</span>
-                                    <span className='text-muted-foreground'>
-                                      {d.status === 'passed'
-                                        ? '— passed'
-                                        : d.status === 'overdue'
-                                          ? `— overdue (${d.overdueDays} ${d.overdueDays === 1 ? 'day' : 'days'})`
-                                          : '— not passed'}
-                                    </span>
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ) : null}
-                    </Fragment>
-                  )
-                })}
+                {at.rows.map(r => (
+                  <TableRow key={`${r.userId}-${r.test}-${r.at}`}>
+                    <TableCell className='font-medium'>{r.userId}</TableCell>
+                    <TableCell className='text-muted-foreground'>{r.department}</TableCell>
+                    <TableCell>{r.test}</TableCell>
+                    <TableCell>
+                      {r.status === 'passed' ? (
+                        <span className='text-green-600'>✓ Passed</span>
+                      ) : r.status === 'overdue' ? (
+                        <span className='font-medium text-yellow-700 dark:text-yellow-400'>
+                          ⏰ Overdue {r.overdueDays} {r.overdueDays === 1 ? 'day' : 'days'}
+                        </span>
+                      ) : (
+                        <span className='text-muted-foreground'>Not passed</span>
+                      )}
+                    </TableCell>
+                    <TableCell className='text-muted-foreground'>
+                      {new Date(r.at).toLocaleString('en-GB', { timeZone: 'Asia/Ho_Chi_Minh' })}
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
             <div className='flex items-center justify-between text-muted-foreground text-sm'>
-              <span>{roster.total} users</span>
+              <span>{at.total} assignments</span>
               <div className='flex items-center gap-2'>
-                <Button disabled={page === 0} onClick={() => setPage(p => p - 1)} size='sm' variant='outline'>
+                <Button disabled={aPage === 0} onClick={() => setAPage(p => p - 1)} size='sm' variant='outline'>
                   Prev
                 </Button>
                 <span>
-                  {page + 1} / {roster.pageCount}
+                  {aPage + 1} / {at.pageCount}
                 </span>
                 <Button
-                  disabled={page + 1 >= roster.pageCount}
-                  onClick={() => setPage(p => p + 1)}
+                  disabled={aPage + 1 >= at.pageCount}
+                  onClick={() => setAPage(p => p + 1)}
                   size='sm'
                   variant='outline'>
                   Next
@@ -669,13 +558,10 @@ const TrainingPage = (): React.ReactElement => {
               <Label htmlFor='c-audience'>Who</Label>
               <NativeSelect
                 id='c-audience'
-                onChange={e => setCAudience(e.target.value as 'all' | 'department' | 'selected')}
+                onChange={e => setCAudience(e.target.value as 'all' | 'department')}
                 value={cAudience}>
                 <NativeSelectOption value='all'>Everyone</NativeSelectOption>
                 <NativeSelectOption value='department'>A department</NativeSelectOption>
-                <NativeSelectOption value='selected'>
-                  Selected users ({selectedUsers.size} ticked in the table)
-                </NativeSelectOption>
               </NativeSelect>
             </div>
             {cAudience === 'department' ? (
@@ -708,7 +594,7 @@ const TrainingPage = (): React.ReactElement => {
               Cancel
             </Button>
             <Button
-              disabled={cBusy || !cTopic || (cAudience === 'selected' && selectedUsers.size === 0)}
+              disabled={cBusy || !cTopic}
               onClick={() => {
                 // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
                 runComposer().catch((error: unknown) => toast.error(String(error)))
