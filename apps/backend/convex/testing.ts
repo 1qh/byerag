@@ -1036,12 +1036,11 @@ const seedDepartmentCohort = mutation({
     let passes = 0
     for (let i = 1; i <= 10; i += 1) {
       const userId = `she${i}@user.test`
-      const prof = await ctx.db
+      const prof = ctx.db
         .query('userProfiles')
         .withIndex('by_userId', q => q.eq('userId', userId))
         .first()
-      if (prof)
-        await ctx.db.patch(prof._id, { department: DEPT, role: 'user', updatedAt: Date.now(), updatedBy: 'seed' })
+      if (prof) await ctx.db.patch(prof._id, { department: DEPT, role: 'user', updatedAt: Date.now(), updatedBy: 'seed' })
       else
         await ctx.db.insert('userProfiles', {
           department: DEPT,
@@ -1068,10 +1067,13 @@ const seedDepartmentCohort = mutation({
       }
       if (i <= 3)
         for (const topicId of topics.slice(0, 3)) {
-          const had = await ctx.db
+          const had = ctx.db
             .query('testPasses')
             .withIndex('by_user_topic_kind', q =>
-              q.eq('userId', userId).eq('topicId', topicId as never).eq('kind', 'assigned')
+              q
+                .eq('userId', userId)
+                .eq('topicId', topicId as never)
+                .eq('kind', 'assigned')
             )
             .first()
           if (had) continue
@@ -1865,11 +1867,11 @@ export {
   seedApprovedSharedDoc,
   seedAssignment,
   seedCostRecord,
+  seedDepartmentCohort,
   seedQuestionWithDoc,
   seedSuggestion,
   seedSuggestionWithDoc,
   seedSuggestionWithKind,
-  seedDepartmentCohort,
   seedTestPass,
   seedTopicWithPool,
   seedUserProfile,
