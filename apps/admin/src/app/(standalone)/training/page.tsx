@@ -14,6 +14,7 @@ import { Button } from '@a/ui/components/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@a/ui/components/dialog'
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
@@ -26,8 +27,7 @@ import { Switch } from '@a/ui/components/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@a/ui/components/table'
 import { api } from 'backend/convex/_generated/api'
 import { useAction, useMutation, useQuery } from 'convex/react'
-import { Bot } from 'lucide-react'
-import { useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { toast } from 'sonner'
 const ACTIONS_TRIGGER = <Button aria-label='Topic actions' size='icon-sm' variant='ghost' />
 const DEPARTMENTS = ['HR', 'Sales', 'IT', 'Unassigned'] as const
@@ -49,20 +49,53 @@ const ACTION_COPY: Record<ActionKind, { confirm: string; desc: string; title: st
     title: 'Un-assign all users?'
   }
 }
-const relTime = (ms: number): string => {
-  const s = Math.max(0, Math.round((Date.now() - ms) / 1000))
-  if (s < 60) return 'just now'
-  const m = Math.round(s / 60)
-  if (m < 60) return `${m} min ago`
-  const h = Math.round(m / 60)
-  if (h < 24) return `${h} h ago`
-  return `${Math.round(h / 24)} d ago`
-}
 const Card = ({ children, title }: { children: React.ReactNode; title: string }): React.ReactElement => (
   <div className='rounded-lg border bg-card p-4'>
     <div className='mb-2 font-semibold text-muted-foreground text-xs uppercase tracking-wide'>{title}</div>
     {children}
   </div>
+)
+const FilterHeader = ({
+  label,
+  onChange,
+  options,
+  selected
+}: {
+  label: string
+  onChange: (v: string[]) => void
+  options: string[]
+  selected: string[]
+}): React.ReactElement => (
+  <DropdownMenu>
+    <DropdownMenuTrigger
+      render={<Button className='-ml-2 h-auto gap-1 px-2 py-1 font-medium' size='sm' variant='ghost' />}>
+      {label}
+      {selected.length > 0 ? (
+        <span className='rounded bg-primary/15 px-1 text-primary text-xs'>{selected.length}</span>
+      ) : null}
+      <span className='text-muted-foreground text-xs'>▾</span>
+    </DropdownMenuTrigger>
+    <DropdownMenuContent align='start' className='max-h-72 overflow-auto'>
+      {options.length === 0 ? (
+        <DropdownMenuItem disabled>No options</DropdownMenuItem>
+      ) : (
+        options.map(o => (
+          <DropdownMenuCheckboxItem
+            checked={selected.includes(o)}
+            key={o}
+            onCheckedChange={() => onChange(selected.includes(o) ? selected.filter(x => x !== o) : [...selected, o])}>
+            {o}
+          </DropdownMenuCheckboxItem>
+        ))
+      )}
+      {selected.length > 0 ? (
+        <>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => onChange([])}>Clear</DropdownMenuItem>
+        </>
+      ) : null}
+    </DropdownMenuContent>
+  </DropdownMenu>
 )
 const TrainingPage = (): React.ReactElement => {
   const summary = useQuery(api.dashboard.trainingSummary, {})
@@ -73,16 +106,23 @@ const TrainingPage = (): React.ReactElement => {
   const rearm = useMutation(api.training.markTopicSubstantive)
   const assignNow = useAction(api.training.assignEligibleNow)
   const assignComposer = useMutation(api.training.assignComposer)
-  const [aSearch, setASearch] = useState('')
   const [aPage, setAPage] = useState(0)
-  const [aDept, setADept] = useState('')
-  const [aStatus, setAStatus] = useState<'' | 'open' | 'overdue' | 'passed' | 'unfinished'>('')
+  const [fDept, setFDept] = useState<string[]>([])
+  const [fTest, setFTest] = useState<string[]>([])
+  const [fStatus, setFStatus] = useState<string[]>([])
+  const [fDeadline, setFDeadline] = useState<string[]>([])
+  const [fAssigned, setFAssigned] = useState<string[]>([])
   const at = useQuery(api.dashboard.assignmentsTable, {
-    department: aDept || undefined,
+    assigneds: fAssigned,
+    deadlines: fDeadline,
+    departments: fDept,
     page: aPage,
-    search: aSearch,
-    status: aStatus || undefined
+    statuses: fStatus,
+    tests: fTest
   })
+  const [sSearch, setSSearch] = useState('')
+  const [sPage, setSPage] = useState(0)
+  const userSum = useQuery(api.dashboard.userSummary, { page: sPage, search: sSearch })
   const [tSearch, setTSearch] = useState('')
   const [tPage, setTPage] = useState(0)
   const [pending, setPending] = useState<null | PendingAction>(null)
@@ -97,8 +137,22 @@ const TrainingPage = (): React.ReactElement => {
   const [cDueDays, setCDueDays] = useState('')
   const [cBusy, setCBusy] = useState(false)
   const assignmentsRef = useRef<HTMLElement>(null)
+  const summaryRef = useRef<HTMLElement>(null)
+  const seenAtRef = useRef<null | number>(null)
   const switchId = useId()
   const dueId = useId()
+  useEffect(() => {
+    const l = at?.latest
+    if (!l) return
+    if (seenAtRef.current === null) {
+      seenAtRef.current = l.at
+      return
+    }
+    if (l.at > seenAtRef.current) {
+      seenAtRef.current = l.at
+      if (l.source === 'agent') toast.message(`Agent assigned ${l.test} to ${l.userId}`)
+    }
+  }, [at?.latest])
   const toggleAuto = async (next: boolean): Promise<void> => {
     setAutoBusy(true)
     try {
@@ -188,20 +242,23 @@ const TrainingPage = (): React.ReactElement => {
   const tPageCount = Math.max(1, Math.ceil(tFiltered.length / TESTS_PER_PAGE))
   const tClamped = Math.min(tPage, tPageCount - 1)
   const pagedTests = tFiltered.slice(tClamped * TESTS_PER_PAGE, tClamped * TESTS_PER_PAGE + TESTS_PER_PAGE)
-  const latest = at?.latest ?? null
-  const agentLine =
-    autoAssign === 'true'
-      ? latest
-        ? `· last assigned ${latest.test} to ${latest.userId} ${relTime(latest.at)}`
-        : at?.lastCheck
-          ? `· running · everyone eligible already assigned (checked ${relTime(at.lastCheck)})`
-          : '· running'
-      : '· assignments are manual only'
-  const goAtRisk = (): void => {
-    setAStatus('unfinished')
+  const resetFilters = (): void => {
+    setFDept([])
+    setFTest([])
+    setFStatus([])
+    setFDeadline([])
+    setFAssigned([])
     setAPage(0)
-    setASearch('')
-    setADept('')
+  }
+  const goAtRisk = (): void => {
+    resetFilters()
+    setFStatus(['Overdue', 'Not passed'])
+    assignmentsRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+  const goWeakest = (): void => {
+    if (!summary.weakestTest) return
+    resetFilters()
+    setFTest([summary.weakestTest.name])
     assignmentsRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
   return (
@@ -258,30 +315,23 @@ const TrainingPage = (): React.ReactElement => {
           </Button>
         </div>
       </div>
-      <div
-        className={cn(
-          'flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm',
-          autoAssign === 'true' ? 'border-primary/40 bg-primary/5' : 'bg-muted/40'
-        )}>
-        <Bot
-          aria-hidden
-          className={cn('size-4 shrink-0', autoAssign === 'true' ? 'text-primary' : 'text-muted-foreground')}
-        />
-        <span className='font-medium'>{autoAssign === 'true' ? 'Agent on' : 'Agent auto-assign off'}</span>
-        <span className='text-muted-foreground'>{agentLine}</span>
-      </div>
       <section className='grid gap-3 md:grid-cols-3'>
         <Card title='Overview'>
-          <div className='font-bold text-3xl'>{summary.totalUsers}</div>
-          <div className='mt-1 text-muted-foreground text-sm'>users</div>
-          <div className='mt-3 space-y-1 text-sm'>
-            <div>
-              <span className='font-semibold'>{summary.usersFullyCompliantPct}%</span> passed all assigned
+          <button
+            className='-m-1 w-full rounded p-1 text-left hover:bg-muted'
+            onClick={() => summaryRef.current?.scrollIntoView({ behavior: 'smooth' })}
+            type='button'>
+            <div className='font-bold text-3xl'>{summary.totalUsers}</div>
+            <div className='mt-1 text-muted-foreground text-sm'>users — view summary</div>
+            <div className='mt-3 space-y-1 text-sm'>
+              <div>
+                <span className='font-semibold'>{summary.usersFullyCompliantPct}%</span> passed all assigned
+              </div>
+              <div>
+                <span className='font-semibold'>{summary.overallPassRate}%</span> overall pass rate
+              </div>
             </div>
-            <div>
-              <span className='font-semibold'>{summary.overallPassRate}%</span> overall pass rate
-            </div>
-          </div>
+          </button>
         </Card>
         <Card title='People at risk'>
           <button
@@ -299,13 +349,13 @@ const TrainingPage = (): React.ReactElement => {
         </Card>
         <Card title='Weakest test'>
           {summary.weakestTest ? (
-            <>
+            <button className='-m-1 w-full rounded p-1 text-left hover:bg-muted' onClick={goWeakest} type='button'>
               <div className='truncate font-semibold' title={summary.weakestTest.name}>
                 {summary.weakestTest.name}
               </div>
               <div className='mt-2 font-bold text-3xl'>{summary.weakestTest.passRate}%</div>
-              <div className='text-muted-foreground text-sm'>pass rate</div>
-            </>
+              <div className='text-muted-foreground text-sm'>pass rate — view assignments</div>
+            </button>
           ) : (
             <div className='text-muted-foreground text-sm'>No assigned tests yet</div>
           )}
@@ -400,52 +450,23 @@ const TrainingPage = (): React.ReactElement => {
           </>
         )}
       </section>
-      <section className='space-y-2' ref={assignmentsRef}>
+      <section className='space-y-2' ref={summaryRef}>
         <div className='flex flex-wrap items-center gap-3'>
-          <h2 className='font-semibold text-lg'>Assignments</h2>
+          <h2 className='font-semibold text-lg'>User summary</h2>
           <Input
             className='h-8 w-56'
             onChange={e => {
-              setASearch(e.target.value)
-              setAPage(0)
+              setSSearch(e.target.value)
+              setSPage(0)
             }}
-            placeholder='Search user or test…'
-            value={aSearch}
+            placeholder='Search user…'
+            value={sSearch}
           />
-          <NativeSelect
-            aria-label='Filter by department'
-            className='h-8 w-40'
-            onChange={e => {
-              setADept(e.target.value)
-              setAPage(0)
-            }}
-            value={aDept}>
-            <NativeSelectOption value=''>All departments</NativeSelectOption>
-            {DEPARTMENTS.map(d => (
-              <NativeSelectOption key={d} value={d}>
-                {d}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-          <NativeSelect
-            aria-label='Filter by status'
-            className='h-8 w-44'
-            onChange={e => {
-              setAStatus(e.target.value as '' | 'open' | 'overdue' | 'passed' | 'unfinished')
-              setAPage(0)
-            }}
-            value={aStatus}>
-            <NativeSelectOption value=''>All statuses</NativeSelectOption>
-            <NativeSelectOption value='unfinished'>Unfinished (not passed)</NativeSelectOption>
-            <NativeSelectOption value='overdue'>Overdue</NativeSelectOption>
-            <NativeSelectOption value='open'>Not passed (in time)</NativeSelectOption>
-            <NativeSelectOption value='passed'>Passed</NativeSelectOption>
-          </NativeSelect>
         </div>
-        {at === undefined ? (
+        {userSum === undefined ? (
           <div className='text-muted-foreground'>Loading…</div>
-        ) : at === null || at.rows.length === 0 ? (
-          <div className='text-muted-foreground'>No assignments match.</div>
+        ) : userSum === null || userSum.rows.length === 0 ? (
+          <div className='text-muted-foreground'>No users match.</div>
         ) : (
           <>
             <Table>
@@ -453,47 +474,41 @@ const TrainingPage = (): React.ReactElement => {
                 <TableRow>
                   <TableHead>User</TableHead>
                   <TableHead>Department</TableHead>
-                  <TableHead>Test</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Assigned</TableHead>
+                  <TableHead className='text-right'>Passed / assigned</TableHead>
+                  <TableHead className='text-right'>Overdue</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {at.rows.map(r => (
-                  <TableRow key={`${r.userId}-${r.test}-${r.at}`}>
-                    <TableCell className='font-medium'>{r.userId}</TableCell>
-                    <TableCell className='text-muted-foreground'>{r.department}</TableCell>
-                    <TableCell>{r.test}</TableCell>
-                    <TableCell>
-                      {r.status === 'passed' ? (
-                        <span className='text-green-600'>✓ Passed</span>
-                      ) : r.status === 'overdue' ? (
-                        <span className='font-medium text-yellow-700 dark:text-yellow-400'>
-                          ⏰ Overdue {r.overdueDays} {r.overdueDays === 1 ? 'day' : 'days'}
-                        </span>
-                      ) : (
-                        <span className='text-muted-foreground'>Not passed</span>
-                      )}
+                {userSum.rows.map(u => (
+                  <TableRow key={u.userId}>
+                    <TableCell className='font-medium'>{u.userId}</TableCell>
+                    <TableCell className='text-muted-foreground'>{u.department}</TableCell>
+                    <TableCell className='text-right tabular-nums'>
+                      {u.passed}/{u.assigned}
                     </TableCell>
-                    <TableCell className='text-muted-foreground'>
-                      {new Date(r.at).toLocaleString('en-GB', { timeZone: 'Asia/Ho_Chi_Minh' })}
+                    <TableCell
+                      className={cn(
+                        'text-right tabular-nums',
+                        u.overdue > 0 && 'font-semibold text-yellow-700 dark:text-yellow-400'
+                      )}>
+                      {u.overdue}
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
             <div className='flex items-center justify-between text-muted-foreground text-sm'>
-              <span>{at.total} assignments</span>
+              <span>{userSum.total} users</span>
               <div className='flex items-center gap-2'>
-                <Button disabled={aPage === 0} onClick={() => setAPage(p => p - 1)} size='sm' variant='outline'>
+                <Button disabled={sPage === 0} onClick={() => setSPage(p => p - 1)} size='sm' variant='outline'>
                   Prev
                 </Button>
                 <span>
-                  {aPage + 1} / {at.pageCount}
+                  {sPage + 1} / {userSum.pageCount}
                 </span>
                 <Button
-                  disabled={aPage + 1 >= at.pageCount}
-                  onClick={() => setAPage(p => p + 1)}
+                  disabled={sPage + 1 >= userSum.pageCount}
+                  onClick={() => setSPage(p => p + 1)}
                   size='sm'
                   variant='outline'>
                   Next
@@ -502,6 +517,133 @@ const TrainingPage = (): React.ReactElement => {
             </div>
           </>
         )}
+      </section>
+      <section className='space-y-2' ref={assignmentsRef}>
+        <h2 className='font-semibold text-lg'>Assignments</h2>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>User</TableHead>
+              <TableHead>
+                <FilterHeader
+                  label='Department'
+                  onChange={v => {
+                    setFDept(v)
+                    setAPage(0)
+                  }}
+                  options={at?.facets.departments ?? []}
+                  selected={fDept}
+                />
+              </TableHead>
+              <TableHead>
+                <FilterHeader
+                  label='Test'
+                  onChange={v => {
+                    setFTest(v)
+                    setAPage(0)
+                  }}
+                  options={at?.facets.tests ?? []}
+                  selected={fTest}
+                />
+              </TableHead>
+              <TableHead>
+                <FilterHeader
+                  label='Status'
+                  onChange={v => {
+                    setFStatus(v)
+                    setAPage(0)
+                  }}
+                  options={at?.facets.statuses ?? []}
+                  selected={fStatus}
+                />
+              </TableHead>
+              <TableHead>
+                <FilterHeader
+                  label='Deadline'
+                  onChange={v => {
+                    setFDeadline(v)
+                    setAPage(0)
+                  }}
+                  options={at?.facets.deadlines ?? []}
+                  selected={fDeadline}
+                />
+              </TableHead>
+              <TableHead>
+                <FilterHeader
+                  label='Assigned'
+                  onChange={v => {
+                    setFAssigned(v)
+                    setAPage(0)
+                  }}
+                  options={at?.facets.assigneds ?? []}
+                  selected={fAssigned}
+                />
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {at === undefined ? (
+              <TableRow>
+                <TableCell className='text-muted-foreground' colSpan={6}>
+                  Loading…
+                </TableCell>
+              </TableRow>
+            ) : at === null || at.rows.length === 0 ? (
+              <TableRow>
+                <TableCell className='text-muted-foreground' colSpan={6}>
+                  No assignments match.
+                </TableCell>
+              </TableRow>
+            ) : (
+              at.rows.map(r => (
+                <TableRow key={`${r.userId}-${r.test}-${r.at}`}>
+                  <TableCell className='font-medium'>{r.userId}</TableCell>
+                  <TableCell className='text-muted-foreground'>{r.department}</TableCell>
+                  <TableCell>{r.test}</TableCell>
+                  <TableCell>
+                    {r.status === 'passed' ? (
+                      <span className='text-green-600'>✓ Passed</span>
+                    ) : r.status === 'overdue' ? (
+                      <span className='font-medium text-yellow-700 dark:text-yellow-400'>
+                        ⏰ Overdue {r.overdueDays} {r.overdueDays === 1 ? 'day' : 'days'}
+                      </span>
+                    ) : (
+                      <span className='text-muted-foreground'>Not passed</span>
+                    )}
+                  </TableCell>
+                  <TableCell
+                    className={cn(
+                      'text-muted-foreground tabular-nums',
+                      r.status === 'overdue' && 'font-medium text-yellow-700 dark:text-yellow-400'
+                    )}>
+                    {r.deadline}
+                  </TableCell>
+                  <TableCell className='text-muted-foreground tabular-nums'>{r.assigned}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+        {at && at.rows.length > 0 ? (
+          <div className='flex items-center justify-between text-muted-foreground text-sm'>
+            <span>{at.total} assignments</span>
+            <div className='flex items-center gap-2'>
+              <Button disabled={aPage === 0} onClick={() => setAPage(p => p - 1)} size='sm' variant='outline'>
+                Prev
+              </Button>
+              <span>
+                {aPage + 1} / {at.pageCount}
+              </span>
+              <Button
+                disabled={aPage + 1 >= at.pageCount}
+                onClick={() => setAPage(p => p + 1)}
+                size='sm'
+                variant='outline'>
+                Next
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </section>
       <AlertDialog onOpenChange={open => !(open || running) && setPending(null)} open={pending !== null}>
         <AlertDialogContent>
