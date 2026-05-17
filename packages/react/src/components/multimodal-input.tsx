@@ -6,7 +6,7 @@ import { cn } from '@a/ui'
 import { PromptInput, PromptInputSubmit, PromptInputTextarea } from '@a/ui/components/ai-elements/prompt-input'
 import { Button } from '@a/ui/components/button'
 import { InputGroupAddon } from '@a/ui/components/input-group'
-import { Paperclip } from 'lucide-react'
+import { Paperclip, X } from 'lucide-react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import type { MentionItem } from './mention-autocomplete'
@@ -50,6 +50,7 @@ const PureMultimodalInput = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [cursor, setCursor] = useState(0)
+  const [attachments, setAttachments] = useState<UploadedFile[]>([])
   useEffect(() => {
     if (focusTick !== undefined && focusTick > 0) {
       textareaRef.current?.focus()
@@ -93,10 +94,7 @@ const PureMultimodalInput = ({
       if (r.result) uploaded.push(r.result)
       else toast.error(`Failed to upload ${r.file.name}`)
     if (uploaded.length === 0) return
-    const names = uploaded.map(u => u.filename).join(', ')
-    const tail = `(I just uploaded these to my documents — find them with the docs tools in the "mine" scope: ${names})`
-    const next = value.length === 0 ? tail : `${value} ${tail}`
-    onChange(next)
+    setAttachments(prev => [...prev, ...uploaded])
   }
   return (
     <section
@@ -131,9 +129,31 @@ const PureMultimodalInput = ({
             return
           }
           if (status === 'ready') {
-            if (value.trim()) onSubmit()
+            if (value.trim()) {
+              onSubmit()
+              setAttachments([])
+            }
           } else toast.error('Please wait for the model to finish its response!')
         }}>
+        {attachments.length > 0 ? (
+          <div className='flex flex-wrap gap-2 px-3 pt-3'>
+            {attachments.map((a, i) => (
+              <span
+                className='flex max-w-[14rem] items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs'
+                key={`${a.storageId}-${a.filename}`}>
+                <Paperclip className='size-3 shrink-0 text-muted-foreground' />
+                <span className='truncate'>{a.filename}</span>
+                <button
+                  aria-label={`Remove ${a.filename}`}
+                  className='shrink-0 text-muted-foreground hover:text-foreground'
+                  onClick={() => setAttachments(prev => prev.filter((_, j) => j !== i))}
+                  type='button'>
+                  <X className='size-3' />
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : null}
         <PromptInputTextarea
           className='mt-0.5 px-4 pt-3 text-base'
           onChange={e => {
