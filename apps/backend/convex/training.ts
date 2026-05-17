@@ -5,7 +5,7 @@
 /* eslint-disable no-await-in-loop, complexity, no-continue, @typescript-eslint/no-unnecessary-condition -- sequential Convex DB ops by design; control flow shape; widened types from generated API */
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
-import { internalAction, internalMutation, internalQuery, mutation, query } from './_generated/server'
+import { action, internalAction, internalMutation, internalQuery, mutation, query } from './_generated/server'
 const AGENT_OWNER = 'agent'
 const POOL_MIN = 5
 const insertAuto = internalMutation({
@@ -73,6 +73,52 @@ const writeAuditRow = internalMutation({
   args: { args: v.string(), command: v.string(), mode: v.string(), ok: v.boolean(), owner: v.string() },
   handler: async (ctx, row): Promise<void> => {
     await ctx.db.insert('auditLogs', row)
+  }
+})
+const isAdminByEmail = internalQuery({
+  args: { email: v.string() },
+  handler: async (ctx, { email }): Promise<boolean> => {
+    const rows = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', email))
+      .collect()
+    return rows[0]?.role === 'admin'
+  }
+})
+const assignEligibleNow = action({
+  args: {},
+  handler: async (ctx): Promise<{ assignmentsCreated: number; durationMs: number; topicsProcessed: number }> => {
+    const t0 = Date.now()
+    const identity = await ctx.auth.getUserIdentity()
+    const email = identity?.email?.toLowerCase()
+    if (!email) throw new Error('not authenticated')
+    const admin = await ctx.runQuery(internal.training.isAdminByEmail, { email })
+    if (!admin) throw new Error('admin only')
+    const topics = (await ctx.runQuery(internal.training.listEligibleTopics, {})) as {
+      _id: string
+      poolSize: number
+    }[]
+    const users = (await ctx.runQuery(internal.training.listRoleUsers, {})) as { userId: string }[]
+    let created = 0
+    for (const t of topics)
+      for (const u of users) {
+        const r = await ctx.runMutation(internal.training.insertAuto, { topicId: t._id as never, userId: u.userId })
+        if (r.inserted) created += 1
+      }
+    const durationMs = Date.now() - t0
+    await ctx.runMutation(internal.training.writeAuditRow, {
+      args: JSON.stringify({
+        assignmentsCreated: created,
+        durationMs,
+        topicsProcessed: topics.length,
+        triggeredBy: email
+      }),
+      command: 'training.assign.runNow',
+      mode: 'admin',
+      ok: true,
+      owner: AGENT_OWNER
+    })
+    return { assignmentsCreated: created, durationMs, topicsProcessed: topics.length }
   }
 })
 const autoAssign = internalAction({
@@ -947,11 +993,13 @@ export {
   adminRetireQuestion,
   approveSuggestion,
   approveSuggestionPublic,
+  assignEligibleNow,
   autoAssign,
   getSuggestionForRegen,
   inferBatchSubstantive,
   insertAuto,
   insertRegeneratedSuggestion,
+  isAdminByEmail,
   isAutoAssignEnabled,
   listAttemptsForAdmin,
   listEligibleTopics,
