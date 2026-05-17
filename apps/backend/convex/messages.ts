@@ -9,7 +9,7 @@ import type { UsageReport } from './messages/streamHelpers'
 import { internal } from './_generated/api'
 import { httpAction, internalMutation, internalQuery, mutation, query } from './_generated/server'
 import { getOwnerEmailOrNull, requireOwnerEmail } from './authHelpers'
-import { incrementEventCount, resetEventCount, resetTurn } from './chatRuntime'
+import { resetEventCount, resetTurn, STREAM_EVENT_HARD_CAP } from './chatRuntime'
 import { SEQ_SANDBOX_ERROR, SEQ_SERVER_ERROR, STREAMING_TIMEOUT_MS, VALID_CHATID_RE } from './constants'
 import { env } from './env'
 import { sanitizeForDisplay } from './lib'
@@ -99,7 +99,7 @@ const list = query({
     return ctx.db
       .query('messages')
       .withIndex('by_chat', q => q.eq('chatId', chatId))
-      .order('asc')
+      .order('desc')
       .paginate(paginationOpts)
   }
 })
@@ -157,7 +157,7 @@ const insertStreamEvent = internalMutation({
       .withIndex('by_chat_seq', q => q.eq('chatId', chatId).eq('seq', seq))
       .first()
     if (dup) throw new Error('duplicate seq')
-    await incrementEventCount(ctx, chatId)
+    if (seq >= STREAM_EVENT_HARD_CAP) throw new Error('too many events')
     await ctx.db.insert('streamEvents', { chatId, content, seq })
   },
   returns: v.null()
@@ -186,6 +186,7 @@ interface ProcessBatchArgs {
 const processBatchEvent = ({ e, out, byteAcc }: ProcessBatchArgs): void => {
   const type = resolveBatchEventType(e)
   if (!type) return
+  if (type === 'stream_event') return
   if (e.content.length > 500_000) throw new Error('message too large')
   byteAcc.total += e.content.length
   if (byteAcc.total > 10_000_000) throw new Error('complete payload too large')
@@ -330,7 +331,7 @@ const insertAgentEvent = internalMutation({
       .withIndex('by_chat_seq', q => q.eq('chatId', chatId).eq('seq', seq))
       .first()
     if (dup) throw new Error('duplicate seq')
-    await incrementEventCount(ctx, chatId)
+    if (seq >= STREAM_EVENT_HARD_CAP) throw new Error('too many events')
     await ctx.db.insert('streamEvents', { chatId, content, seq })
   }
 })
@@ -407,11 +408,6 @@ const streamEventHttp = httpAction(async (ctx, req) => {
     secret: parsed.data.secret
   })
   if (!ownerRes) return jsonErr('invalid secret', 401)
-  const [allowedOwner, allowed] = await Promise.all([
-    ctx.runMutation(internal.lib.checkRateLimit, { max: 20_000, owner: `stream-owner:${ownerRes}` }),
-    ctx.runMutation(internal.lib.checkRateLimit, { max: 8000, owner: `stream:${parsed.data.chatId}` })
-  ])
-  if (!(allowedOwner && allowed)) return jsonErr('rate limited', 429)
   try {
     await ctx.runMutation(internal.messages.insertStreamEvent, {
       chatId: parsed.data.chatId as Id<'chats'>,
@@ -492,9 +488,16 @@ const anthropicProxy = httpAction(async (ctx, req) => {
   if (!VALID_CHATID_RE.test(chatId)) return jsonErr('invalid proxy token', 401)
   const owner = await ctx.runQuery(internal.messages.verifyProxyToken, { chatId, secret })
   if (!owner) return jsonErr('invalid proxy token', 401)
+  const safeRateLimit = async (max: number, key: string): Promise<boolean> => {
+    try {
+      return await ctx.runMutation(internal.lib.checkRateLimit, { max, owner: key })
+    } catch {
+      return true
+    }
+  }
   const [allowed, allowedChat] = await Promise.all([
-    ctx.runMutation(internal.lib.checkRateLimit, { max: 600, owner: `anthropic-owner:${owner}` }),
-    ctx.runMutation(internal.lib.checkRateLimit, { max: 300, owner: `anthropic-chat:${chatId}` })
+    safeRateLimit(600, `anthropic-owner:${owner}`),
+    safeRateLimit(300, `anthropic-chat:${chatId}`)
   ])
   if (!(allowed && allowedChat)) return jsonErr('rate limited', 429)
   const url = new URL(req.url)
@@ -633,6 +636,13 @@ const anthropicProxy = httpAction(async (ctx, req) => {
       method: req.method,
       signal: abort.signal
     })
+    if (res.status === 429)
+      log('warn', 'proxy.upstream.429', {
+        owner,
+        path: upstream,
+        retryAfter: res.headers.get('retry-after') ?? null
+      })
+
     if (res.status >= 500) {
       const errBodyText = await res.clone().text()
       log('error', 'proxy.upstream.5xx', {
