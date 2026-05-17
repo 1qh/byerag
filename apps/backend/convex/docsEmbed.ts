@@ -11,6 +11,7 @@
 /** biome-ignore-all lint/suspicious/useAwait: fetch chain */
 'use node'
 import { v } from 'convex/values'
+import type { Id } from './_generated/dataModel'
 import { internal } from './_generated/api'
 import { internalAction } from './_generated/server'
 const OLLAMA_HOST = process.env.OLLAMA_HOST ?? 'host.docker.internal'
@@ -77,7 +78,12 @@ const embed = internalAction({
     const target = await ctx.runQuery(internal.docs.getForEmbed, { docId })
     if (!target) return { embedded: false, reason: 'no-extracted-text' }
     if (target.policyStatus !== 'approved') return { embedded: false, reason: `policy:${target.policyStatus}` }
-    const chunks = chunkText(target.extractedText)
+    let fullText = target.extractedText
+    if (target.extractedTextStorageId) {
+      const blob = await ctx.storage.get(target.extractedTextStorageId as Id<'_storage'>)
+      if (blob) fullText = await blob.text()
+    }
+    const chunks = chunkText(fullText)
     if (chunks.length === 0) return { embedded: false, reason: 'no-chunks' }
     const embedded: { embedding: number[]; end: number; start: number; text: string }[] = []
     for (const ch of chunks)

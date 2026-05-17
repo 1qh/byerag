@@ -283,6 +283,43 @@ const gradebookWithDeptProbe = query({
     return { users: userRows.map(u => ({ department: u.department, userId: u.userId })) }
   }
 })
+const docPipelineProbe = query({
+  args: { filename: v.string(), testSecret: v.string() },
+  handler: async (
+    ctx,
+    { filename, testSecret }
+  ): Promise<null | {
+    chunkCount: number
+    extractedTextLen: number
+    filename: string
+    hasEmbedding: boolean
+    hasExtractedTextStorageId: boolean
+    owner?: string
+    policyStatus: string
+    scanStatus: string
+    scope: string
+  }> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db.query('docs').order('desc').take(2000)
+    const row = rows.find(d => d.filename === filename)
+    if (!row) return null
+    const chunks = await ctx.db
+      .query('docChunks')
+      .withIndex('by_doc', q => q.eq('docId', row._id))
+      .take(5000)
+    return {
+      chunkCount: chunks.length,
+      extractedTextLen: row.extractedText?.length ?? 0,
+      filename: row.filename,
+      hasEmbedding: Boolean(row.embedding && row.embedding.length > 0),
+      hasExtractedTextStorageId: Boolean(row.extractedTextStorageId),
+      owner: row.owner,
+      policyStatus: row.policyStatus,
+      scanStatus: row.scanStatus,
+      scope: row.scope
+    }
+  }
+})
 const gradebookProbe = query({
   args: { testSecret: v.string() },
   handler: async (
@@ -1594,6 +1631,7 @@ export {
   countTestSuggestions,
   countTopicQuestions,
   createOrUpdateUserProbe,
+  docPipelineProbe,
   docsFinalize,
   docsGenerateUploadUrl,
   downloadZip,

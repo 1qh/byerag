@@ -11,6 +11,7 @@ import { v } from 'convex/values'
 import { Buffer } from 'node:buffer'
 import { internal } from './_generated/api'
 import { internalAction } from './_generated/server'
+import { EXTRACT_INLINE_MAX_CHARS } from './constants'
 import { createSandbox } from './sandboxClient'
 const OCR_TRIGGER_THRESHOLD = 100
 const PDF_TIMEOUT_MS = 60_000
@@ -73,7 +74,13 @@ const extract = internalAction({
       const trimmed = text.trim()
       if (trimmed.length === 0) return { extracted: false, reason: 'empty-extract' }
       const lang = detectLang(trimmed.slice(0, 4096))
-      await ctx.runMutation(internal.docs.setExtracted, { docId, extractedText: trimmed, lang })
+      const storageId = await ctx.storage.store(new Blob([trimmed], { type: 'text/plain' }))
+      await ctx.runMutation(internal.docs.setExtracted, {
+        docId,
+        extractedText: trimmed.slice(0, EXTRACT_INLINE_MAX_CHARS),
+        extractedTextStorageId: storageId,
+        lang
+      })
       return { extracted: true }
     } finally {
       await sandbox.kill()
