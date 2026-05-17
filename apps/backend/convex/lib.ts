@@ -158,7 +158,7 @@ const listUserProfilesForAdmin = query({
   }
 })
 const setUserDepartment = mutation({
-  args: { department: v.optional(v.union(v.literal('HR'), v.literal('Sales'), v.literal('IT'))), userId: v.string() },
+  args: { department: v.optional(v.literal('Safety, Health and Environment')), userId: v.string() },
   handler: async (ctx, { userId, department }): Promise<void> => {
     const adminEmail = await requireAdminEmail(ctx)
     if (!adminEmail) throw new Error('admin only')

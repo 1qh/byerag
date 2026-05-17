@@ -137,7 +137,7 @@ const resetPolicyPending = mutation({
 const setUserDepartmentProbe = mutation({
   args: {
     adminEmail: v.string(),
-    department: v.optional(v.union(v.literal('HR'), v.literal('IT'), v.literal('Sales'))),
+    department: v.optional(v.literal('Safety, Health and Environment')),
     testSecret: v.string(),
     userId: v.string()
   },
