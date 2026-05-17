@@ -285,9 +285,7 @@ const trainingSummary = query({
   ): Promise<null | {
     atRiskCount: number
     overallPassRate: number
-    overdueOffenders: { overdue: number; userId: string }[]
     tests: TopicTrain[]
-    totalOverdue: number
     totalUsers: number
     usersFullyCompliantPct: number
     weakestTest: null | { name: string; passRate: number; topicId: string }
@@ -303,12 +301,6 @@ const trainingSummary = query({
     const sumAssigned = topics.reduce((s, t) => s + t.assigned, 0)
     const sumPassed = topics.reduce((s, t) => s + t.passed, 0)
     const overallPassRate = sumAssigned === 0 ? 0 : Math.round((sumPassed / sumAssigned) * 100)
-    const totalOverdue = users.reduce((s, u) => s + u.overdue, 0)
-    const overdueOffenders = users
-      .filter(u => u.overdue > 0)
-      .toSorted((a, b) => b.overdue - a.overdue)
-      .slice(0, 3)
-      .map(u => ({ overdue: u.overdue, userId: u.userId }))
     const atRiskCount = users.filter(u => u.assigned - u.passed > 0).length
     const assignedTopics = topics.filter(t => t.assigned > 0)
     const weakest = assignedTopics.toSorted(
@@ -320,83 +312,114 @@ const trainingSummary = query({
     return {
       atRiskCount,
       overallPassRate,
-      overdueOffenders,
       tests: topics,
-      totalOverdue,
       totalUsers,
       usersFullyCompliantPct,
       weakestTest
     }
   }
 })
-const trainingUsers = query({
-  args: { atRisk: v.optional(v.boolean()), page: v.optional(v.number()), search: v.optional(v.string()) },
-  handler: async (
-    ctx,
-    { page, search, atRisk }
-  ): Promise<null | { pageCount: number; rows: UserTrain[]; total: number }> => {
-    const adminEmail = await requireAdmin(ctx)
-    if (!adminEmail) return null
-    const { users } = await computeTrain(ctx)
-    const term = (search ?? '').trim().toLowerCase()
-    const bySearch = term ? users.filter(u => u.userId.toLowerCase().includes(term)) : users
-    const filtered = atRisk ? bySearch.filter(u => u.assigned - u.passed > 0) : bySearch
-    const sorted = filtered.toSorted(
-      (a, b) =>
-        b.overdue - a.overdue || b.assigned - b.passed - (a.assigned - a.passed) || a.userId.localeCompare(b.userId)
-    )
-    const pageSize = 25
-    const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize))
-    const p = Math.min(Math.max(0, page ?? 0), pageCount - 1)
-    return { pageCount, rows: sorted.slice(p * pageSize, p * pageSize + pageSize), total: sorted.length }
-  }
-})
 interface AssignRow {
   at: number
-  source: 'admin' | 'agent'
+  department: string
+  overdueDays: number
+  status: 'open' | 'overdue' | 'passed'
   test: string
   userId: string
 }
-const agentActivity = query({
-  args: { page: v.optional(v.number()), search: v.optional(v.string()) },
+const assignmentsTable = query({
+  args: {
+    department: v.optional(v.string()),
+    page: v.optional(v.number()),
+    search: v.optional(v.string()),
+    status: v.optional(v.union(v.literal('open'), v.literal('overdue'), v.literal('passed'), v.literal('unfinished')))
+  },
   handler: async (
     ctx,
-    { page, search }
-  ): Promise<null | { lastCheck: null | number; pageCount: number; rows: AssignRow[]; total: number }> => {
+    { page, search, department, status }
+  ): Promise<null | {
+    lastCheck: null | number
+    latest: AssignRow | null
+    pageCount: number
+    rows: AssignRow[]
+    total: number
+  }> => {
     const adminEmail = await requireAdmin(ctx)
     if (!adminEmail) return null
-    const recent = await ctx.db.query('testAssignments').order('desc').take(2000)
+    const now = Date.now()
+    const dueMs = (await getDueDays(ctx)) * DAY_MS
+    const profiles = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_role', q => q.eq('role', 'user'))
+      .take(5000)
+    const deptOf = new Map(profiles.map(p => [p.userId, p.department ?? 'Unassigned']))
+    const live = await ctx.db
+      .query('testAssignments')
+      .order('desc')
+      .filter(q => q.eq(q.field('deletedAt'), undefined))
+      .take(5000)
     const topicNames = new Map<string, string>()
-    const rows: AssignRow[] = []
-    for (const a of recent) {
+    const all: AssignRow[] = []
+    for (const a of live) {
+      if (!deptOf.has(a.userId)) continue
       let name = topicNames.get(a.topicId)
       if (name === undefined) {
         const t = await ctx.db.get(a.topicId)
         name = t?.name ?? '(deleted test)'
         topicNames.set(a.topicId, name)
       }
-      rows.push({
+      const passed = await ctx.db
+        .query('testPasses')
+        .withIndex('by_user_topic_kind', q =>
+          q.eq('userId', a.userId).eq('topicId', a.topicId).eq('kind', 'assigned')
+        )
+        .collect()
+      let st: AssignRow['status'] = 'open'
+      let overdueDays = 0
+      if (passed[0]) st = 'passed'
+      else {
+        const due = a.dueAtMs ?? a.createdAt + dueMs
+        if (now > due) {
+          st = 'overdue'
+          overdueDays = Math.floor((now - due) / DAY_MS)
+        }
+      }
+      all.push({
         at: a.createdAt,
-        source: a.createdBy === 'agent' ? 'agent' : 'admin',
+        department: deptOf.get(a.userId) ?? 'Unassigned',
+        overdueDays,
+        status: st,
         test: name,
         userId: a.userId
       })
     }
+    const latest = all[0] ?? null
     const term = (search ?? '').trim().toLowerCase()
-    const filtered = term
-      ? rows.filter(r => r.test.toLowerCase().includes(term) || r.userId.toLowerCase().includes(term))
-      : rows
-    const pageSize = 15
-    const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
+    const filtered = all.filter(r => {
+      if (term && !(r.userId.toLowerCase().includes(term) || r.test.toLowerCase().includes(term))) return false
+      if (department && r.department !== department) return false
+      if (status === 'unfinished') return r.status !== 'passed'
+      if (status && r.status !== status) return false
+      return true
+    })
+    const rank = { open: 1, overdue: 0, passed: 2 }
+    const sorted = filtered.toSorted((a, b) => rank[a.status] - rank[b.status] || b.at - a.at)
+    const pageSize = 25
+    const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize))
     const p = Math.min(Math.max(0, page ?? 0), pageCount - 1)
-    const pageRows = filtered.slice(p * pageSize, p * pageSize + pageSize)
     // biome-ignore lint/nursery/noPlaywrightUselessAwait: Convex .first() returns thenable
     const lastRow = await ctx.db
       .query('settings')
       .withIndex('by_key', q => q.eq('key', 'agent_last_check'))
       .first()
     const lastCheck = lastRow ? Number.parseInt(lastRow.value, 10) : null
-    return { lastCheck: Number.isFinite(lastCheck) ? lastCheck : null, pageCount, rows: pageRows, total: filtered.length }
+    return {
+      lastCheck: Number.isFinite(lastCheck) ? lastCheck : null,
+      latest,
+      pageCount,
+      rows: sorted.slice(p * pageSize, p * pageSize + pageSize),
+      total: sorted.length
+    }
   }
 })
-export { agentActivity, costCycleHistory, costCyclePivot, topStrip, trainingSummary, trainingUsers }
+export { assignmentsTable, costCycleHistory, costCyclePivot, topStrip, trainingSummary }
