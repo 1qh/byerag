@@ -172,8 +172,10 @@ const generate = internalAction({
     const doc = (await ctx.runQuery(internal.docs.getForConflict, { docId })) as null | {
       extractedText: string
       filename: string
+      scope: 'mine' | 'shared'
     }
     if (!doc) return { generated: 0, reason: 'doc-not-found' }
+    if (doc.scope !== 'shared') return { generated: 0, reason: 'not-shared-scope' }
     const text = doc.extractedText.slice(0, MAX_PROMPT_DOC_CHARS)
     let res: KimiResult
     try {

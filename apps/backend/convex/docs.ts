@@ -330,7 +330,8 @@ const setPolicy = internalMutation({
     })
     if (args.policyStatus === 'approved') {
       await ctx.scheduler.runAfter(0, internal.docsEmbed.embed, { docId: args.docId })
-      await ctx.scheduler.runAfter(0, internal.trainingGen.generate, { docId: args.docId })
+      const row = await ctx.db.get(args.docId)
+      if (row?.scope === 'shared') await ctx.scheduler.runAfter(0, internal.trainingGen.generate, { docId: args.docId })
     }
   }
 })
@@ -537,7 +538,7 @@ const adminApproveReview = mutation({
     if (!doc) throw new Error('doc not found')
     await ctx.db.patch(docId, { policyOverriddenBy: email, policyStatus: 'approved' })
     await ctx.scheduler.runAfter(0, internal.docsEmbed.embed, { docId })
-    await ctx.scheduler.runAfter(0, internal.trainingGen.generate, { docId })
+    if (doc.scope === 'shared') await ctx.scheduler.runAfter(0, internal.trainingGen.generate, { docId })
     await ctx.db.insert('auditLogs', {
       args: JSON.stringify({ docId, filename: doc.filename }),
       command: 'docs.policyOverride.approve',
