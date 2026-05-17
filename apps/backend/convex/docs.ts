@@ -127,9 +127,14 @@ const getForExtract = internalQuery({
   }
 })
 const setExtracted = internalMutation({
-  args: { docId: v.id('docs'), extractedText: v.string(), lang: v.optional(v.string()) },
-  handler: async (ctx, { docId, extractedText, lang }): Promise<void> => {
-    await ctx.db.patch(docId, { extractedText, lang })
+  args: {
+    docId: v.id('docs'),
+    extractedText: v.string(),
+    extractedTextStorageId: v.optional(v.id('_storage')),
+    lang: v.optional(v.string())
+  },
+  handler: async (ctx, { docId, extractedText, extractedTextStorageId, lang }): Promise<void> => {
+    await ctx.db.patch(docId, { extractedText, extractedTextStorageId, lang })
     await ctx.scheduler.runAfter(0, internal.docsPolicy.classify, { docId })
   }
 })
@@ -141,10 +146,17 @@ interface ClassifyDoc {
 }
 const getForEmbed = internalQuery({
   args: { docId: v.id('docs') },
-  handler: async (ctx, { docId }): Promise<null | { extractedText: string; policyStatus: string }> => {
+  handler: async (
+    ctx,
+    { docId }
+  ): Promise<null | { extractedText: string; extractedTextStorageId?: string; policyStatus: string }> => {
     const row = await ctx.db.get(docId)
     if (!row?.extractedText) return null
-    return { extractedText: row.extractedText, policyStatus: row.policyStatus }
+    return {
+      extractedText: row.extractedText,
+      extractedTextStorageId: row.extractedTextStorageId,
+      policyStatus: row.policyStatus
+    }
   }
 })
 const persistChunks = internalMutation({

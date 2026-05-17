@@ -107,6 +107,7 @@ export default defineSchema({
     deletedAt: v.optional(v.number()),
     embedding: v.optional(v.array(v.float64())),
     extractedText: v.optional(v.string()),
+    extractedTextStorageId: v.optional(v.id('_storage')),
     fileSize: v.number(),
     filename: v.string(),
     lang: v.optional(v.string()),
