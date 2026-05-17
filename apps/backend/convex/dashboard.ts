@@ -31,6 +31,13 @@ const cycleStartFor = (now: number, anchorDay: number): { end: string; start: st
   const cycleEnd = new Date(Date.UTC(cycleStart.getUTCFullYear(), cycleStart.getUTCMonth() + 1, anchorDay - 1))
   return { end: fmtDate(cycleEnd), start: fmtDate(cycleStart) }
 }
+const prevCycle = (startISO: string, anchorDay: number): { end: string; start: string } => {
+  const [y, m] = startISO.split('-').map(Number)
+  const cur = new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, anchorDay))
+  const start = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth() - 1, anchorDay))
+  const end = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, anchorDay - 1))
+  return { end: fmtDate(end), start: fmtDate(start) }
+}
 const topStrip = query({
   args: {},
   handler: async (
@@ -77,10 +84,14 @@ const costCycleHistory = query({
     if (!adminEmail) return []
     const n = Math.min(count ?? 6, 24)
     const now = Date.now()
-    const cycles: { end: string; start: string }[] = []
-    for (let i = 0; i < n; i += 1) cycles.push(cycleStartFor(now - 30 * 86_400_000 * i, BILLING_CYCLE_ANCHOR_DAY))
-    const rows = await ctx.db.query('costRecords').take(10_000)
     const todayCycle = cycleStartFor(now, BILLING_CYCLE_ANCHOR_DAY)
+    const cycles: { end: string; start: string }[] = [todayCycle]
+    for (let i = 1; i < n; i += 1) {
+      const prev = cycles[i - 1]
+      if (!prev) break
+      cycles.push(prevCycle(prev.start, BILLING_CYCLE_ANCHOR_DAY))
+    }
+    const rows = await ctx.db.query('costRecords').take(10_000)
     return cycles.map(c => {
       let cents = 0
       for (const r of rows) if (r.dayKey >= c.start && r.dayKey <= c.end) cents += r.cents
@@ -135,7 +146,7 @@ const gradebook = query({
     cells: { glyph: '·' | '✓' | '✗' | 'ⓐ'; topicId: string; userId: string }[]
     colFooters: { assigned: number; passedAssigned: number; topicId: string }[]
     rowTotals: { assignedCount: number; passedCount: number; userId: string }[]
-    topics: { _id: string; name: string }[]
+    topics: { _id: string; name: string; poolSize: number }[]
     users: { department?: string; userId: string }[]
   } | null> => {
     const adminEmail = await requireAdmin(ctx)
@@ -150,13 +161,13 @@ const gradebook = query({
       .withIndex('by_deletedAt', q => q.eq('deletedAt', undefined))
       .take(500)
     const topicRows = topicRowsAll.toSorted((a, b) => a.createdAt - b.createdAt)
-    const topicsWithPool: { _id: string; name: string }[] = []
+    const topicsWithPool: { _id: string; name: string; poolSize: number }[] = []
     for (const t of topicRows) {
       const pool = await ctx.db
         .query('testQuestions')
         .withIndex('by_topic_deletedAt', q => q.eq('topicId', t._id).eq('deletedAt', undefined))
-        .take(6)
-      if (pool.length >= 5) topicsWithPool.push({ _id: t._id, name: t.name })
+        .take(200)
+      if (pool.length >= 5) topicsWithPool.push({ _id: t._id, name: t.name, poolSize: pool.length })
     }
     const cells: { glyph: '·' | '✓' | '✗' | 'ⓐ'; topicId: string; userId: string }[] = []
     for (const u of users)
