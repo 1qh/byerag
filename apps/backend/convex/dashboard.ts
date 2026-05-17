@@ -283,7 +283,7 @@ const trainingSummary = query({
   handler: async (
     ctx
   ): Promise<null | {
-    atRisk: { assigned: number; overdue: number; passed: number; userId: string }[]
+    atRiskCount: number
     overallPassRate: number
     overdueOffenders: { overdue: number; userId: string }[]
     tests: TopicTrain[]
@@ -309,11 +309,7 @@ const trainingSummary = query({
       .toSorted((a, b) => b.overdue - a.overdue)
       .slice(0, 3)
       .map(u => ({ overdue: u.overdue, userId: u.userId }))
-    const atRisk = users
-      .filter(u => u.assigned - u.passed > 0)
-      .toSorted((a, b) => b.overdue - a.overdue || b.assigned - b.passed - (a.assigned - a.passed))
-      .slice(0, 5)
-      .map(u => ({ assigned: u.assigned, overdue: u.overdue, passed: u.passed, userId: u.userId }))
+    const atRiskCount = users.filter(u => u.assigned - u.passed > 0).length
     const assignedTopics = topics.filter(t => t.assigned > 0)
     const weakest = assignedTopics.toSorted(
       (a, b) => a.passed / a.assigned - b.passed / b.assigned || b.assigned - a.assigned
@@ -322,7 +318,7 @@ const trainingSummary = query({
       ? { name: weakest.name, passRate: Math.round((weakest.passed / weakest.assigned) * 100), topicId: weakest.topicId }
       : null
     return {
-      atRisk,
+      atRiskCount,
       overallPassRate,
       overdueOffenders,
       tests: topics,
@@ -334,13 +330,17 @@ const trainingSummary = query({
   }
 })
 const trainingUsers = query({
-  args: { page: v.optional(v.number()), search: v.optional(v.string()) },
-  handler: async (ctx, { page, search }): Promise<null | { pageCount: number; rows: UserTrain[]; total: number }> => {
+  args: { atRisk: v.optional(v.boolean()), page: v.optional(v.number()), search: v.optional(v.string()) },
+  handler: async (
+    ctx,
+    { page, search, atRisk }
+  ): Promise<null | { pageCount: number; rows: UserTrain[]; total: number }> => {
     const adminEmail = await requireAdmin(ctx)
     if (!adminEmail) return null
     const { users } = await computeTrain(ctx)
     const term = (search ?? '').trim().toLowerCase()
-    const filtered = term ? users.filter(u => u.userId.toLowerCase().includes(term)) : users
+    const bySearch = term ? users.filter(u => u.userId.toLowerCase().includes(term)) : users
+    const filtered = atRisk ? bySearch.filter(u => u.assigned - u.passed > 0) : bySearch
     const sorted = filtered.toSorted(
       (a, b) =>
         b.overdue - a.overdue || b.assigned - b.passed - (a.assigned - a.passed) || a.userId.localeCompare(b.userId)
@@ -351,61 +351,52 @@ const trainingUsers = query({
     return { pageCount, rows: sorted.slice(p * pageSize, p * pageSize + pageSize), total: sorted.length }
   }
 })
-interface ActivityEvent {
-  assignmentsCreated: number
+interface AssignRow {
   at: number
-  mode: string
-  topics: string[]
-  topicsProcessed: number
+  source: 'admin' | 'agent'
+  test: string
+  userId: string
 }
 const agentActivity = query({
   args: { page: v.optional(v.number()), search: v.optional(v.string()) },
   handler: async (
     ctx,
     { page, search }
-  ): Promise<null | { events: ActivityEvent[]; lastCheck: null | number; pageCount: number; total: number }> => {
+  ): Promise<null | { lastCheck: null | number; pageCount: number; rows: AssignRow[]; total: number }> => {
     const adminEmail = await requireAdmin(ctx)
     if (!adminEmail) return null
-    const cronRows = await ctx.db
-      .query('auditLogs')
-      .withIndex('by_command', q => q.eq('command', 'training.cron.run'))
-      .order('desc')
-      .take(200)
-    const manualRows = await ctx.db
-      .query('auditLogs')
-      .withIndex('by_command', q => q.eq('command', 'training.assign.runNow'))
-      .order('desc')
-      .take(200)
-    const all: ActivityEvent[] = [...cronRows, ...manualRows]
-      .toSorted((a, b) => b._creationTime - a._creationTime)
-      .map(r => {
-        let parsed: { assignmentsCreated?: number; topics?: string[]; topicsProcessed?: number } = {}
-        try {
-          parsed = JSON.parse(r.args) as typeof parsed
-        } catch {
-          parsed = {}
-        }
-        return {
-          assignmentsCreated: parsed.assignmentsCreated ?? 0,
-          at: r._creationTime,
-          mode: r.mode,
-          topics: Array.isArray(parsed.topics) ? parsed.topics : [],
-          topicsProcessed: parsed.topicsProcessed ?? 0
-        }
+    const recent = await ctx.db.query('testAssignments').order('desc').take(2000)
+    const topicNames = new Map<string, string>()
+    const rows: AssignRow[] = []
+    for (const a of recent) {
+      let name = topicNames.get(a.topicId)
+      if (name === undefined) {
+        const t = await ctx.db.get(a.topicId)
+        name = t?.name ?? '(deleted test)'
+        topicNames.set(a.topicId, name)
+      }
+      rows.push({
+        at: a.createdAt,
+        source: a.createdBy === 'agent' ? 'agent' : 'admin',
+        test: name,
+        userId: a.userId
       })
+    }
     const term = (search ?? '').trim().toLowerCase()
-    const filtered = term ? all.filter(e => e.topics.some(t => t.toLowerCase().includes(term))) : all
-    const pageSize = 10
+    const filtered = term
+      ? rows.filter(r => r.test.toLowerCase().includes(term) || r.userId.toLowerCase().includes(term))
+      : rows
+    const pageSize = 15
     const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
     const p = Math.min(Math.max(0, page ?? 0), pageCount - 1)
-    const events = filtered.slice(p * pageSize, p * pageSize + pageSize)
+    const pageRows = filtered.slice(p * pageSize, p * pageSize + pageSize)
     // biome-ignore lint/nursery/noPlaywrightUselessAwait: Convex .first() returns thenable
     const lastRow = await ctx.db
       .query('settings')
       .withIndex('by_key', q => q.eq('key', 'agent_last_check'))
       .first()
     const lastCheck = lastRow ? Number.parseInt(lastRow.value, 10) : null
-    return { events, lastCheck: Number.isFinite(lastCheck) ? lastCheck : null, pageCount, total: filtered.length }
+    return { lastCheck: Number.isFinite(lastCheck) ? lastCheck : null, pageCount, rows: pageRows, total: filtered.length }
   }
 })
 export { agentActivity, costCycleHistory, costCyclePivot, topStrip, trainingSummary, trainingUsers }
