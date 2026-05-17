@@ -3,6 +3,7 @@
 'use client'
 import type { StreamEvent } from 'backend/convex/streamProtocol'
 import { parseWithCache } from '@a/react/parsers'
+import { Button } from '@a/ui/components/button'
 import { useMemo, useState } from 'react'
 const DebugPanel = ({
   events,
@@ -99,10 +100,11 @@ const DebugPanel = ({
   const ttotal = sendTime ? ((lastT - sendTime) / 1000).toFixed(1) : '—'
   return (
     <div className='border-t bg-muted text-xs font-mono'>
-      <button
-        className='w-full px-3 py-1 text-left text-muted-foreground hover:text-foreground flex items-center gap-2 flex-wrap'
+      <Button
+        className='h-auto w-full justify-start rounded-none bg-transparent px-3 py-1 text-left text-muted-foreground hover:bg-transparent hover:text-foreground flex items-center gap-2 flex-wrap font-mono text-xs'
         onClick={() => setOpen(!open)}
-        type='button'>
+        size='sm'
+        variant='ghost'>
         <span>{open ? '▼' : '▶'}</span>
         <span>{parsed.length} events</span>
         {init?.model ? <span>· {init.model}</span> : null}
@@ -117,7 +119,7 @@ const DebugPanel = ({
         <span>
           · {ttfe}s first · {ttotal}s total
         </span>
-      </button>
+      </Button>
       {open ? (
         <div className='px-3 pb-2 space-y-1 max-h-80 overflow-y-auto text-muted-foreground'>
           {init ? (
@@ -166,12 +168,13 @@ const DebugPanel = ({
             </div>
           )}
           <div className='mt-1'>
-            <button
-              className='text-muted-foreground hover:text-foreground/70 cursor-pointer'
+            <Button
+              className='h-auto rounded-none bg-transparent p-0 font-mono text-xs text-muted-foreground hover:bg-transparent hover:text-foreground/70 cursor-pointer'
               onClick={() => setRawOpen(!rawOpen)}
-              type='button'>
+              size='sm'
+              variant='ghost'>
               {rawOpen ? '▼' : '▶'} raw timeline
-            </button>
+            </Button>
             {rawOpen ? (
               <pre className='mt-1 whitespace-pre-wrap break-all max-h-60 overflow-y-auto text-[10px] text-muted-foreground'>
                 {parsed

@@ -13,6 +13,7 @@ import {
 } from '@a/ui/components/alert-dialog'
 import { Button } from '@a/ui/components/button'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@a/ui/components/context-menu'
+import { Input } from '@a/ui/components/input'
 import { Loader2, Pencil, Star, StarOff, Trash } from 'lucide-react'
 import { memo, useEffect, useRef, useState } from 'react'
 interface Chat {
@@ -78,7 +79,7 @@ const ChatItemInner = ({
       <ContextMenu>
         <ContextMenuTrigger className='group/item relative flex items-center gap-2'>
           {editing ? (
-            <input
+            <Input
               aria-label={`Rename chat ${chat.title}`}
               className='h-8 w-full rounded-md border border-ring bg-background px-2 text-sm outline-none'
               onBlur={commit}

@@ -1,6 +1,6 @@
 'use client'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@a/ui/components/dialog'
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 const SHORTCUTS: [string, string][] = [
   ['⌘ N', 'New chat'],
   ['⌘ K', 'Open command palette'],
@@ -42,12 +42,12 @@ const ShortcutModal = () => {
         </DialogHeader>
         <dl className='grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm'>
           {SHORTCUTS.map(([key, desc]) => (
-            <div className='contents' key={key}>
+            <Fragment key={key}>
               <dt>
                 <kbd className='rounded border bg-muted px-2 py-0.5 font-mono text-xs'>{key}</kbd>
               </dt>
               <dd className='text-muted-foreground'>{desc}</dd>
-            </div>
+            </Fragment>
           ))}
         </dl>
       </DialogContent>

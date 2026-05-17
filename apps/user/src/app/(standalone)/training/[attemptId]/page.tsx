@@ -2,6 +2,8 @@
 import { CitationAnchor } from '@a/react/components'
 import { cn } from '@a/ui'
 import { Button, buttonVariants } from '@a/ui/components/button'
+import { Label } from '@a/ui/components/label'
+import { RadioGroup, RadioGroupItem } from '@a/ui/components/radio-group'
 import { api } from 'backend/convex/_generated/api'
 import { useMutation, useQuery } from 'convex/react'
 import Link from 'next/link'
@@ -37,13 +39,13 @@ const AttemptPage = ({ params }: { params: Promise<{ attemptId: string }> }): Re
   const submit = useMutation(api.trainingAttempts.submitAttempt)
   const [answers, setAnswers] = useState<number[]>([])
   const [submitting, setSubmitting] = useState(false)
-  if (attempt === undefined) return <div className='p-6'>Loading…</div>
-  if (attempt === null) return <div className='p-6 text-destructive'>Attempt not found or not yours.</div>
+  if (attempt === undefined) return <p className='p-6'>Loading…</p>
+  if (attempt === null) return <p className='p-6 text-destructive'>Attempt not found or not yours.</p>
   if ('passed' in attempt) {
     const a = attempt as Terminal
     return (
       <div className='mx-auto max-w-xl space-y-6 p-6'>
-        <div className='space-y-1'>
+        <hgroup className='space-y-1'>
           <h1 className={cn('font-bold text-2xl', a.passed ? 'text-green-700' : 'text-destructive')}>
             {a.passed ? 'Passed ✓' : 'Not passed'}
           </h1>
@@ -51,7 +53,7 @@ const AttemptPage = ({ params }: { params: Promise<{ attemptId: string }> }): Re
             Score {a.score}/{a.total}
             {a.passed ? '' : ' — review the source documents below and try again.'}
           </p>
-        </div>
+        </hgroup>
         <Sources sources={a.sources} />
         {a.passed ? null : (
           <Link className={cn(buttonVariants({ variant: 'secondary' }))} href='/training'>
@@ -84,24 +86,20 @@ const AttemptPage = ({ params }: { params: Promise<{ attemptId: string }> }): Re
       <h2 className='font-semibold text-lg'>Attempt — {a.questionSnapshots.length} questions</h2>
       {a.questionSnapshots.map((q, i) => (
         <div className='space-y-2 rounded-md border p-4' key={q.questionId}>
-          <div className='font-medium'>
+          <p className='font-medium'>
             {i + 1}. {q.promptText}
-          </div>
-          <div className='space-y-1'>
+          </p>
+          <RadioGroup
+            className='space-y-1'
+            onValueChange={v => onPick(i, Number(v))}
+            value={answers[i] === undefined ? null : String(answers[i])}>
             {q.choicesShuffled.map((c, j) => (
-              <label className='flex items-center gap-2 text-sm' key={c}>
-                <input
-                  aria-label={c}
-                  checked={answers[i] === j}
-                  name={`q${i}`}
-                  onChange={() => onPick(i, j)}
-                  type='radio'
-                  value={j}
-                />
-                <span>{c}</span>
-              </label>
+              <Label className='text-sm' key={c}>
+                <RadioGroupItem aria-label={c} value={String(j)} />
+                {c}
+              </Label>
             ))}
-          </div>
+          </RadioGroup>
         </div>
       ))}
       <Button

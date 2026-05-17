@@ -1,4 +1,6 @@
 'use client'
+import { NativeSelect, NativeSelectOption } from '@a/ui/components/native-select'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@a/ui/components/table'
 import { api } from 'backend/convex/_generated/api'
 import { useQuery } from 'convex/react'
 const DEPARTMENTS = ['HR', 'Sales', 'IT'] as const
@@ -7,53 +9,45 @@ const UsersPage = (): React.ReactElement => {
   if (rows === undefined) return <div className='p-6'>Loading…</div>
   if (rows.length === 0) return <div className='p-6 text-muted-foreground'>No users or admin role required.</div>
   return (
-    <div className='space-y-2 p-6'>
+    <section className='space-y-2 p-6'>
       <h2 className='font-semibold text-lg'>Users ({rows.length})</h2>
-      <table className='w-full text-sm'>
-        <thead>
-          <tr className='border-b text-left'>
-            <th className='py-2'>Email</th>
-            <th>Role</th>
-            <th>Dept</th>
-            <th>Updated</th>
-          </tr>
-        </thead>
-        <tbody>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Email</TableHead>
+            <TableHead>Role</TableHead>
+            <TableHead>Dept</TableHead>
+            <TableHead>Updated</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {rows.map(r => (
-            <tr className='border-b' key={r._id}>
-              <td className='py-2'>{r.userId}</td>
-              <td>
-                <select
-                  aria-label='User role'
-                  className='rounded border px-2 py-1'
-                  onChange={() => undefined}
-                  value={r.role}>
-                  <option value='user'>user</option>
-                  <option value='admin'>admin</option>
-                </select>
-              </td>
-              <td>
-                <select
-                  aria-label='User department'
-                  className='rounded border px-2 py-1'
-                  onChange={() => undefined}
-                  value={r.department ?? ''}>
-                  <option value=''>—</option>
+            <TableRow key={r._id}>
+              <TableCell>{r.userId}</TableCell>
+              <TableCell>
+                <NativeSelect aria-label='User role' onChange={() => undefined} value={r.role}>
+                  <NativeSelectOption value='user'>user</NativeSelectOption>
+                  <NativeSelectOption value='admin'>admin</NativeSelectOption>
+                </NativeSelect>
+              </TableCell>
+              <TableCell>
+                <NativeSelect aria-label='User department' onChange={() => undefined} value={r.department ?? ''}>
+                  <NativeSelectOption value=''>—</NativeSelectOption>
                   {DEPARTMENTS.map(d => (
-                    <option key={d} value={d}>
+                    <NativeSelectOption key={d} value={d}>
                       {d}
-                    </option>
+                    </NativeSelectOption>
                   ))}
-                </select>
-              </td>
-              <td className='text-muted-foreground text-xs'>
+                </NativeSelect>
+              </TableCell>
+              <TableCell className='text-muted-foreground text-xs'>
                 {new Date(r.updatedAt).toISOString().slice(0, 10)} by {r.updatedBy}
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
-    </div>
+        </TableBody>
+      </Table>
+    </section>
   )
 }
 export default UsersPage

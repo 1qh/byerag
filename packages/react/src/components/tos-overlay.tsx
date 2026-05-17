@@ -1,6 +1,7 @@
 /* oxlint-disable promise/prefer-await-to-then */
 'use client'
 import type { ReactNode } from 'react'
+import { Button } from '@a/ui/components/button'
 import { useState } from 'react'
 interface TosOverlayProps {
   agreed: boolean | undefined
@@ -22,13 +23,13 @@ const TosOverlay = ({ agreed, onAccept, text, title = 'Terms of Service' }: TosO
       <div className='max-w-md rounded-lg border border-border bg-card p-6 shadow-lg'>
         <h2 className='text-lg font-semibold mb-3'>{title}</h2>
         <div className='text-sm text-muted-foreground mb-4 max-h-64 overflow-auto'>{text}</div>
-        <button
-          className='rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50'
+        <Button
+          className='h-auto rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50'
           disabled={pending}
           onClick={accept}
           type='button'>
           {pending ? 'Accepting…' : 'I accept'}
-        </button>
+        </Button>
       </div>
     </dialog>
   )

@@ -1,4 +1,5 @@
 'use client'
+import { Button } from '@a/ui/components/button'
 import { api } from 'backend/convex/_generated/api'
 import { useMutation } from 'convex/react'
 import { useEffect, useRef, useState } from 'react'
@@ -53,27 +54,29 @@ const ScanOverrideModal = ({ docId, filename, onClose, signature }: ScanOverride
         </div>
         <div className='font-medium'>Force upload?</div>
         <div className='flex justify-end gap-2'>
-          <button
-            className='rounded border px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-foreground'
+          <Button
+            className='h-auto rounded border px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-foreground'
             disabled={busy}
             onClick={() => {
               // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React event handler cannot be async (no-misused-promises); .catch is the documented byerag pattern
               onNo().catch((error: unknown) => toast.error(String(error)))
             }}
             ref={noBtnRef}
-            type='button'>
+            type='button'
+            variant='ghost'>
             No
-          </button>
-          <button
-            className='rounded border bg-destructive px-3 py-1 text-destructive-foreground text-sm'
+          </Button>
+          <Button
+            className='h-auto rounded border bg-destructive px-3 py-1 text-destructive-foreground text-sm'
             disabled={busy}
             onClick={() => {
               // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React event handler cannot be async (no-misused-promises); .catch is the documented byerag pattern
               onYes().catch((error: unknown) => toast.error(String(error)))
             }}
-            type='button'>
+            type='button'
+            variant='ghost'>
             Yes
-          </button>
+          </Button>
         </div>
       </div>
     </div>

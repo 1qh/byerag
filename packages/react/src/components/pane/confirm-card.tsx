@@ -1,6 +1,8 @@
 'use client'
+import { cn } from '@a/ui'
 import { useComposerDraft } from '../../hooks/use-composer-draft'
 import { useCountdown } from '../../hooks/use-countdown'
+const ACTION_CLASS = 'rounded-md border border-border/60 bg-background/50 px-3 py-1.5 text-xs hover:bg-accent'
 interface ConfirmAction {
   label: string
   verb: string
@@ -25,8 +27,9 @@ const ConfirmCard = ({ cancel, confirm, countdownSeconds = 0, message, secondary
           {message ? ` — ${message}` : ' — click Cancel to halt'}
         </div>
       ) : null}
-      <div className='flex flex-wrap gap-2 [&>button]:rounded-md [&>button]:border [&>button]:border-border/60 [&>button]:bg-background/50 [&>button]:px-3 [&>button]:py-1.5 [&>button]:text-xs [&>button]:hover:bg-accent'>
+      <div className='flex flex-wrap gap-2'>
         <button
+          className={cn(ACTION_CLASS)}
           onClick={() => {
             countdown.cancel()
             draft.append(confirm.verb)
@@ -35,6 +38,7 @@ const ConfirmCard = ({ cancel, confirm, countdownSeconds = 0, message, secondary
           {confirm.label}
         </button>
         <button
+          className={cn(ACTION_CLASS)}
           onClick={() => {
             countdown.cancel()
             draft.append(cancel.verb)
@@ -44,6 +48,7 @@ const ConfirmCard = ({ cancel, confirm, countdownSeconds = 0, message, secondary
         </button>
         {extras.map(a => (
           <button
+            className={cn(ACTION_CLASS)}
             key={a.verb}
             onClick={() => {
               countdown.cancel()

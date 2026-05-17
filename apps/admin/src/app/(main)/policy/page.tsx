@@ -1,4 +1,6 @@
 'use client'
+import { Button } from '@a/ui/components/button'
+import { Textarea } from '@a/ui/components/textarea'
 import { api } from 'backend/convex/_generated/api'
 import { useMutation, useQuery } from 'convex/react'
 import { useEffect, useState } from 'react'
@@ -24,19 +26,18 @@ const PolicyPage = (): React.ReactElement => {
     }
   }
   return (
-    <div className='space-y-3 p-6'>
+    <section className='space-y-3 p-6'>
       <h2 className='font-semibold text-lg'>Corpus policy</h2>
       <p className='text-muted-foreground text-sm'>
         Used by the policy classifier on every upload to accept/reject documents.
       </p>
-      <textarea
+      <Textarea
         aria-label='Corpus policy text'
-        className='h-64 w-full rounded-md border bg-background p-3 font-mono text-sm'
+        className='h-64 font-mono'
         onChange={e => setText(e.target.value)}
         value={text}
       />
-      <button
-        className='rounded-md border bg-primary px-4 py-2 text-primary-foreground disabled:opacity-50'
+      <Button
         disabled={saving || text === (current ?? '')}
         onClick={() => {
           // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React event handler cannot be async (no-misused-promises); .catch is the documented byerag pattern
@@ -44,8 +45,8 @@ const PolicyPage = (): React.ReactElement => {
         }}
         type='button'>
         {saving ? 'Saving…' : 'Save'}
-      </button>
-    </div>
+      </Button>
+    </section>
   )
 }
 export default PolicyPage

@@ -9,7 +9,7 @@ const UserSidebarNav = (): React.ReactElement => {
   const passedAssigned = new Set((topics ?? []).filter(t => t.myStatus === 'passed-assigned').map(t => t._id))
   const pending = (assignments ?? []).filter(a => !passedAssigned.has(a.topicId)).length
   return (
-    <nav className='flex flex-col gap-1 border-b py-2 text-sm'>
+    <nav className='flex flex-1 flex-col gap-1 border-b py-2 text-sm'>
       <Link className='rounded px-2 py-1 hover:bg-muted' href='/'>
         Chat
       </Link>

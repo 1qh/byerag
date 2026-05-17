@@ -7,7 +7,7 @@ import { useSidebar } from '@a/ui/components/sidebar'
 import { Spinner } from '@a/ui/components/spinner'
 import { api } from 'backend/convex/_generated/api'
 import { useMutation } from 'convex/react'
-import { useCallback, useMemo } from 'react'
+import { Fragment, useCallback, useMemo } from 'react'
 import { toast } from 'sonner'
 import { ChatItem } from './sidebar-history-item'
 interface SidebarHistoryProps {
@@ -15,9 +15,7 @@ interface SidebarHistoryProps {
   onSelect: (id: Id<'chats'>) => void
 }
 const SectionHeader = ({ label }: { label: string }) => (
-  <div className='px-2 py-1 pt-4'>
-    <p className='text-sm font-medium text-muted-foreground'>{label}</p>
-  </div>
+  <p className='px-2 py-1 pt-4 text-sm font-medium text-muted-foreground'>{label}</p>
 )
 const SidebarHistory = ({ activeChatId, onSelect }: SidebarHistoryProps) => {
   const { id: app } = useApp()
@@ -77,7 +75,7 @@ const SidebarHistory = ({ activeChatId, onSelect }: SidebarHistoryProps) => {
   return (
     <>
       {groups.map(g => (
-        <div key={g.label}>
+        <Fragment key={g.label}>
           <SectionHeader label={g.label} />
           {g.chats.map(chat => (
             <ChatItem
@@ -91,7 +89,7 @@ const SidebarHistory = ({ activeChatId, onSelect }: SidebarHistoryProps) => {
               setOpenMobile={setOpenMobile}
             />
           ))}
-        </div>
+        </Fragment>
       ))}
     </>
   )

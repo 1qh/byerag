@@ -25,7 +25,7 @@ const TrainingPage = (): React.ReactElement => {
       setStarting(null)
     }
   }
-  if (topics === undefined || assignments === undefined) return <div className='p-6'>Loading…</div>
+  if (topics === undefined || assignments === undefined) return <p className='p-6'>Loading…</p>
   const assignedIds = new Set(assignments.map(a => a.topicId))
   const startable = topics.filter(t => t.poolSize >= POOL_MIN)
   const assigned = startable.filter(t => assignedIds.has(t._id) && t.myStatus !== 'passed-assigned')
@@ -59,8 +59,8 @@ const TrainingPage = (): React.ReactElement => {
             {assigned.map(t => (
               <li className='flex items-center justify-between gap-4 rounded-lg border bg-card p-4' key={t._id}>
                 <div>
-                  <div className='font-medium'>{t.name}</div>
-                  <div className='text-muted-foreground text-xs'>Required · {t.poolSize} questions in pool</div>
+                  <p className='font-medium'>{t.name}</p>
+                  <p className='text-muted-foreground text-xs'>Required · {t.poolSize} questions in pool</p>
                 </div>
                 <StartButton id={t._id} />
               </li>

@@ -2,7 +2,7 @@
 import type { Id } from 'backend/convex/_generated/dataModel'
 import type { ReactNode } from 'react'
 import { cn } from '@a/ui'
-import { buttonVariants } from '@a/ui/components/button'
+import { Button } from '@a/ui/components/button'
 import {
   Sidebar,
   SidebarContent,
@@ -53,15 +53,13 @@ const AppSidebar = ({
     <Sidebar className='border-none' collapsible='icon'>
       <SidebarHeader className='flex-row items-center'>
         {/* Expanded: single button with icon + title that morphs to 'New chat' on hover */}
-        <button
+        <Button
           aria-label='new chat'
-          className={cn(
-            buttonVariants({ variant: 'ghost' }),
-            'group/logo flex-1 h-8 px-2 justify-start gap-2 group-data-[collapsible=icon]:hidden relative'
-          )}
+          className='group/logo flex-1 h-8 px-2 justify-start gap-2 group-data-[collapsible=icon]:hidden relative'
           onClick={onNewChat}
           title='new chat (⌘N)'
-          type='button'>
+          type='button'
+          variant='ghost'>
           <SquarePen className='size-5 shrink-0 absolute left-2 opacity-0 -translate-x-1 group-hover/logo:opacity-100 group-hover/logo:translate-x-0 transition-all duration-200' />
           <span
             className={cn(
@@ -77,25 +75,27 @@ const AppSidebar = ({
             )}>
             new chat
           </span>
-        </button>
+        </Button>
         {/* Collapsed: expand button */}
-        <button
+        <Button
           aria-label='Expand sidebar'
-          className={cn(buttonVariants({ variant: 'ghost' }), 'size-8 p-2 hidden group-data-[collapsible=icon]:flex')}
+          className='size-8 p-2 hidden group-data-[collapsible=icon]:flex'
           onClick={toggleSidebar}
           title='Expand sidebar'
-          type='button'>
+          type='button'
+          variant='ghost'>
           <PanelLeft className='size-5' />
-        </button>
+        </Button>
         <ConnectionDot />
-        <button
+        <Button
           aria-label='Collapse sidebar'
-          className={cn(buttonVariants({ variant: 'ghost' }), 'size-8 p-0 group-data-[collapsible=icon]:hidden')}
+          className='size-8 p-0 group-data-[collapsible=icon]:hidden'
           onClick={toggleSidebar}
           title='Collapse sidebar'
-          type='button'>
+          type='button'
+          variant='ghost'>
           <PanelLeft className='size-5' />
-        </button>
+        </Button>
       </SidebarHeader>
       <SidebarContent className='gap-0 p-1 group-data-[collapsible=icon]:p-2'>
         <SidebarMenu className='hidden group-data-[collapsible=icon]:block'>
