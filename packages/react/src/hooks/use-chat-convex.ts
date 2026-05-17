@@ -50,9 +50,10 @@ const useChatConvex = ({ chatId }: { chatId: Id<'chats'> | null }): UseChatResul
   const activeChatId = chatId ?? routeChatId ?? validCreatedChatId ?? null
   const {
     loadMore,
-    results: rawMessages,
+    results: rawMessagesDesc,
     status: paginationStatus
-  } = usePaginatedQuery(api.messages.list, activeChatId ? { chatId: activeChatId } : 'skip', { initialNumItems: 50 })
+  } = usePaginatedQuery(api.messages.list, activeChatId ? { chatId: activeChatId } : 'skip', { initialNumItems: 100 })
+  const rawMessages = useMemo(() => [...rawMessagesDesc].toReversed(), [rawMessagesDesc])
   const chatStatus = useQuery(api.chats.status, activeChatId ? { chatId: activeChatId } : 'skip')
   const streamEventsQuery = useQuery(
     api.messages.streamEvents,

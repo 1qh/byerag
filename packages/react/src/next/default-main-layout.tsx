@@ -5,7 +5,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from '@a/ui/components/
 import { useConvexAuth } from 'convex/react'
 import { useParams, useRouter } from 'next/navigation'
 import { useEffect } from 'react'
-import { AppSidebar, Chat, CommandPalette, ShortcutModal, useBusyState } from '../components'
+import { AppSidebar, Chat, CommandPalette, DocSheet, ShortcutModal, useBusyState } from '../components'
 import { useFileUploadCtx } from '../components/composer-extras-context'
 import { useMentionItemsCtx } from '../components/mention-items-context'
 import { useStarterPromptsCtx } from '../components/starter-prompts-context'
@@ -113,6 +113,7 @@ const DefaultMainLayout = ({
       {paneSlot}
       <CommandPalette onCreate={onNewChat} onSelect={onSelect} />
       <ShortcutModal />
+      <DocSheet />
     </SidebarProvider>
   )
 }

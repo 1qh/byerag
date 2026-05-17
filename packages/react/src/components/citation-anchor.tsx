@@ -5,12 +5,14 @@ import { cn } from '@a/ui'
 import { Badge } from '@a/ui/components/badge'
 import { api } from 'backend/convex/_generated/api'
 import { useQuery } from 'convex/react'
+import { useDocSheet } from './doc-sheet-context'
 const DOC_HREF_RE = /^\/docs\/(?<docId>[^/#?]+)(?:#(?<anchor>[^?]+))?$/u
 interface CitationAnchorProps extends ComponentProps<'a'> {
   children?: ReactNode
 }
 const Inner = ({ docId, anchor, children }: { anchor?: string; children?: ReactNode; docId: string }) => {
   const meta = useQuery(api.docs.getCitationBadge, { docId: docId as Id<'docs'> })
+  const { openDoc } = useDocSheet()
   const badge = meta?.badge ?? 'fresh'
   const tone =
     badge === 'deleted'
@@ -19,8 +21,13 @@ const Inner = ({ docId, anchor, children }: { anchor?: string; children?: ReactN
         ? 'border-amber-500/40 bg-amber-500/10 text-amber-700'
         : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700'
   const href = `/docs/${docId}${anchor ? `#${anchor}` : ''}`
+  const onClick = (e: React.MouseEvent<HTMLAnchorElement>): void => {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+    e.preventDefault()
+    openDoc(docId, anchor ?? null)
+  }
   return (
-    <a href={href} title={meta?.filename ?? undefined}>
+    <a href={href} onClick={onClick} title={meta?.filename ?? undefined}>
       <Badge className={cn('text-[0.7rem] gap-1', tone)} variant='outline'>
         <span className='opacity-60 text-[0.6rem] uppercase tracking-wide'>{badge}</span>
         <span>{children ?? meta?.filename ?? docId}</span>

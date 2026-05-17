@@ -62,7 +62,7 @@ const REGISTRY: Record<string, RegistryEntry<'admin' | 'user'>> = {
     argSpecs: (docsRead_mod as unknown as { argSpecs: ArgSpecs }).argSpecs,
     fn: internal.tools.docs.read.action as FunctionReference<'query', 'internal'>,
     inferredDescription: null,
-    inferredSchema: {"kind":"object","shape":{"_id":{"optional":false,"schema":{"kind":"string"}},"content":{"optional":false,"schema":{"kind":"string"}},"filename":{"optional":false,"schema":{"kind":"string"}},"lang":{"optional":false,"schema":{"kind":"union","members":[{"kind":"null"},{"kind":"string"}]}},"mime":{"optional":false,"schema":{"kind":"string"}},"scope":{"optional":false,"schema":{"kind":"enum","values":["mine","shared"]}},"truncated":{"optional":false,"schema":{"kind":"boolean"}},"version":{"optional":false,"schema":{"kind":"number"}}}},
+    inferredSchema: {"kind":"object","shape":{"body":{"optional":false,"schema":{"kind":"string"}},"byte_size":{"optional":false,"schema":{"kind":"number"}},"doc_id":{"optional":false,"schema":{"kind":"string"}},"filename":{"optional":false,"schema":{"kind":"string"}},"first_lines_preview":{"optional":false,"schema":{"kind":"string"}},"lang":{"optional":false,"schema":{"kind":"union","members":[{"kind":"null"},{"kind":"string"}]}},"scope":{"optional":false,"schema":{"kind":"enum","values":["mine","shared"]}},"total_lines":{"optional":false,"schema":{"kind":"number"}},"version":{"optional":false,"schema":{"kind":"number"}}}},
     kind: 'query',
     meta: (docsRead_mod as unknown as { meta: ToolMeta }).meta,
     path: ["docs","read"],

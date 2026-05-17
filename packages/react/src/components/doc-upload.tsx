@@ -1,13 +1,16 @@
 'use client'
+import { cn } from '@a/ui'
+import { Button } from '@a/ui/components/button'
+import { Progress } from '@a/ui/components/progress'
 import { api } from 'backend/convex/_generated/api'
 import { useAction, useMutation } from 'convex/react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { ScanOverrideModal } from './scan-override-modal'
 interface ConflictState {
   existingId: string
-  file: File
   filename: string
+  itemId: string
   mime: string
   scope: Scope
 }
@@ -15,120 +18,239 @@ interface DocUploadProps {
   isAdmin?: boolean
   scope: Scope
 }
+type ItemStatus = 'done' | 'error' | 'pending' | 'quarantined' | 'uploading' | 'waiting-conflict'
+interface QueueItem {
+  file: File
+  id: string
+  message?: string
+  progress: number
+  status: ItemStatus
+}
 interface ScanState {
   docId: string
   filename: string
   signature: string
 }
 type Scope = 'mine' | 'shared'
+const STATUS_LABEL: Record<ItemStatus, string> = {
+  done: 'Uploaded',
+  error: 'Error',
+  pending: 'Queued',
+  quarantined: 'Quarantined',
+  uploading: 'Uploading',
+  'waiting-conflict': 'Waiting'
+}
+const uploadWithProgress = async (
+  url: string,
+  file: File,
+  mime: string,
+  onProgress: (pct: number) => void
+): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', url)
+    xhr.setRequestHeader('Content-Type', mime)
+    xhr.upload.addEventListener('progress', e => {
+      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100))
+    })
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300)
+        try {
+          const j = JSON.parse(xhr.responseText) as { storageId: string }
+          resolve(j.storageId)
+        } catch (error) {
+          reject(error)
+        }
+      else reject(new Error(`upload ${xhr.status}`))
+    })
+    xhr.addEventListener('error', () => reject(new Error('network')))
+    xhr.send(file)
+  })
 const DocUpload = ({ isAdmin, scope }: DocUploadProps): React.ReactElement => {
   const genUrl = useMutation(api.docs.generateUploadUrl)
   const finalize = useAction(api.docs.upload)
-  const [busy, setBusy] = useState(false)
+  const [items, setItems] = useState<QueueItem[]>([])
   const [conflict, setConflict] = useState<ConflictState | null>(null)
   const [scanQ, setScanQ] = useState<null | ScanState>(null)
-  // oxlint-disable-next-line unicorn/consistent-function-scoping -- captures component state (setBusy, finalize, scope)
-  const submit = async (file: File, mode: { keepBoth?: boolean; replace?: boolean }): Promise<void> => {
-    setBusy(true)
-    try {
-      const filename = file.name
-      const mime = file.type || 'application/octet-stream'
-      const url = await genUrl({})
-      const res = await fetch(url, { body: file, headers: { 'Content-Type': mime }, method: 'POST' })
-      const j = (await res.json()) as { storageId: string }
-      const r = await finalize({
-        filename,
-        keepBoth: mode.keepBoth,
+  const itemsRef = useRef<QueueItem[]>([])
+  const conflictRef = useRef<ConflictState | null>(null)
+  const runningRef = useRef(false)
+  itemsRef.current = items
+  conflictRef.current = conflict
+  const patch = (id: string, p: Partial<QueueItem>): void => {
+    setItems(prev => prev.map(it => (it.id === id ? { ...it, ...p } : it)))
+    itemsRef.current = itemsRef.current.map(it => (it.id === id ? { ...it, ...p } : it))
+  }
+  const submit = async (itemId: string, file: File, mode: { keepBoth?: boolean; replace?: boolean }): Promise<void> => {
+    const filename = file.name
+    const mime = file.type || 'application/octet-stream'
+    patch(itemId, { progress: 0, status: 'uploading' })
+    const url = await genUrl({})
+    const storageId = await uploadWithProgress(url, file, mime, pct => patch(itemId, { progress: pct }))
+    const r = await finalize({
+      filename,
+      keepBoth: mode.keepBoth,
+      mime,
+      replace: mode.replace,
+      scope,
+      storageId: storageId as never
+    })
+    if (r.ok) {
+      patch(itemId, { progress: 100, status: 'done' })
+      toast.success(`uploaded ${filename}`)
+      return
+    }
+    if (r.reason === 'duplicate' && r.duplicate) {
+      patch(itemId, { message: `duplicate of ${r.duplicate.filename}`, status: 'done' })
+      toast.info(`already in library as ${r.duplicate.filename}`)
+      return
+    }
+    if (r.reason === 'filename-conflict' && r.filenameConflict) {
+      patch(itemId, { message: 'awaiting Replace / Keep both / Cancel', status: 'waiting-conflict' })
+      const state: ConflictState = {
+        existingId: r.filenameConflict.existingId,
+        filename: r.filenameConflict.filename,
+        itemId,
         mime,
-        replace: mode.replace,
-        scope,
-        storageId: j.storageId as never
-      })
-      if (r.ok) {
-        toast.success(`uploaded ${filename}`)
-        setConflict(null)
-        return
+        scope
       }
-      if (r.reason === 'duplicate' && r.duplicate) {
-        toast.info(`already in library as ${r.duplicate.filename}`)
-        return
+      setConflict(state)
+      conflictRef.current = state
+      return
+    }
+    if (r.reason === 'quarantined') {
+      patch(itemId, { message: r.signature ?? 'suspicious', status: 'quarantined' })
+      if (isAdmin && r.docId) setScanQ({ docId: r.docId, filename, signature: r.signature ?? 'unknown' })
+      else toast.error(`Rejected: ${filename}. Reason: ${r.signature ?? 'unknown'}.`)
+      return
+    }
+    patch(itemId, { message: r.reason ?? 'unknown', status: 'error' })
+    toast.error(`upload failed: ${r.reason ?? 'unknown'}`)
+  }
+  const drain = async (): Promise<void> => {
+    if (runningRef.current) return
+    runningRef.current = true
+    try {
+      while (true) {
+        if (conflictRef.current) break
+        const next = itemsRef.current.find(it => it.status === 'pending')
+        if (!next) break
+        try {
+          await submit(next.id, next.file, {})
+        } catch (error: unknown) {
+          patch(next.id, { message: String(error), status: 'error' })
+        }
       }
-      if (r.reason === 'filename-conflict' && r.filenameConflict) {
-        setConflict({
-          existingId: r.filenameConflict.existingId,
-          file,
-          filename: r.filenameConflict.filename,
-          mime,
-          scope
-        })
-        return
-      }
-      if (r.reason === 'quarantined') {
-        if (isAdmin && r.docId) setScanQ({ docId: r.docId, filename, signature: r.signature ?? 'unknown' })
-        else toast.error(`Your file was rejected because it appeared suspicious. Reason: ${r.signature ?? 'unknown'}.`)
-        return
-      }
-      toast.error(`upload failed: ${r.reason ?? 'unknown'}`)
-    } catch (error: unknown) {
-      toast.error(String(error))
     } finally {
-      setBusy(false)
+      runningRef.current = false
     }
   }
   const onPick = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    const file = e.target.files?.[0]
-    // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React event handler cannot be async (no-misused-promises); .catch is the documented byerag pattern
-    if (file) submit(file, {}).catch((error: unknown) => toast.error(String(error)))
+    const files = [...(e.target.files ?? [])]
+    if (files.length === 0) return
+    const fresh: QueueItem[] = files.map((file, i) => ({
+      file,
+      id: `${Date.now()}-${i}-${file.name}`,
+      progress: 0,
+      status: 'pending'
+    }))
+    setItems(prev => [...prev, ...fresh])
+    itemsRef.current = [...itemsRef.current, ...fresh]
     e.target.value = ''
+    // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React event handler cannot be async; .catch is byerag pattern
+    drain().catch((error: unknown) => toast.error(String(error)))
   }
+  const resolveConflict = (mode: { keepBoth?: boolean; replace?: boolean }): void => {
+    const c = conflictRef.current
+    if (!c) return
+    setConflict(null)
+    conflictRef.current = null
+    const item = itemsRef.current.find(it => it.id === c.itemId)
+    if (!item) return
+    // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- handler chain
+    submit(c.itemId, item.file, mode)
+      .catch((error: unknown) => {
+        patch(c.itemId, { message: String(error), status: 'error' })
+      })
+      // oxlint-disable-next-line promise/prefer-await-to-then -- continue draining queue
+      .finally(() => {
+        // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
+        drain().catch((error: unknown) => toast.error(String(error)))
+      })
+  }
+  const cancelConflict = (): void => {
+    const c = conflictRef.current
+    if (!c) return
+    patch(c.itemId, { message: 'cancelled', status: 'error' })
+    setConflict(null)
+    conflictRef.current = null
+    // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
+    drain().catch((error: unknown) => toast.error(String(error)))
+  }
+  const clearFinished = (): void => {
+    setItems(prev => prev.filter(it => it.status === 'pending' || it.status === 'uploading'))
+  }
+  const anyTerminal = items.some(
+    it => it.status === 'done' || it.status === 'error' || it.status === 'quarantined' || it.status === 'waiting-conflict'
+  )
   return (
-    <div className='flex flex-col gap-2'>
-      <label className='inline-flex cursor-pointer items-center gap-2 rounded border px-3 py-1 text-sm hover:bg-muted'>
-        <input aria-label={`Upload file to ${scope}`} className='hidden' disabled={busy} onChange={onPick} type='file' />
-        {busy ? 'Uploading…' : `Upload to ${scope}`}
+    <div className='flex flex-col gap-3'>
+      <label className='inline-flex w-fit cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-muted'>
+        <input aria-label={`Upload files to ${scope}`} className='hidden' multiple onChange={onPick} type='file' />
+        Upload to {scope}
       </label>
+      {items.length > 0 ? (
+        <ul className='space-y-2'>
+          {items.map(it => (
+            <li className='space-y-1 rounded-md border p-2 text-sm' key={it.id}>
+              <div className='flex items-center gap-2'>
+                <span className='flex-1 truncate font-mono text-xs'>{it.file.name}</span>
+                <span
+                  className={cn(
+                    'rounded px-1.5 py-0.5 text-xs',
+                    it.status === 'done' && 'bg-green-100 text-green-800',
+                    it.status === 'error' && 'bg-destructive/10 text-destructive',
+                    it.status === 'quarantined' && 'bg-yellow-100 text-yellow-800',
+                    (it.status === 'pending' || it.status === 'uploading' || it.status === 'waiting-conflict') &&
+                      'bg-muted text-muted-foreground'
+                  )}>
+                  {STATUS_LABEL[it.status]}
+                </span>
+              </div>
+              {it.status === 'uploading' ? <Progress value={it.progress} /> : null}
+              {it.message ? <div className='text-muted-foreground text-xs'>{it.message}</div> : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {anyTerminal ? (
+        <Button onClick={clearFinished} size='sm' variant='ghost'>
+          Clear finished
+        </Button>
+      ) : null}
       {scanQ ? (
         <ScanOverrideModal
           docId={scanQ.docId}
           filename={scanQ.filename}
-          onClose={() => {
-            setScanQ(null)
-          }}
+          onClose={() => setScanQ(null)}
           signature={scanQ.signature}
         />
       ) : null}
       {conflict ? (
-        <div className='space-y-2 rounded border bg-muted p-3 text-sm'>
+        <div className='space-y-2 rounded-md border bg-muted p-3 text-sm'>
           <div>
             A different file with name <span className='font-mono'>{conflict.filename}</span> exists. Replace it?
           </div>
           <div className='flex gap-2'>
-            <button
-              className='rounded border px-2 py-1'
-              onClick={() => {
-                // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React event handler cannot be async (no-misused-promises); .catch is the documented byerag pattern
-                submit(conflict.file, { replace: true }).catch((error: unknown) => toast.error(String(error)))
-              }}
-              type='button'>
+            <Button onClick={() => resolveConflict({ replace: true })} size='sm'>
               Replace
-            </button>
-            <button
-              className='rounded border px-2 py-1'
-              onClick={() => {
-                // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React event handler cannot be async (no-misused-promises); .catch is the documented byerag pattern
-                submit(conflict.file, { keepBoth: true }).catch((error: unknown) => toast.error(String(error)))
-              }}
-              type='button'>
+            </Button>
+            <Button onClick={() => resolveConflict({ keepBoth: true })} size='sm' variant='secondary'>
               Keep both
-            </button>
-            <button
-              className='rounded border px-2 py-1'
-              onClick={() => {
-                setConflict(null)
-              }}
-              type='button'>
+            </Button>
+            <Button onClick={cancelConflict} size='sm' variant='ghost'>
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       ) : null}

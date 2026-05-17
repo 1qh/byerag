@@ -39,6 +39,7 @@
     "codegen:convex": "q bunx convex codegen --typecheck disable",
     "coverage": "bun test --coverage",
     "deploy": "bun run build-agent && bun run codegen:convex && bun run codegen && bunx convex dev --once && rm -f .env.local",
+    "dev": "bun run build-agent && bun run codegen && bunx convex dev",
     "docgen": "bun ../../packages/cli/bin/x-docgen.ts",
     "mutate": "bun scripts/mutate-test.ts",
     "smoke:sendgrid": "bun --env-file=./.env scripts/smoke-sendgrid.ts",

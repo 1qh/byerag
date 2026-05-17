@@ -151,8 +151,34 @@ const getMyAttemptDetail = query({
     if (!userId) return null
     const row = await ctx.db.get(attemptId)
     if (row?.userId !== userId) return null
-    if (row.status === 'passed') return row
-    return { _id: row._id, score: row.score ?? 0, status: row.status, total: row.questionSnapshots.length }
+    if (row.status === 'in-progress')
+      return {
+        _id: row._id,
+        questionSnapshots: row.questionSnapshots.map(q => ({
+          choicesShuffled: q.choicesShuffled,
+          promptText: q.promptText,
+          questionId: q.questionId
+        })),
+        status: row.status
+      }
+    // Terminal (passed/failed/cancelled): reveal pass/fail + score + source-doc citations only.
+    // No questionSnapshots / answer key ever leave the server.
+    const docIds = new Set<string>()
+    for (const q of row.questionSnapshots) for (const d of q.sourceDocIds) docIds.add(d)
+    const sources: { docId: string; filename: string }[] = []
+    for (const id of docIds) {
+      const doc = await ctx.db.get(id as never)
+      const filename = doc && 'filename' in doc ? doc.filename : 'unknown'
+      sources.push({ docId: id, filename })
+    }
+    return {
+      _id: row._id,
+      passed: row.status === 'passed',
+      score: row.score ?? 0,
+      sources,
+      status: row.status,
+      total: row.questionSnapshots.length
+    }
   }
 })
 export { getMyAttemptDetail, listMyAttempts, startAttempt, submitAttempt }

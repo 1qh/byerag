@@ -2,11 +2,12 @@
 import type { Id } from 'backend/convex/_generated/dataModel'
 import { api } from 'backend/convex/_generated/api'
 import { useQuery } from 'convex/react'
-import { use } from 'react'
-const DocViewerPage = ({ params }: { params: Promise<{ docId: string }> }): React.ReactElement => {
-  const { docId } = use(params)
-  const result = useQuery(api.docs.read, { docId: docId as Id<'docs'> })
-  if (result === undefined) return <div className='p-6'>Loading…</div>
+interface DocViewerProps {
+  docId: Id<'docs'>
+}
+const DocViewer = ({ docId }: DocViewerProps): React.ReactElement => {
+  const result = useQuery(api.docs.read, { docId })
+  if (result === undefined) return <div className='p-6 text-muted-foreground'>Loading…</div>
   if (result === null) return <div className='p-6 text-destructive'>Doc not found or access denied.</div>
   const lines = result.content.split('\n')
   return (
@@ -22,11 +23,11 @@ const DocViewerPage = ({ params }: { params: Promise<{ docId: string }> }): Reac
         {lines.map((line, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: line index is stable for static doc viewer
           <div className='target:bg-yellow-100' id={`L${i + 1}`} key={`id-${docId}-L${i + 1}`}>
-            {line || ' '}
+            {line || ' '}
           </div>
         ))}
       </pre>
     </div>
   )
 }
-export default DocViewerPage
+export { DocViewer }
