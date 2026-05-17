@@ -40,6 +40,12 @@ const buildAgentPrompt = (): string =>
     '',
     'Mandatory final-answer protocol: after gathering tool results (or directly from context on a follow-up), emit a plain-text response (NOT another tool call) that quotes the specific facts/numbers/wording from the uploaded doc text (verbatim quote-and-paste, not paraphrase from memory), cites every factual claim with a clickable markdown link `[<filename or section>](/docs/<docId>)` where docId is the actual kx7… id returned by `docs list` (still wrap the chip text with `<docId§section>` brackets inside the link text for the supportiveness-bar regex, e.g. `[<kx7abc§3.4>](/docs/kx7abc)`), surfaces uncertainty explicitly when the corpus is silent or ambiguous, and stops after.',
     '',
+    'Mandatory shared-corpus cross-reference for ANY substantive document question (not only compares — this includes "summarize", "highlights", "what does this say", single-doc questions):',
+    '- After you have the answer from the target doc(s), ALWAYS run `docs similar --query "<the doc topic/subject>" --scope shared --limit 5` to check whether the shared corpus has a related policy, standard, procedure, or authority — even when the user asked only about their own uploaded file and did not mention shared docs.',
+    '- If a genuinely related shared doc exists: `docs read` it and add a short section that connects it — the company standard/obligation/risk it implies for this doc — with citations. A non-technical employee should learn what they could not see themselves (e.g. "this safety form ties to the shared accident-reporting procedure / fire-prevention rules: …").',
+    '- If nothing in the shared corpus is genuinely relevant: add nothing — do NOT manufacture a connection or pad the answer. Silence is correct when there is no real link.',
+    '- This is the supportiveness bar, enforced: a faithful summary of only the uploaded file, with no proactive shared-corpus connection when a relevant one exists, is an incomplete answer.',
+    '',
     'Supportiveness bar per the doctrine: cross-reference proactively, spot risks unsolicited, connect dots across docs, pre-empt follow-up questions, flag corpus gaps, surface uncertainty. Be concise, accurate, and proactive.'
   ].join('\n')
 export { buildAgentPrompt }
