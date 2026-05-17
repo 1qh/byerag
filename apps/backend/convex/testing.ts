@@ -1278,6 +1278,156 @@ const wipeUserProfiles = mutation({
     return rows.length
   }
 })
+const purgeUserProbe = mutation({
+  args: { testSecret: v.string(), userId: v.string() },
+  handler: async (ctx, { userId, testSecret }): Promise<Record<string, number>> => {
+    verifyTestSecret(testSecret)
+    const email = userId.toLowerCase()
+    const counts: Record<string, number> = {}
+    const bump = (k: string, n = 1): void => {
+      counts[k] = (counts[k] ?? 0) + n
+    }
+    const authUsers = (await ctx.db
+      .query('users')
+      .filter(q => q.eq(q.field('email'), email))
+      .collect()) as { _id: string }[]
+    for (const au of authUsers) {
+      const accs = (await ctx.db
+        .query('authAccounts')
+        .filter(q => q.eq(q.field('userId'), au._id as never))
+        .collect()) as { _id: string }[]
+      for (const a of accs) {
+        await ctx.db.delete(a._id as never)
+        bump('authAccounts')
+      }
+      const sess = (await ctx.db
+        .query('authSessions')
+        .filter(q => q.eq(q.field('userId'), au._id as never))
+        .collect()) as { _id: string }[]
+      for (const s of sess) {
+        const rts = (await ctx.db
+          .query('authRefreshTokens')
+          .filter(q => q.eq(q.field('sessionId'), s._id as never))
+          .collect()) as { _id: string }[]
+        for (const rt of rts) {
+          await ctx.db.delete(rt._id as never)
+          bump('authRefreshTokens')
+        }
+        await ctx.db.delete(s._id as never)
+        bump('authSessions')
+      }
+      await ctx.db.delete(au._id as never)
+      bump('users')
+    }
+    const profs = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', email))
+      .collect()
+    for (const p of profs) {
+      await ctx.db.delete(p._id)
+      bump('userProfiles')
+    }
+    const chats = await ctx.db
+      .query('chats')
+      .withIndex('by_owner', q => q.eq('owner', email))
+      .collect()
+    for (const ch of chats) {
+      for (const tbl of ['messages', 'streamEvents', 'chatRuntime'] as const) {
+        const rows = await ctx.db
+          .query(tbl)
+          .withIndex('by_chat', q => q.eq('chatId', ch._id))
+          .collect()
+        for (const r of rows) {
+          await ctx.db.delete(r._id)
+          bump(tbl)
+        }
+      }
+      await ctx.db.delete(ch._id)
+      bump('chats')
+    }
+    const docs = await ctx.db
+      .query('docs')
+      .withIndex('by_owner', q => q.eq('owner', email))
+      .collect()
+    for (const d of docs) {
+      const chunks = await ctx.db
+        .query('docChunks')
+        .withIndex('by_doc', q => q.eq('docId', d._id))
+        .collect()
+      for (const c of chunks) {
+        await ctx.db.delete(c._id)
+        bump('docChunks')
+      }
+      if (d.storageId)
+        try {
+          await ctx.storage.delete(d.storageId)
+          bump('storageBlobs')
+        } catch {
+          /* Already purged */
+        }
+      if (d.extractedTextStorageId)
+        try {
+          await ctx.storage.delete(d.extractedTextStorageId)
+          bump('storageBlobs')
+        } catch {
+          /* Already purged */
+        }
+      await ctx.db.delete(d._id)
+      bump('docs')
+    }
+    for (const tbl of ['testAttempts', 'testPasses'] as const) {
+      const rows = await ctx.db
+        .query(tbl)
+        .withIndex('by_user', q => q.eq('userId', email))
+        .collect()
+      for (const r of rows) {
+        await ctx.db.delete(r._id)
+        bump(tbl)
+      }
+    }
+    const taRows = await ctx.db
+      .query('testAssignments')
+      .withIndex('by_user_deletedAt', q => q.eq('userId', email))
+      .collect()
+    for (const r of taRows) {
+      await ctx.db.delete(r._id)
+      bump('testAssignments')
+    }
+    for (const tbl of ['sandboxes', 'ownerSpend'] as const) {
+      const rows = await ctx.db
+        .query(tbl)
+        .withIndex('by_owner', q => q.eq('owner', email))
+        .collect()
+      for (const r of rows) {
+        await ctx.db.delete(r._id)
+        bump(tbl)
+      }
+    }
+    const crRows = await ctx.db
+      .query('costRecords')
+      .withIndex('by_owner_dayKey', q => q.eq('owner', email))
+      .collect()
+    for (const r of crRows) {
+      await ctx.db.delete(r._id)
+      bump('costRecords')
+    }
+    const ucs = await ctx.db
+      .query('userContexts')
+      .withIndex('by_user', q => q.eq('userId', email))
+      .collect()
+    for (const u of ucs) {
+      await ctx.db.delete(u._id)
+      bump('userContexts')
+    }
+    const rls = await ctx.db.query('rateLimits').collect()
+    for (const rl of rls)
+      if (rl.owner === email || rl.owner === `send:${email}`) {
+        await ctx.db.delete(rl._id)
+        bump('rateLimits')
+      }
+    return counts
+  }
+})
 const countChunksForDoc = query({
   args: { docId: v.id('docs'), testSecret: v.string() },
   handler: async (ctx, { docId, testSecret }): Promise<{ count: number; firstEnd?: number; firstStart?: number }> => {
@@ -1660,6 +1810,7 @@ export {
   listStreamEventsForChat,
   listUsersProbe,
   markTopicSubstantiveProbe,
+  purgeUserProbe,
   readFile,
   regenerateQuestionProbe,
   removeChat,
