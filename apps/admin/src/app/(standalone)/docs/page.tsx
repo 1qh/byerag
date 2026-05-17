@@ -25,13 +25,13 @@ const DocViewer = ({ docId }: { docId: Id<'docs'> }): React.ReactElement => {
   const lines = result.content.split('\n')
   return (
     <div className='space-y-3 p-6'>
-      <div>
+      <header>
         <h2 className='font-semibold text-lg'>{result.filename}</h2>
-        <div className='text-muted-foreground text-xs'>
+        <p className='text-muted-foreground text-xs'>
           {result.mime} · v{result.version} · scope={result.scope} · lang={result.lang ?? '—'}
           {result.truncated ? ' · TRUNCATED' : null}
-        </div>
-      </div>
+        </p>
+      </header>
       <pre className='whitespace-pre-wrap rounded-md border bg-muted p-4 font-mono text-sm'>
         {lines.map((line, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: line index is stable for static doc viewer

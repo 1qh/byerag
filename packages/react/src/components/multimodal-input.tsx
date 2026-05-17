@@ -183,12 +183,14 @@ const PureMultimodalInput = ({
           ) : null}
           <p className='grow' />
           {isLocked && onStop ? (
-            <button
-              className='rounded-md border border-destructive/40 px-2.5 py-1 text-xs font-medium text-destructive hover:bg-destructive/10'
+            <Button
+              className='h-auto border border-destructive/40 px-2.5 py-1 text-xs font-medium text-destructive hover:bg-destructive/10'
               onClick={() => onStop()}
-              type='button'>
+              size='sm'
+              type='button'
+              variant='ghost'>
               Stop
-            </button>
+            </Button>
           ) : null}
           <PromptInputSubmit disabled={isLocked || !value.trim() || status !== 'ready'} status={status} variant='ghost' />
         </InputGroupAddon>

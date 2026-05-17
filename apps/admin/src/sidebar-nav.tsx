@@ -10,7 +10,7 @@ const LINKS = [
   { href: '/audit', label: 'Audit' }
 ]
 const AdminSidebarNav = (): React.ReactElement => (
-  <nav className='flex flex-col gap-1 border-b py-2 text-sm'>
+  <nav className='flex flex-1 flex-col gap-1 border-b py-2 text-sm'>
     {LINKS.map(l => (
       <Link className='rounded px-2 py-1 hover:bg-muted' href={l.href} key={l.href}>
         {l.label}

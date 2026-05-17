@@ -1,5 +1,6 @@
 'use client'
 import type { ReactNode } from 'react'
+import { Button } from '@a/ui/components/button'
 import { useState } from 'react'
 import { useTooltipDismissalsCtx } from './tooltip-dismissals-context'
 const initialOpenLocal = (storageKey: string): boolean => {
@@ -37,12 +38,14 @@ const OneShotTooltip = ({ children, storageKey }: OneShotTooltipProps) => {
       open>
       <div className='space-y-2'>
         <div>{children}</div>
-        <button
-          className='rounded-md border border-border/60 bg-background/50 px-3 py-1 text-[11px] hover:bg-accent'
+        <Button
+          className='h-auto rounded-md border border-border/60 bg-background/50 px-3 py-1 text-[11px] hover:bg-accent'
           onClick={dismiss}
-          type='button'>
+          size='sm'
+          type='button'
+          variant='ghost'>
           Got it
-        </button>
+        </Button>
       </div>
     </dialog>
   )

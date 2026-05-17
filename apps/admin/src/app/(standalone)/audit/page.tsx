@@ -1,4 +1,5 @@
 'use client'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@a/ui/components/table'
 import { api } from 'backend/convex/_generated/api'
 import { useQuery } from 'convex/react'
 const AuditPage = (): React.ReactElement => {
@@ -6,39 +7,39 @@ const AuditPage = (): React.ReactElement => {
   if (rows === undefined) return <div className='p-6'>Loading…</div>
   if (rows.length === 0) return <div className='p-6 text-muted-foreground'>No audit rows or admin role required.</div>
   return (
-    <div className='space-y-2 p-6'>
+    <section className='space-y-2 p-6'>
       <h2 className='font-semibold text-lg'>Audit log (latest 200)</h2>
-      <table className='w-full text-sm'>
-        <thead>
-          <tr className='border-b text-left'>
-            <th className='py-2'>At</th>
-            <th>Owner</th>
-            <th>Command</th>
-            <th>Mode</th>
-            <th>OK</th>
-            <th>Severity</th>
-            <th>Args</th>
-          </tr>
-        </thead>
-        <tbody>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>At</TableHead>
+            <TableHead>Owner</TableHead>
+            <TableHead>Command</TableHead>
+            <TableHead>Mode</TableHead>
+            <TableHead>OK</TableHead>
+            <TableHead>Severity</TableHead>
+            <TableHead>Args</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {rows.map(r => (
-            <tr className='border-b' key={r._id}>
-              <td className='py-1 font-mono text-xs'>
+            <TableRow key={r._id}>
+              <TableCell className='font-mono text-xs'>
                 {new Date(r._creationTime).toISOString().slice(0, 19).replace('T', ' ')}
-              </td>
-              <td>{r.owner}</td>
-              <td className='font-mono text-xs'>{r.command}</td>
-              <td>{r.mode}</td>
-              <td>{r.ok ? '✓' : '✗'}</td>
-              <td>{r.severity ?? '—'}</td>
-              <td className='max-w-md truncate font-mono text-xs' title={r.args}>
+              </TableCell>
+              <TableCell>{r.owner}</TableCell>
+              <TableCell className='font-mono text-xs'>{r.command}</TableCell>
+              <TableCell>{r.mode}</TableCell>
+              <TableCell>{r.ok ? '✓' : '✗'}</TableCell>
+              <TableCell>{r.severity ?? '—'}</TableCell>
+              <TableCell className='max-w-md truncate font-mono text-xs' title={r.args}>
                 {r.args}
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
-    </div>
+        </TableBody>
+      </Table>
+    </section>
   )
 }
 export default AuditPage

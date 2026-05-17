@@ -1,7 +1,9 @@
 'use client'
+import { cn } from '@a/ui'
 import { Badge } from '@a/ui/components/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@a/ui/components/card'
 import { usePaneSubject } from '../../hooks/use-pane-subject'
+const ROW_CLASS = 'rounded-md border border-border/60 bg-background/50 px-3 py-2 text-xs'
 interface GenericListResult {
   count: number
   items: Record<string, unknown>[]
@@ -40,14 +42,16 @@ const ListCard = ({ data, label, paneKind }: ListCardProps) => {
           </Badge>
         </CardTitle>
       </CardHeader>
-      <CardContent className='space-y-1 [&>div]:rounded-md [&>div]:border [&>div]:border-border/60 [&>div]:bg-background/50 [&>div]:px-3 [&>div]:py-2 [&>div]:text-xs'>
+      <CardContent className='space-y-1'>
         {data.items.slice(0, 50).map((item, i) => (
-          <div key={typeof item._id === 'string' ? item._id : i}>
+          <div className={cn(ROW_CLASS)} key={typeof item._id === 'string' ? item._id : i}>
             <div className='font-medium'>{titleField(item)}</div>
             {subField(item) ? <div className='text-muted-foreground mt-0.5'>{subField(item)}</div> : null}
           </div>
         ))}
-        {data.count > 50 ? <div className='text-muted-foreground text-center'>...{data.count - 50} more</div> : null}
+        {data.count > 50 ? (
+          <div className={cn(ROW_CLASS, 'text-muted-foreground text-center')}>...{data.count - 50} more</div>
+        ) : null}
       </CardContent>
     </Card>
   )

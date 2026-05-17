@@ -1,9 +1,14 @@
 'use client'
 import type { ReactNode } from 'react'
-import { DocSheet, GoogleSignInButton } from '@a/react/components'
-import { Authenticated, AuthLoading, Unauthenticated } from 'convex/react'
+import { DocSheet, GoogleSignInButton, SidebarUserNav } from '@a/react/components'
+import { api } from 'backend/convex/_generated/api'
+import { Authenticated, AuthLoading, Unauthenticated, useQuery } from 'convex/react'
 import Link from 'next/link'
 import { UserSidebarNav } from '../../sidebar-nav'
+const SidebarAccount = (): null | React.ReactElement => {
+  const user = useQuery(api.chats.currentUser, {})
+  return user ? <SidebarUserNav user={user} /> : null
+}
 const StandaloneLayout = ({ children }: { children: ReactNode }): React.ReactElement => (
   <div className='flex h-dvh'>
     <AuthLoading>
@@ -20,6 +25,7 @@ const StandaloneLayout = ({ children }: { children: ReactNode }): React.ReactEle
           byerag
         </Link>
         <UserSidebarNav />
+        <SidebarAccount />
       </aside>
       <main className='flex-1 overflow-auto'>{children}</main>
       <DocSheet />

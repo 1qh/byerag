@@ -3,6 +3,7 @@ import type { Id } from 'backend/convex/_generated/dataModel'
 import { useChatConvex } from '@a/react/hooks'
 import { useDraft } from '@a/react/lib'
 import { cn } from '@a/ui'
+import { Button } from '@a/ui/components/button'
 import dynamic from 'next/dynamic'
 import { Source_Serif_4 } from 'next/font/google'
 import { useState } from 'react'
@@ -91,12 +92,13 @@ const Chat = ({
         <>
           <ChatHeader chatId={id} />
           {paginationStatus === 'CanLoadMore' ? (
-            <button
+            <Button
               className='w-full text-xs text-muted-foreground hover:text-foreground/70 py-1'
               onClick={() => loadMore(50)}
-              type='button'>
+              type='button'
+              variant='ghost'>
               Load older
-            </button>
+            </Button>
           ) : null}
           <Messages awaitingAssistant={awaitingAssistant} chatId={activeChatId} messages={messages} status={status} />
         </>
@@ -131,14 +133,15 @@ const Chat = ({
         {inChat || prompts.length === 0 ? null : (
           <div className='mt-3 flex flex-wrap justify-center gap-1.5 px-2'>
             {prompts.map(prompt => (
-              <button
+              <Button
                 className='max-w-full rounded-full border border-border/60 bg-background/50 px-3 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent hover:border-border transition truncate'
                 key={prompt}
                 onClick={() => fillPrompt(prompt)}
                 title={prompt}
-                type='button'>
+                type='button'
+                variant='ghost'>
                 {prompt}
-              </button>
+              </Button>
             ))}
           </div>
         )}
