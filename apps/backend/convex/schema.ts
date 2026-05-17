@@ -216,6 +216,7 @@ export default defineSchema({
     createdBy: v.string(),
     deletedAt: v.optional(v.number()),
     deletedBy: v.optional(v.string()),
+    dueAtMs: v.optional(v.number()),
     topicId: v.id('topics'),
     userId: v.string()
   })

@@ -265,13 +265,13 @@ const computeTrain = async (ctx: QueryCtx): Promise<{ now: number; topics: Topic
         u.details.push({ name: t.name, overdueDays: 0, status: 'passed' })
         continue
       }
-      const earliest = Math.min(...assignmentRows.map(r => r.createdAt))
-      if (now > earliest + dueMs) {
+      const effectiveDue = Math.min(...assignmentRows.map(r => r.dueAtMs ?? r.createdAt + dueMs))
+      if (now > effectiveDue) {
         u.overdue += 1
         t.overdue += 1
         u.details.push({
           name: t.name,
-          overdueDays: Math.floor((now - (earliest + dueMs)) / DAY_MS),
+          overdueDays: Math.floor((now - effectiveDue) / DAY_MS),
           status: 'overdue'
         })
       } else u.details.push({ name: t.name, overdueDays: 0, status: 'open' })
@@ -351,31 +351,35 @@ const trainingUsers = query({
     return { pageCount, rows: sorted.slice(p * pageSize, p * pageSize + pageSize), total: sorted.length }
   }
 })
+interface ActivityEvent {
+  assignmentsCreated: number
+  at: number
+  mode: string
+  topics: string[]
+  topicsProcessed: number
+}
 const agentActivity = query({
-  args: {},
+  args: { page: v.optional(v.number()), search: v.optional(v.string()) },
   handler: async (
-    ctx
-  ): Promise<null | {
-    events: { assignmentsCreated: number; at: number; mode: string; topicsProcessed: number; triggeredBy?: string }[]
-    lastCheck: null | number
-  }> => {
+    ctx,
+    { page, search }
+  ): Promise<null | { events: ActivityEvent[]; lastCheck: null | number; pageCount: number; total: number }> => {
     const adminEmail = await requireAdmin(ctx)
     if (!adminEmail) return null
     const cronRows = await ctx.db
       .query('auditLogs')
       .withIndex('by_command', q => q.eq('command', 'training.cron.run'))
       .order('desc')
-      .take(15)
+      .take(200)
     const manualRows = await ctx.db
       .query('auditLogs')
       .withIndex('by_command', q => q.eq('command', 'training.assign.runNow'))
       .order('desc')
-      .take(15)
-    const events = [...cronRows, ...manualRows]
+      .take(200)
+    const all: ActivityEvent[] = [...cronRows, ...manualRows]
       .toSorted((a, b) => b._creationTime - a._creationTime)
-      .slice(0, 10)
       .map(r => {
-        let parsed: { assignmentsCreated?: number; topicsProcessed?: number; triggeredBy?: string } = {}
+        let parsed: { assignmentsCreated?: number; topics?: string[]; topicsProcessed?: number } = {}
         try {
           parsed = JSON.parse(r.args) as typeof parsed
         } catch {
@@ -385,16 +389,23 @@ const agentActivity = query({
           assignmentsCreated: parsed.assignmentsCreated ?? 0,
           at: r._creationTime,
           mode: r.mode,
-          topicsProcessed: parsed.topicsProcessed ?? 0,
-          triggeredBy: parsed.triggeredBy
+          topics: Array.isArray(parsed.topics) ? parsed.topics : [],
+          topicsProcessed: parsed.topicsProcessed ?? 0
         }
       })
-    const lastRow = ctx.db
+    const term = (search ?? '').trim().toLowerCase()
+    const filtered = term ? all.filter(e => e.topics.some(t => t.toLowerCase().includes(term))) : all
+    const pageSize = 10
+    const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
+    const p = Math.min(Math.max(0, page ?? 0), pageCount - 1)
+    const events = filtered.slice(p * pageSize, p * pageSize + pageSize)
+    // biome-ignore lint/nursery/noPlaywrightUselessAwait: Convex .first() returns thenable
+    const lastRow = await ctx.db
       .query('settings')
       .withIndex('by_key', q => q.eq('key', 'agent_last_check'))
       .first()
     const lastCheck = lastRow ? Number.parseInt(lastRow.value, 10) : null
-    return { events, lastCheck: Number.isFinite(lastCheck) ? lastCheck : null }
+    return { events, lastCheck: Number.isFinite(lastCheck) ? lastCheck : null, pageCount, total: filtered.length }
   }
 })
 export { agentActivity, costCycleHistory, costCyclePivot, topStrip, trainingSummary, trainingUsers }
