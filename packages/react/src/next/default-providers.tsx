@@ -10,6 +10,9 @@ import { ThemeProvider } from 'next-themes'
 import type { AppCallbacks } from '../app-context'
 import type { MessagePartRegistryMap, ToolCardComponent } from '../registries'
 import { AppProvider } from '../app-context'
+import { ChatFileUploadProvider } from '../components/chat-file-upload-provider'
+import { DocSheetProvider } from '../components/doc-sheet-context'
+import { PaneProvider } from '../components/pane/pane-context'
 import { VerbosityProvider } from '../lib'
 import { MessagePartRegistry, ToolCardProvider } from '../registries'
 const envUrl = process.env.NEXT_PUBLIC_CONVEX_URL ?? ''
@@ -41,7 +44,13 @@ const DefaultProviders = ({ appId, callbacks, children, messagePartRegistry, too
       <ThemeProvider attribute='class' defaultTheme='system' disableTransitionOnChange enableSystem>
         <ConvexAuthProvider client={convex}>
           <TooltipProvider>
-            <VerbosityProvider>{inner}</VerbosityProvider>
+            <PaneProvider>
+              <DocSheetProvider>
+                <VerbosityProvider>
+                  <ChatFileUploadProvider>{inner}</ChatFileUploadProvider>
+                </VerbosityProvider>
+              </DocSheetProvider>
+            </PaneProvider>
             <Toaster />
           </TooltipProvider>
         </ConvexAuthProvider>
