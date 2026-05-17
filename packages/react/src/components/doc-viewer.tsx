@@ -29,11 +29,6 @@ const DocViewer = ({ docId }: DocViewerProps): React.ReactElement => {
         <p className='text-muted-foreground text-xs'>
           {mime} · v{result.version} · scope={result.scope} · lang={result.lang ?? '—'}
           {result.truncated ? ' · TRUNCATED' : null}
-          {isPdf && url ? (
-            <a className='ml-2 text-primary underline' href={url} rel='noreferrer' target='_blank'>
-              open in new tab
-            </a>
-          ) : null}
         </p>
       </header>
       {isPdf && url ? (
