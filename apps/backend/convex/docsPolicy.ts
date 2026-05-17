@@ -8,6 +8,7 @@
 /** biome-ignore-all lint/suspicious/useAwait: fetch chain */
 'use node'
 import { v } from 'convex/values'
+import type { ActionCtx } from './_generated/server'
 import { internal } from './_generated/api'
 import { internalAction } from './_generated/server'
 import { env } from './env'
@@ -18,13 +19,36 @@ const POLICY_CATEGORIES = new Set(['abusive', 'off-topic', 'on-topic', 'promotio
 const JSON_BLOCK_RE = /\{[\s\S]*?"relevant"[\s\S]*?\}/u
 interface KimiResponse {
   content?: { text?: string; type?: string }[]
+  usage?: KimiUsage
+}
+interface KimiResult {
+  text: string
+  usage: KimiUsage
+}
+interface KimiUsage {
+  cache_creation_input_tokens?: number
+  cache_read_input_tokens?: number
+  input_tokens?: number
+  output_tokens?: number
+}
+const recordKimiUsage = async (ctx: ActionCtx, u: KimiUsage): Promise<void> => {
+  try {
+    await ctx.runMutation(internal.costRecords.recordDirect, {
+      cacheCreationInputTokens: u.cache_creation_input_tokens ?? 0,
+      cacheReadInputTokens: u.cache_read_input_tokens ?? 0,
+      inputTokens: u.input_tokens ?? 0,
+      outputTokens: u.output_tokens ?? 0
+    })
+  } catch {
+    /* Best-effort cost recording */
+  }
 }
 interface PolicyVerdict {
   category: 'abusive' | 'off-topic' | 'on-topic' | 'promotional' | 'prompt-injection' | 'spam'
   reason: string
   relevant: boolean
 }
-const callKimi = async (systemPrompt: string, userPrompt: string): Promise<string> => {
+const callKimi = async (systemPrompt: string, userPrompt: string): Promise<KimiResult> => {
   const res = await fetch(`${env.KIMI_BASE_URL.replace(/\/$/u, '')}/v1/messages`, {
     body: JSON.stringify({
       max_tokens: 256,
@@ -44,7 +68,7 @@ const callKimi = async (systemPrompt: string, userPrompt: string): Promise<strin
   const json = (await res.json()) as KimiResponse
   const text = json.content?.find(c => c.type === 'text')?.text ?? ''
   if (!text) throw new Error('kimi empty response')
-  return text
+  return { text, usage: json.usage ?? {} }
 }
 const parseVerdict = (raw: string): null | PolicyVerdict => {
   const m = JSON_BLOCK_RE.exec(raw)
@@ -74,11 +98,12 @@ const classify = internalAction({
     let verdict: null | PolicyVerdict
     try {
       if (simulateError) throw new Error('synthetic-classifier-error')
-      const raw = await callKimi(
+      const res = await callKimi(
         'You are a content gate for an internal team. Output strictly JSON matching the requested schema.',
         userPrompt
       )
-      verdict = parseVerdict(raw)
+      await recordKimiUsage(ctx, res.usage)
+      verdict = parseVerdict(res.text)
     } catch (error) {
       const msg = String(error).slice(0, 180)
       if (retryN < 1) {

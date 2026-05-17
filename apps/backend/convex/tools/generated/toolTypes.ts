@@ -46,17 +46,17 @@ interface DocsListResult {
   uploadedAt: number
 }[]
 interface DocsReadArgs {
-  bytes: number
   id: string
 }
 interface DocsReadResult {
-  _id: string
-  content: string
+  body: string
+  byte_size: number
+  doc_id: string
   filename: string
+  first_lines_preview: string
   lang: null | string
-  mime: string
   scope: "mine" | "shared"
-  truncated: boolean
+  total_lines: number
   version: number
 }
 interface DocsSimilarArgs {

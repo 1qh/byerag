@@ -59,6 +59,57 @@ const assignAllForTopic = mutation({
     return { assignmentsCreated: created }
   }
 })
+const assignUsersForTopic = mutation({
+  args: { topicId: v.id('topics'), userIds: v.array(v.string()) },
+  handler: async (ctx, { topicId, userIds }): Promise<{ assignmentsCreated: number; skipped: number }> => {
+    const adminEmail = await requireAdminEmail(ctx)
+    const pool = await ctx.db
+      .query('testQuestions')
+      .withIndex('by_topic_deletedAt', q => q.eq('topicId', topicId).eq('deletedAt', undefined))
+      .take(POOL_MIN + 1)
+    if (pool.length < POOL_MIN) throw new Error(`pool too small: ${pool.length}/${POOL_MIN}`)
+    let created = 0
+    let skipped = 0
+    for (const userId of userIds) {
+      const profileRows = await ctx.db
+        .query('userProfiles')
+        .withIndex('by_userId', q => q.eq('userId', userId))
+        .collect()
+      if (profileRows[0]?.role !== 'user') {
+        skipped += 1
+        continue
+      }
+      const passRows = await ctx.db
+        .query('testPasses')
+        .withIndex('by_user_topic_kind', q => q.eq('userId', userId).eq('topicId', topicId).eq('kind', 'assigned'))
+        .collect()
+      if (passRows[0]) {
+        skipped += 1
+        continue
+      }
+      const existingRows = await ctx.db
+        .query('testAssignments')
+        .withIndex('by_user_topic', q => q.eq('userId', userId).eq('topicId', topicId))
+        .filter(q => q.eq(q.field('deletedAt'), undefined))
+        .collect()
+      if (existingRows[0]) {
+        skipped += 1
+        continue
+      }
+      await ctx.db.insert('testAssignments', { createdAt: Date.now(), createdBy: adminEmail, topicId, userId })
+      created += 1
+    }
+    await ctx.db.insert('auditLogs', {
+      args: JSON.stringify({ assignmentsCreated: created, requested: userIds.length, skipped, topicId }),
+      command: 'training.assignment.assignUsers',
+      mode: 'session',
+      ok: true,
+      owner: adminEmail,
+      severity: 'medium'
+    })
+    return { assignmentsCreated: created, skipped }
+  }
+})
 const unassignAllForTopic = mutation({
   args: { topicId: v.id('topics') },
   handler: async (ctx, { topicId }): Promise<{ assignmentsCancelled: number }> => {
@@ -105,4 +156,4 @@ const myActiveAssignments = query({
     return rows.map(r => ({ _id: r._id, topicId: r.topicId }))
   }
 })
-export { assignAllForTopic, myActiveAssignments, unassignAllForTopic }
+export { assignAllForTopic, assignUsersForTopic, myActiveAssignments, unassignAllForTopic }

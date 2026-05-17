@@ -5,7 +5,7 @@
 /** biome-ignore-all lint/nursery/useImportsFirst: grouped by concern */
 /* eslint-disable no-console, no-continue, no-control-regex, @typescript-eslint/no-unnecessary-condition */
 /* oxlint-disable eslint(no-control-regex), eslint(complexity), eslint-plugin-promise(prefer-await-to-callbacks), eslint-plugin-promise(prefer-await-to-then), eslint-plugin-unicorn(prefer-top-level-await), eslint-plugin-import(first) */
-import { readFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { didYouMean, parseFlags } from '../src/parser'
 const STRIP_RE = /[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2060-\u2069\uFEFF]/gu
@@ -293,6 +293,25 @@ const handleUnknownPath = (manifest: Manifest, path: string[]): never => {
   )
   process.exit(2)
 }
+const DOCS_CACHE_DIR = process.env.DOCS_CACHE_DIR ?? '/home/agent/.docs-cache'
+const DOC_ID_RE = /^[a-z0-9]{20,64}$/u
+interface DocsReadResponse {
+  body?: unknown
+  doc_id?: unknown
+}
+const materializeDocsReadIfApplicable = (path: string[], data: unknown): unknown => {
+  if (path.length !== 2 || path[0] !== 'docs' || path[1] !== 'read') return data
+  if (data === null || typeof data !== 'object') return data
+  const d = data as DocsReadResponse & Record<string, unknown>
+  const body = typeof d.body === 'string' ? d.body : null
+  const docId = typeof d.doc_id === 'string' ? d.doc_id : null
+  if (body === null || docId === null || !DOC_ID_RE.test(docId)) return data
+  mkdirSync(DOCS_CACHE_DIR, { recursive: true })
+  const filePath = join(DOCS_CACHE_DIR, `${docId}.md`)
+  writeFileSync(filePath, body, 'utf8')
+  const { body: _omitted, ...rest } = d
+  return { ...rest, path: filePath }
+}
 const runCommand = async (path: string[], cmd: ManifestCommand, flagTokens: string[]): Promise<void> => {
   const { args: flagArgs, positional } = parseFlags(flagTokens)
   const sole = cmd.args.filter(a => a.required).length === 1 ? cmd.args.find(a => a.required) : undefined
@@ -316,7 +335,8 @@ const runCommand = async (path: string[], cmd: ManifestCommand, flagTokens: stri
   const chatId = process.env.CLI_SESSION_ID
   const r = await call('/api/cli/exec', chatId ? { args: coerced, chatId, path } : { args: coerced, path })
   if (r.status === 200) {
-    console.log(JSON.stringify(r.data, null, 2))
+    const out = materializeDocsReadIfApplicable(path, r.data)
+    console.log(JSON.stringify(out, null, 2))
     return
   }
   const errBody = r.data as null | { error?: { category?: string; code?: string; message?: string } }

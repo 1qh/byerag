@@ -642,7 +642,6 @@ const anthropicProxy = httpAction(async (ctx, req) => {
         path: upstream,
         retryAfter: res.headers.get('retry-after') ?? null
       })
-
     if (res.status >= 500) {
       const errBodyText = await res.clone().text()
       log('error', 'proxy.upstream.5xx', {

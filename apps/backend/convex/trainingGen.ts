@@ -8,6 +8,7 @@
 /** biome-ignore-all lint/suspicious/useAwait: fetch chain */
 'use node'
 import { v } from 'convex/values'
+import type { ActionCtx } from './_generated/server'
 import { internal } from './_generated/api'
 import { internalAction } from './_generated/server'
 import { embedQuery } from './docsEmbed'
@@ -22,6 +23,17 @@ const SYSTEM_PROMPT =
   'You are an assessment-test question writer. Output JSON array only. All output must be Vietnamese except for proper nouns and technical terms which stay original.'
 interface KimiResponse {
   content?: { text?: string; type?: string }[]
+  usage?: KimiUsage
+}
+interface KimiResult {
+  text: string
+  usage: KimiUsage
+}
+interface KimiUsage {
+  cache_creation_input_tokens?: number
+  cache_read_input_tokens?: number
+  input_tokens?: number
+  output_tokens?: number
 }
 interface ParsedQuestion {
   choices: string[]
@@ -37,7 +49,7 @@ interface RawQuestion {
 }
 const buildUserPrompt = (filename: string, text: string): string =>
   `Source document: ${filename}\n\n${text}\n\nGenerate ${TARGET_QUESTIONS} Vietnamese multiple-choice questions covering this document. Each item: {"topicName": "<short Vietnamese category>", "prompt": "<question Vietnamese>", "choices": ["A", "B", "C"], "correctIndex": 0|1|2}. Exactly 3 choices per question. Topic name is a short Vietnamese category that this question belongs to (e.g. "Bảo mật", "Triển khai", "Đánh giá rủi ro"). Output JSON array only.`
-const callKimi = async (user: string): Promise<string> => {
+const callKimi = async (user: string): Promise<KimiResult> => {
   const res = await fetch(`${env.KIMI_BASE_URL.replace(TRAILING_SLASH_RE, '')}/v1/messages`, {
     body: JSON.stringify({
       max_tokens: KIMI_MAX_TOKENS,
@@ -57,7 +69,19 @@ const callKimi = async (user: string): Promise<string> => {
   const json: KimiResponse = await res.json()
   const text = json.content?.find(c => c.type === 'text')?.text ?? ''
   if (!text) throw new Error('kimi empty response')
-  return text
+  return { text, usage: json.usage ?? {} }
+}
+const recordKimiUsage = async (ctx: ActionCtx, u: KimiUsage): Promise<void> => {
+  try {
+    await ctx.runMutation(internal.costRecords.recordDirect, {
+      cacheCreationInputTokens: u.cache_creation_input_tokens ?? 0,
+      cacheReadInputTokens: u.cache_read_input_tokens ?? 0,
+      inputTokens: u.input_tokens ?? 0,
+      outputTokens: u.output_tokens ?? 0
+    })
+  } catch {
+    /* Cost recording is best-effort — never block generation */
+  }
 }
 const parseQuestions = (raw: string): ParsedQuestion[] => {
   const m = JSON_ARRAY_RE.exec(raw)
@@ -83,6 +107,65 @@ const parseQuestions = (raw: string): ParsedQuestion[] => {
     return []
   }
 }
+const buildRegeneratePrompt = (filename: string, text: string, prior: string, hint?: string): string =>
+  `Source document: ${filename}\n\n${text}\n\nThe previous question was: "${prior}"\nGenerate ONE different Vietnamese multiple-choice question from this document.${hint ? ` Hint from reviewer: ${hint}` : ''} Output a single JSON object: {"topicName": "<short Vietnamese category>", "prompt": "<question Vietnamese>", "choices": ["A", "B", "C"], "correctIndex": 0|1|2}. Exactly 3 choices. Output JSON object only (no array).`
+const JSON_OBJECT_RE = /\{[\s\S]*\}/u
+const parseOneQuestion = (raw: string): null | ParsedQuestion => {
+  const m = JSON_OBJECT_RE.exec(raw)
+  const candidate = m ? m[0] : raw.trim()
+  try {
+    const x = JSON.parse(candidate) as RawQuestion
+    const choices =
+      Array.isArray(x.choices) && x.choices.length === 3 && x.choices.every(c => typeof c === 'string') ? x.choices : []
+    const correctIndex =
+      typeof x.correctIndex === 'number' && x.correctIndex >= 0 && x.correctIndex <= 2 ? x.correctIndex : 0
+    const prompt = typeof x.prompt === 'string' ? x.prompt.slice(0, 1000) : ''
+    const topicName = typeof x.topicName === 'string' ? x.topicName.trim().slice(0, 80) : ''
+    if (choices.length !== 3 || prompt.length === 0 || topicName.length === 0) return null
+    return { choices, correctIndex, prompt, topicName }
+  } catch {
+    return null
+  }
+}
+const regenerateOne = internalAction({
+  args: { hint: v.optional(v.string()), suggestionId: v.id('testQuestionSuggestions') },
+  handler: async (ctx, { suggestionId, hint }): Promise<{ generated: number; reason?: string }> => {
+    const sug = await ctx.runQuery(internal.training.getSuggestionForRegen, { suggestionId })
+    if (!sug) return { generated: 0, reason: 'suggestion-not-found' }
+    const doc = (await ctx.runQuery(internal.docs.getForConflict, { docId: sug.sourceDocId as never })) as null | {
+      extractedText: string
+      filename: string
+    }
+    if (!doc) return { generated: 0, reason: 'doc-not-found' }
+    const text = doc.extractedText.slice(0, MAX_PROMPT_DOC_CHARS)
+    let res: KimiResult
+    try {
+      res = await callKimi(buildRegeneratePrompt(doc.filename, text, sug.priorPrompt, hint))
+    } catch (error) {
+      return { generated: 0, reason: `kimi-error:${String(error).slice(0, 100)}` }
+    }
+    await recordKimiUsage(ctx, res.usage)
+    const parsed = parseOneQuestion(res.text)
+    if (!parsed) return { generated: 0, reason: 'parse-empty' }
+    let promptEmbedding: number[] = []
+    try {
+      promptEmbedding = await embedQuery(parsed.prompt)
+    } catch {
+      promptEmbedding = []
+    }
+    await ctx.runMutation(internal.training.insertRegeneratedSuggestion, {
+      choices: parsed.choices,
+      correctIndex: parsed.correctIndex,
+      hint,
+      prompt: parsed.prompt,
+      promptEmbedding,
+      regenCount: sug.regenCount + 1,
+      sourceDocId: sug.sourceDocId as never,
+      topicId: sug.topicId as never
+    })
+    return { generated: 1 }
+  }
+})
 const generate = internalAction({
   args: { docId: v.id('docs') },
   handler: async (ctx, { docId }): Promise<{ conflictsFlagged?: number; generated: number; reason?: string }> => {
@@ -92,13 +175,14 @@ const generate = internalAction({
     }
     if (!doc) return { generated: 0, reason: 'doc-not-found' }
     const text = doc.extractedText.slice(0, MAX_PROMPT_DOC_CHARS)
-    let raw: string
+    let res: KimiResult
     try {
-      raw = await callKimi(buildUserPrompt(doc.filename, text))
+      res = await callKimi(buildUserPrompt(doc.filename, text))
     } catch (error) {
       return { generated: 0, reason: `kimi-error:${String(error).slice(0, 100)}` }
     }
-    const parsed = parseQuestions(raw)
+    await recordKimiUsage(ctx, res.usage)
+    const parsed = parseQuestions(res.text)
     if (parsed.length === 0) return { generated: 0, reason: 'parse-empty' }
     const embedded: {
       choices: string[]
@@ -133,4 +217,4 @@ const generate = internalAction({
     return { conflictsFlagged: result.conflictsFlagged, generated: parsed.length }
   }
 })
-export { generate }
+export { generate, regenerateOne }

@@ -127,28 +127,32 @@ const listMyTopics = query({
       .query('topics')
       .withIndex('by_deletedAt', q => q.eq('deletedAt', undefined))
       .take(500)
+    const myPasses = await ctx.db
+      .query('testPasses')
+      .withIndex('by_user', q => q.eq('userId', userId))
+      .take(2000)
+    const assignedPassed = new Set<string>()
+    const selfPassed = new Set<string>()
+    for (const p of myPasses)
+      if (p.kind === 'assigned') assignedPassed.add(p.topicId)
+      else selfPassed.add(p.topicId)
     const out: { _id: string; myStatus: string; name: string; poolSize: number }[] = []
     for (const t of topics) {
       const pool = await ctx.db
         .query('testQuestions')
         .withIndex('by_topic_deletedAt', q => q.eq('topicId', t._id).eq('deletedAt', undefined))
         .take(POOL_MIN + 1)
-      const passRows = await ctx.db
-        .query('testPasses')
-        .withIndex('by_user_topic_kind', q => q.eq('userId', userId).eq('topicId', t._id).eq('kind', 'assigned'))
-        .collect()
-      const selfPassRows = await ctx.db
-        .query('testPasses')
-        .withIndex('by_user_topic_kind', q => q.eq('userId', userId).eq('topicId', t._id).eq('kind', 'self'))
-        .collect()
-      const myStatus = passRows[0] ? 'passed-assigned' : selfPassRows[0] ? 'passed-self' : 'not-attempted'
-      if (pool.length > 0) out.push({ _id: t._id, myStatus, name: t.name, poolSize: pool.length })
+      if (pool.length === 0) continue
+      const tid = t._id as string
+      const myStatus = assignedPassed.has(tid) ? 'passed-assigned' : selfPassed.has(tid) ? 'passed-self' : 'not-attempted'
+      out.push({ _id: t._id, myStatus, name: t.name, poolSize: pool.length })
     }
     return out
   }
 })
 const DEFAULT_POOL_CAP = 50
 const DUP_COSINE_THRESHOLD = 0.85
+const TOPIC_MERGE_SIM = 0.5
 const cosine = (a: number[], b: number[]): number => {
   let dot = 0
   let na = 0
@@ -180,29 +184,55 @@ const persistSuggestionsWithEmbedding = internalMutation({
     ctx,
     { docId, questions }
   ): Promise<{ conflictsFlagged: number; suggestionsInserted: number; topicsCreated: number }> => {
-    const topicCache = new Map<string, string>()
     let topicsCreated = 0
     let suggestionsInserted = 0
     let conflictsFlagged = 0
+    const liveTopics = (
+      await ctx.db
+        .query('topics')
+        .withIndex('by_deletedAt', x => x.eq('deletedAt', undefined))
+        .take(500)
+    ).map(t => ({ centroid: t.centroid ?? null, count: 0, id: t._id, name: t.name }))
     for (const q of questions) {
-      let topicId = topicCache.get(q.topicName)
-      if (!topicId) {
-        const topicRows = await ctx.db
-          .query('topics')
-          .withIndex('by_name', x => x.eq('name', q.topicName))
-          .collect()
-        const existing = topicRows[0]
-        if (existing) topicId = existing._id
-        else {
-          topicId = await ctx.db.insert('topics', {
-            autoLabeled: true,
-            createdAt: Date.now(),
-            name: q.topicName,
-            poolCap: DEFAULT_POOL_CAP
-          })
-          topicsCreated += 1
+      let topicId: string | undefined
+      if (q.promptEmbedding.length > 0) {
+        let best: null | { id: string; sim: number } = null
+        for (const t of liveTopics) {
+          if (!t.centroid || t.centroid.length === 0) continue
+          const sim = cosine(t.centroid, q.promptEmbedding)
+          if (!best || sim > best.sim) best = { id: t.id, sim }
         }
-        topicCache.set(q.topicName, topicId)
+        if (best && best.sim >= TOPIC_MERGE_SIM) topicId = best.id
+      } else {
+        const named = liveTopics.find(t => t.name === q.topicName)
+        if (named) topicId = named.id
+      }
+      if (!topicId) {
+        topicId = await ctx.db.insert('topics', {
+          autoLabeled: true,
+          centroid: q.promptEmbedding.length > 0 ? q.promptEmbedding : undefined,
+          createdAt: Date.now(),
+          name: q.topicName,
+          poolCap: DEFAULT_POOL_CAP
+        })
+        topicsCreated += 1
+        liveTopics.push({
+          centroid: q.promptEmbedding.length > 0 ? q.promptEmbedding : null,
+          count: 1,
+          id: topicId,
+          name: q.topicName
+        })
+      } else if (q.promptEmbedding.length > 0) {
+        const lt = liveTopics.find(t => t.id === topicId)
+        if (lt) {
+          const n = lt.count + 1
+          const merged = lt.centroid
+            ? lt.centroid.map((v, i) => (v * lt.count + (q.promptEmbedding[i] ?? 0)) / n)
+            : q.promptEmbedding
+          lt.centroid = merged
+          lt.count = n
+          await ctx.db.patch(topicId as never, { centroid: merged })
+        }
       }
       let pairKind: 'cap-swap' | 'conflict' | undefined
       let pairedWith: string | undefined
@@ -328,6 +358,8 @@ const listPendingSuggestionsForAdmin = query({
       pairedWith?: string
       pairKind?: 'cap-swap' | 'conflict'
       prompt?: string
+      regenCount?: number
+      sourceDocs: { _id: string; filename: string }[]
       topicId: string
       topicName: string
     }[]
@@ -354,9 +386,12 @@ const listPendingSuggestionsForAdmin = query({
       pairedWith?: string
       pairKind?: 'cap-swap' | 'conflict'
       prompt?: string
+      regenCount?: number
+      sourceDocs: { _id: string; filename: string }[]
       topicId: string
       topicName: string
     }[] = []
+    const docCache = new Map<string, string>()
     for (const r of rows) {
       let topicName = topicCache.get(r.topicId)
       if (!topicName) {
@@ -371,6 +406,18 @@ const listPendingSuggestionsForAdmin = query({
         pairKind: r.pairKind,
         pairedWith: r.pairedWith,
         prompt: r.prompt,
+        regenCount: r.regenCount,
+        sourceDocs: await Promise.all(
+          r.sourceDocIds.map(async id => {
+            let filename = docCache.get(id)
+            if (filename === undefined) {
+              const d = await ctx.db.get(id)
+              filename = d?.filename ?? '?'
+              docCache.set(id, filename)
+            }
+            return { _id: id, filename }
+          })
+        ),
         topicId: r.topicId,
         topicName
       })
@@ -403,6 +450,87 @@ const listAttemptsForAdmin = query({
       startedAt: r.startedAt,
       status: r.status
     }))
+  }
+})
+const getSuggestionForRegen = internalQuery({
+  args: { suggestionId: v.id('testQuestionSuggestions') },
+  handler: async (
+    ctx,
+    { suggestionId }
+  ): Promise<null | { priorPrompt: string; regenCount: number; sourceDocId: string; topicId: string }> => {
+    const s = await ctx.db.get(suggestionId)
+    if (!s) return null
+    const sourceDocId = s.sourceDocIds[0]
+    if (!sourceDocId) return null
+    return { priorPrompt: s.prompt ?? '', regenCount: s.regenCount ?? 0, sourceDocId, topicId: s.topicId }
+  }
+})
+const insertRegeneratedSuggestion = internalMutation({
+  args: {
+    choices: v.array(v.string()),
+    correctIndex: v.number(),
+    hint: v.optional(v.string()),
+    prompt: v.string(),
+    promptEmbedding: v.array(v.float64()),
+    regenCount: v.number(),
+    sourceDocId: v.id('docs'),
+    topicId: v.id('topics')
+  },
+  handler: async (
+    ctx,
+    { choices, correctIndex, hint, prompt, promptEmbedding, regenCount, sourceDocId, topicId }
+  ): Promise<{ suggestionId: string }> => {
+    const suggestionId = await ctx.db.insert('testQuestionSuggestions', {
+      choices,
+      correctIndex,
+      createdAt: Date.now(),
+      hint,
+      kind: 'new',
+      prompt,
+      promptEmbedding: promptEmbedding.length > 0 ? promptEmbedding : undefined,
+      regenCount,
+      sourceDocIds: [sourceDocId],
+      status: 'pending',
+      topicId
+    })
+    return { suggestionId }
+  }
+})
+const regenerateSuggestionPublic = mutation({
+  args: { hint: v.optional(v.string()), suggestionId: v.id('testQuestionSuggestions') },
+  handler: async (ctx, { suggestionId, hint }): Promise<{ regenCount: number }> => {
+    const identity = await ctx.auth.getUserIdentity()
+    const email = identity?.email?.toLowerCase()
+    if (!email) throw new Error('not authenticated')
+    const profileRows = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', email))
+      .collect()
+    const profile = profileRows[0]
+    if (profile?.role !== 'admin') throw new Error('admin only')
+    const s = await ctx.db.get(suggestionId)
+    if (!s) throw new Error('suggestion not found')
+    if (s.status !== 'pending') throw new Error('already resolved')
+    if (s.kind !== 'new') throw new Error('only new-kind suggestions can be regenerated')
+    const regenCount = s.regenCount ?? 0
+    if (regenCount >= 5) throw new Error('regenCount cap reached (5)')
+    await ctx.db.patch(suggestionId, {
+      resolvedAction: 'reject',
+      resolvedAt: Date.now(),
+      resolvedBy: email,
+      resolvedReason: 'admin-action',
+      status: 'resolved'
+    })
+    await ctx.scheduler.runAfter(0, internal.trainingGen.regenerateOne, { hint, suggestionId })
+    await ctx.db.insert('auditLogs', {
+      args: JSON.stringify({ hint: hint?.slice(0, 80), regenCount: regenCount + 1, suggestionId }),
+      command: 'training.suggestion.regenerate',
+      mode: 'session',
+      ok: true,
+      owner: email,
+      severity: 'medium'
+    })
+    return { regenCount: regenCount + 1 }
   }
 })
 const rejectSuggestionPublic = mutation({
@@ -742,6 +870,31 @@ const inferBatchSubstantive = query({
     return 'cosmetic'
   }
 })
+const retireEmptyTopics = internalMutation({
+  args: {},
+  handler: async (ctx): Promise<{ retired: number; scanned: number }> => {
+    const topics = await ctx.db
+      .query('topics')
+      .withIndex('by_deletedAt', q => q.eq('deletedAt', undefined))
+      .take(2000)
+    let retired = 0
+    for (const t of topics) {
+      const q1 = await ctx.db
+        .query('testQuestions')
+        .withIndex('by_topic_deletedAt', x => x.eq('topicId', t._id).eq('deletedAt', undefined))
+        .take(1)
+      if (q1[0]) continue
+      const s1 = await ctx.db
+        .query('testQuestionSuggestions')
+        .withIndex('by_topic_status', x => x.eq('topicId', t._id).eq('status', 'pending'))
+        .take(1)
+      if (s1[0]) continue
+      await ctx.db.patch(t._id, { deletedAt: Date.now() })
+      retired += 1
+    }
+    return { retired, scanned: topics.length }
+  }
+})
 const markTopicSubstantive = mutation({
   args: { topicId: v.id('topics') },
   handler: async (ctx, { topicId }): Promise<{ assignmentsCreated: number; passesRevoked: number }> => {
@@ -795,8 +948,10 @@ export {
   approveSuggestion,
   approveSuggestionPublic,
   autoAssign,
+  getSuggestionForRegen,
   inferBatchSubstantive,
   insertAuto,
+  insertRegeneratedSuggestion,
   isAutoAssignEnabled,
   listAttemptsForAdmin,
   listEligibleTopics,
@@ -806,7 +961,9 @@ export {
   markTopicSubstantive,
   persistSuggestions,
   persistSuggestionsWithEmbedding,
+  regenerateSuggestionPublic,
   rejectSuggestionPublic,
   resolvePairAction,
+  retireEmptyTopics,
   writeAuditRow
 }
