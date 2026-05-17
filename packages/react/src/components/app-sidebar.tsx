@@ -7,9 +7,11 @@ import {
   Sidebar,
   SidebarContent,
   SidebarHeader,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarSeparator,
   useSidebar
 } from '@a/ui/components/sidebar'
 import { api } from 'backend/convex/_generated/api'
@@ -107,6 +109,8 @@ const AppSidebar = ({
           </SidebarMenuItem>
         </SidebarMenu>
         {slotAboveHistory}
+        <SidebarSeparator />
+        <SidebarGroupLabel>Chats</SidebarGroupLabel>
         <SidebarHistory activeChatId={activeChatId} onSelect={onSelect} />
         {slotBelowHistory}
       </SidebarContent>
