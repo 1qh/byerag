@@ -177,6 +177,13 @@ try {
   }).catch(() => {
     /* Best effort — sandbox is about to die */
   })
+  await postJson('/api/stream/complete', {
+    chatId: config.CHAT_ID,
+    secret: config.CHAT_SECRET,
+    sessionId: sessionId || session.sessionId
+  }).catch(() => {
+    /* Best effort — sandbox is about to die */
+  })
 } finally {
   try {
     const pgid = execSync(`ps -o pgid= -p ${process.pid}`).toString().trim()
