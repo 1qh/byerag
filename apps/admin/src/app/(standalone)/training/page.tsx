@@ -31,6 +31,15 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { toast } from 'sonner'
 const ACTIONS_TRIGGER = <Button aria-label='Topic actions' size='icon-sm' variant='ghost' />
 const DEPARTMENTS = ['Safety, Health and Environment'] as const
+const WEEKDAYS = [
+  { l: 'Mon', v: '1' },
+  { l: 'Tue', v: '2' },
+  { l: 'Wed', v: '3' },
+  { l: 'Thu', v: '4' },
+  { l: 'Fri', v: '5' },
+  { l: 'Sat', v: '6' },
+  { l: 'Sun', v: '0' }
+] as const
 type ActionKind = 'rearm' | 'unassign'
 interface PendingAction {
   kind: ActionKind
@@ -101,6 +110,8 @@ const TrainingPage = (): React.ReactElement => {
   const summary = useQuery(api.dashboard.trainingSummary, {})
   const autoAssign = useQuery(api.settings.getForAdmin, { key: 'agent_auto_assign_enabled' })
   const dueSetting = useQuery(api.settings.getForAdmin, { key: 'assignment_due_days' })
+  const hourSetting = useQuery(api.settings.getForAdmin, { key: 'agent_auto_assign_hour' })
+  const wdSetting = useQuery(api.settings.getForAdmin, { key: 'agent_auto_assign_weekdays' })
   const setSetting = useMutation(api.settings.setForAdmin)
   const unassignAll = useMutation(api.trainingAssignments.unassignAllForTopic)
   const rearm = useMutation(api.training.markTopicSubstantive)
@@ -136,6 +147,10 @@ const TrainingPage = (): React.ReactElement => {
   const [cDept, setCDept] = useState<string>('Safety, Health and Environment')
   const [cDueDays, setCDueDays] = useState('')
   const [cBusy, setCBusy] = useState(false)
+  const [agentOpen, setAgentOpen] = useState(false)
+  const [hourDraft, setHourDraft] = useState<null | string>(null)
+  const [wdDraft, setWdDraft] = useState<null | Set<string>>(null)
+  const [schedBusy, setSchedBusy] = useState(false)
   const assignmentsRef = useRef<HTMLElement>(null)
   const summaryRef = useRef<HTMLElement>(null)
   const seenAtRef = useRef<null | number>(null)
@@ -179,6 +194,20 @@ const TrainingPage = (): React.ReactElement => {
       toast.error(String(error))
     } finally {
       setDueDraft(null)
+    }
+  }
+  const saveSchedule = async (hour: string, weekdays: Set<string>): Promise<void> => {
+    setSchedBusy(true)
+    try {
+      await setSetting({ key: 'agent_auto_assign_hour', value: hour })
+      await setSetting({ key: 'agent_auto_assign_weekdays', value: [...weekdays].join(',') })
+      toast.success(hour === '' ? 'Agent runs continuously' : `Agent runs at ${hour}:00 VN`)
+      setHourDraft(null)
+      setWdDraft(null)
+    } catch (error: unknown) {
+      toast.error(String(error))
+    } finally {
+      setSchedBusy(false)
     }
   }
   const runAssignNow = async (): Promise<void> => {
@@ -237,6 +266,8 @@ const TrainingPage = (): React.ReactElement => {
   if (summary === null) return <div className='p-6 text-destructive'>Admin role required.</div>
   if (summary === undefined) return <div className='p-6'>Loading…</div>
   const dueDays = dueSetting ?? '14'
+  const hourVal = hourDraft ?? hourSetting ?? ''
+  const wdSet = wdDraft ?? new Set((wdSetting ?? '').split(',').filter(Boolean))
   const TESTS_PER_PAGE = 10
   const tFiltered = summary.tests.filter(t => t.name.toLowerCase().includes(tSearch.trim().toLowerCase()))
   const tPageCount = Math.max(1, Math.ceil(tFiltered.length / TESTS_PER_PAGE))
@@ -265,34 +296,7 @@ const TrainingPage = (): React.ReactElement => {
     <div className='space-y-6 p-6'>
       <div className='flex flex-wrap items-center gap-4'>
         <h1 className='font-semibold text-xl'>Training</h1>
-        <div className='ml-auto flex flex-wrap items-center gap-4'>
-          <div className='flex items-center gap-2 text-sm'>
-            <label htmlFor={dueId}>Overdue after</label>
-            <Input
-              className='h-8 w-16'
-              id={dueId}
-              inputMode='numeric'
-              onBlur={() => {
-                // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
-                saveDue().catch((error: unknown) => toast.error(String(error)))
-              }}
-              onChange={e => setDueDraft(e.target.value)}
-              value={dueDraft ?? dueDays}
-            />
-            <span className='text-muted-foreground'>days</span>
-          </div>
-          <div className='flex items-center gap-2 text-sm'>
-            <Switch
-              checked={autoAssign === 'true'}
-              disabled={autoBusy || autoAssign === undefined}
-              id={switchId}
-              onCheckedChange={next => {
-                // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
-                toggleAuto(next).catch((error: unknown) => toast.error(String(error)))
-              }}
-            />
-            <label htmlFor={switchId}>Agent auto-assign</label>
-          </div>
+        <div className='ml-auto flex flex-wrap items-center gap-3'>
           <Button
             onClick={() => {
               setCTopic(summary.tests[0]?.topicId ?? '')
@@ -303,15 +307,8 @@ const TrainingPage = (): React.ReactElement => {
             size='sm'>
             Assign a test
           </Button>
-          <Button
-            disabled={assignNowBusy}
-            onClick={() => {
-              // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
-              runAssignNow().catch((error: unknown) => toast.error(String(error)))
-            }}
-            size='sm'
-            variant='outline'>
-            {assignNowBusy ? 'Assigning…' : 'Assign eligible now'}
+          <Button onClick={() => setAgentOpen(true)} size='sm' variant='outline'>
+            Agent auto-assign{autoAssign === 'true' ? ' · on' : ' · off'}
           </Button>
         </div>
       </div>
@@ -672,6 +669,102 @@ const TrainingPage = (): React.ReactElement => {
           ) : null}
         </AlertDialogContent>
       </AlertDialog>
+      <Dialog onOpenChange={setAgentOpen} open={agentOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Agent auto-assign</DialogTitle>
+            <DialogDescription>
+              When on, the agent assigns every eligible test to every user automatically. Pick when it should run and how
+              long until a test is overdue.
+            </DialogDescription>
+          </DialogHeader>
+          <div className='space-y-4'>
+            <div className='flex items-center gap-2'>
+              <Switch
+                checked={autoAssign === 'true'}
+                disabled={autoBusy || autoAssign === undefined}
+                id={switchId}
+                onCheckedChange={next => {
+                  // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
+                  toggleAuto(next).catch((error: unknown) => toast.error(String(error)))
+                }}
+              />
+              <Label htmlFor={switchId}>Agent auto-assign {autoAssign === 'true' ? 'on' : 'off'}</Label>
+            </div>
+            <div className='space-y-1'>
+              <Label htmlFor={dueId}>Overdue after (days)</Label>
+              <Input
+                className='w-24'
+                id={dueId}
+                inputMode='numeric'
+                onBlur={() => {
+                  // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
+                  saveDue().catch((error: unknown) => toast.error(String(error)))
+                }}
+                onChange={e => setDueDraft(e.target.value)}
+                value={dueDraft ?? dueDays}
+              />
+            </div>
+            <div className='space-y-1'>
+              <Label htmlFor='a-hour'>Assign at (Vietnam time)</Label>
+              <NativeSelect className='w-44' id='a-hour' onChange={e => setHourDraft(e.target.value)} value={hourVal}>
+                <NativeSelectOption value=''>Continuously (every few min)</NativeSelectOption>
+                {Array.from({ length: 24 }, (_, h) => (
+                  <NativeSelectOption key={h} value={String(h)}>
+                    {String(h).padStart(2, '0')}:00
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+            </div>
+            {hourVal === '' ? null : (
+              <div className='space-y-1'>
+                <Label>On weekdays (none = every day)</Label>
+                <div className='flex flex-wrap gap-1'>
+                  {WEEKDAYS.map(d => {
+                    const on = wdSet.has(d.v)
+                    return (
+                      <Button
+                        key={d.v}
+                        onClick={() => {
+                          const n = new Set(wdSet)
+                          if (on) n.delete(d.v)
+                          else n.add(d.v)
+                          setWdDraft(n)
+                        }}
+                        size='sm'
+                        variant={on ? 'default' : 'outline'}>
+                        {d.l}
+                      </Button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+            <Button
+              disabled={assignNowBusy}
+              onClick={() => {
+                // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
+                runAssignNow().catch((error: unknown) => toast.error(String(error)))
+              }}
+              variant='secondary'>
+              {assignNowBusy ? 'Assigning…' : 'Assign eligible now'}
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button disabled={schedBusy} onClick={() => setAgentOpen(false)} variant='outline'>
+              Close
+            </Button>
+            <Button
+              disabled={schedBusy}
+              onClick={() => {
+                // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
+                saveSchedule(hourVal, wdSet).catch((error: unknown) => toast.error(String(error)))
+              }}>
+              {schedBusy ? 'Saving…' : 'Save schedule'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog onOpenChange={setComposerOpen} open={composerOpen}>
         <DialogContent>
           <DialogHeader>

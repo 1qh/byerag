@@ -58,8 +58,16 @@ await c.mutation(api.testing.setUserDepartmentProbe, {
 const r = await c.query(api.testing.gradebookWithDeptProbe, { testSecret })
 check('3 users in gradebook (admin excluded)', r.users.length === 3, `count=${r.users.length}`)
 const findDept = (uid: string): string | undefined => r.users.find(u => u.userId === uid)?.department
-check('hr-u department === HR', findDept('hr-u@example.com') === 'Safety, Health and Environment', `dept=${findDept('hr-u@example.com')}`)
-check('it-u department === IT', findDept('it-u@example.com') === 'Safety, Health and Environment', `dept=${findDept('it-u@example.com')}`)
+check(
+  'hr-u department === HR',
+  findDept('hr-u@example.com') === 'Safety, Health and Environment',
+  `dept=${findDept('hr-u@example.com')}`
+)
+check(
+  'it-u department === IT',
+  findDept('it-u@example.com') === 'Safety, Health and Environment',
+  `dept=${findDept('it-u@example.com')}`
+)
 check(
   'unset-u department undefined',
   findDept('unset-u@example.com') === undefined,
