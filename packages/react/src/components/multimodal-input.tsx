@@ -4,7 +4,9 @@
 import type { Status } from '@a/react/hooks'
 import { cn } from '@a/ui'
 import { PromptInput, PromptInputSubmit, PromptInputTextarea } from '@a/ui/components/ai-elements/prompt-input'
+import { Button } from '@a/ui/components/button'
 import { InputGroupAddon } from '@a/ui/components/input-group'
+import { Paperclip } from 'lucide-react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import type { MentionItem } from './mention-autocomplete'
@@ -46,6 +48,7 @@ const PureMultimodalInput = ({
   const effectivePlaceholder = isLocked ? (lockedReason ?? 'Agent is working…') : placeholder
   const wrapperRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [cursor, setCursor] = useState(0)
   useEffect(() => {
     if (focusTick !== undefined && focusTick > 0) {
@@ -90,7 +93,8 @@ const PureMultimodalInput = ({
       if (r.result) uploaded.push(r.result)
       else toast.error(`Failed to upload ${r.file.name}`)
     if (uploaded.length === 0) return
-    const tail = uploaded.map(u => `[FILE_ID:${u.storageId}:${u.filename}]`).join(' ')
+    const names = uploaded.map(u => u.filename).join(', ')
+    const tail = `(I just uploaded these to my documents — find them with the docs tools in the "mine" scope: ${names})`
     const next = value.length === 0 ? tail : `${value} ${tail}`
     onChange(next)
   }
@@ -151,6 +155,32 @@ const PureMultimodalInput = ({
           value={value}
         />
         <InputGroupAddon align='block-end' className='gap-0 px-1.5 pt-0 pb-1'>
+          {onFileUpload ? (
+            <>
+              <input
+                accept='.pdf,.docx,.pptx,.xlsx,.epub,.rtf,.md,.txt,.html,.json,.xml,.png,.jpg,.jpeg,.webp,.tiff'
+                aria-label='Attach files'
+                className='hidden'
+                multiple
+                onChange={e => {
+                  handleFiles(e.target.files).catch(() => null)
+                  e.target.value = ''
+                }}
+                ref={fileInputRef}
+                type='file'
+              />
+              <Button
+                aria-label='Attach files'
+                className='size-7'
+                disabled={isLocked}
+                onClick={() => fileInputRef.current?.click()}
+                size='icon'
+                type='button'
+                variant='ghost'>
+                <Paperclip className='size-4' />
+              </Button>
+            </>
+          ) : null}
           <p className='grow' />
           {isLocked && onStop ? (
             <button
