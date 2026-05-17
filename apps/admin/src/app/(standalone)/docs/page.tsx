@@ -1,6 +1,6 @@
 'use client'
 import type { Id } from 'backend/convex/_generated/dataModel'
-import { DocUpload } from '@a/react/components'
+import { DocUpload, DocViewer } from '@a/react/components'
 import { cn } from '@a/ui'
 import {
   AlertDialog,
@@ -18,31 +18,6 @@ import { api } from 'backend/convex/_generated/api'
 import { useMutation, useQuery } from 'convex/react'
 import { useState } from 'react'
 import { toast } from 'sonner'
-const DocViewer = ({ docId }: { docId: Id<'docs'> }): React.ReactElement => {
-  const result = useQuery(api.docs.read, { docId })
-  if (result === undefined) return <div className='p-6 text-muted-foreground'>Loading…</div>
-  if (result === null) return <div className='p-6 text-destructive'>Doc not found or access denied.</div>
-  const lines = result.content.split('\n')
-  return (
-    <div className='space-y-3 p-6'>
-      <header>
-        <h2 className='font-semibold text-lg'>{result.filename}</h2>
-        <p className='text-muted-foreground text-xs'>
-          {result.mime} · v{result.version} · scope={result.scope} · lang={result.lang ?? '—'}
-          {result.truncated ? ' · TRUNCATED' : null}
-        </p>
-      </header>
-      <pre className='whitespace-pre-wrap rounded-md border bg-muted p-4 font-mono text-sm'>
-        {lines.map((line, i) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: line index is stable for static doc viewer
-          <div className='target:bg-yellow-100' id={`L${i + 1}`} key={`id-${docId}-L${i + 1}`}>
-            {line || ' '}
-          </div>
-        ))}
-      </pre>
-    </div>
-  )
-}
 const DocsPage = (): React.ReactElement => {
   const shared = useQuery(api.docs.listShared, {})
   const remove = useMutation(api.docs.adminDeleteDoc)
