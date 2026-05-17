@@ -6,6 +6,7 @@ const LINKS = [
   { href: '/policy', label: 'Policy' },
   { href: '/quarantine', label: 'Quarantine' },
   { href: '/test-questions', label: 'Test questions' },
+  { href: '/training', label: 'Training' },
   { href: '/users', label: 'Users' },
   { href: '/audit', label: 'Audit' }
 ]
