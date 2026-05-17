@@ -33,18 +33,18 @@ const insertAuto = internalMutation({
 })
 const listEligibleTopics = internalQuery({
   args: {},
-  handler: async (ctx): Promise<{ _id: string; poolSize: number }[]> => {
+  handler: async (ctx): Promise<{ _id: string; name: string; poolSize: number }[]> => {
     const topics = await ctx.db
       .query('topics')
       .withIndex('by_deletedAt', q => q.eq('deletedAt', undefined))
       .take(500)
-    const out: { _id: string; poolSize: number }[] = []
+    const out: { _id: string; name: string; poolSize: number }[] = []
     for (const t of topics) {
       const pool = await ctx.db
         .query('testQuestions')
         .withIndex('by_topic_deletedAt', q => q.eq('topicId', t._id).eq('deletedAt', undefined))
         .take(POOL_MIN + 1)
-      if (pool.length >= POOL_MIN) out.push({ _id: t._id, poolSize: pool.length })
+      if (pool.length >= POOL_MIN) out.push({ _id: t._id, name: t.name, poolSize: pool.length })
     }
     return out
   }
@@ -96,20 +96,26 @@ const assignEligibleNow = action({
     if (!admin) throw new Error('admin only')
     const topics = (await ctx.runQuery(internal.training.listEligibleTopics, {})) as {
       _id: string
+      name: string
       poolSize: number
     }[]
     const users = (await ctx.runQuery(internal.training.listRoleUsers, {})) as { userId: string }[]
     let created = 0
+    const touched = new Set<string>()
     for (const t of topics)
       for (const u of users) {
         const r = await ctx.runMutation(internal.training.insertAuto, { topicId: t._id as never, userId: u.userId })
-        if (r.inserted) created += 1
+        if (r.inserted) {
+          created += 1
+          touched.add(t.name)
+        }
       }
     const durationMs = Date.now() - t0
     await ctx.runMutation(internal.training.writeAuditRow, {
       args: JSON.stringify({
         assignmentsCreated: created,
         durationMs,
+        topics: [...touched].slice(0, 30),
         topicsProcessed: topics.length,
         triggeredBy: email
       }),
@@ -129,16 +135,24 @@ const autoAssign = internalAction({
     const t0 = Date.now()
     const enabled = await ctx.runQuery(internal.training.isAutoAssignEnabled, {})
     if (!enabled) return { assignmentsCreated: 0, durationMs: Date.now() - t0, reason: 'disabled', topicsProcessed: 0 }
-    const topics = (await ctx.runQuery(internal.training.listEligibleTopics, {})) as { _id: string; poolSize: number }[]
+    const topics = (await ctx.runQuery(internal.training.listEligibleTopics, {})) as {
+      _id: string
+      name: string
+      poolSize: number
+    }[]
     const users = (await ctx.runQuery(internal.training.listRoleUsers, {})) as { userId: string }[]
     let created = 0
+    const touched = new Set<string>()
     for (const t of topics)
       for (const u of users) {
         const r = await ctx.runMutation(internal.training.insertAuto, {
           topicId: t._id as never,
           userId: u.userId
         })
-        if (r.inserted) created += 1
+        if (r.inserted) {
+          created += 1
+          touched.add(t.name)
+        }
       }
     const durationMs = Date.now() - t0
     await ctx.runMutation(internal.settings.set, {
@@ -148,7 +162,12 @@ const autoAssign = internalAction({
     })
     if (created > 0)
       await ctx.runMutation(internal.training.writeAuditRow, {
-        args: JSON.stringify({ assignmentsCreated: created, durationMs, topicsProcessed: topics.length }),
+        args: JSON.stringify({
+          assignmentsCreated: created,
+          durationMs,
+          topics: [...touched].slice(0, 30),
+          topicsProcessed: topics.length
+        }),
         command: 'training.cron.run',
         mode: 'system',
         ok: true,
@@ -846,12 +865,96 @@ const markTopicSubstantive = mutation({
     return { assignmentsCreated, passesRevoked }
   }
 })
+const assignComposer = mutation({
+  args: {
+    audience: v.union(v.literal('all'), v.literal('selected'), v.literal('department')),
+    department: v.optional(v.string()),
+    dueAtMs: v.optional(v.number()),
+    topicId: v.id('topics'),
+    userIds: v.optional(v.array(v.string()))
+  },
+  handler: async (
+    ctx,
+    { topicId, audience, userIds, department, dueAtMs }
+  ): Promise<{ assignmentsCreated: number; skipped: number }> => {
+    const identity = await ctx.auth.getUserIdentity()
+    const email = identity?.email?.toLowerCase()
+    if (!email) throw new Error('not authenticated')
+    const profile = ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', email))
+      .first()
+    if (profile?.role !== 'admin') throw new Error('admin only')
+    const topic = await ctx.db.get(topicId)
+    if (!topic || topic.deletedAt) throw new Error('topic not found')
+    const pool = await ctx.db
+      .query('testQuestions')
+      .withIndex('by_topic_deletedAt', q => q.eq('topicId', topicId).eq('deletedAt', undefined))
+      .take(POOL_MIN + 1)
+    if (pool.length < POOL_MIN) throw new Error(`Topic has ${pool.length} questions; need at least ${POOL_MIN}`)
+    let targets: string[]
+    if (audience === 'selected') targets = userIds ?? []
+    else {
+      const roleUsers = await ctx.db
+        .query('userProfiles')
+        .withIndex('by_role', q => q.eq('role', 'user'))
+        .take(5000)
+      targets =
+        audience === 'department'
+          ? roleUsers
+              .filter(u => (department === 'Unassigned' ? !u.department : u.department === department))
+              .map(u => u.userId)
+          : roleUsers.map(u => u.userId)
+    }
+    let created = 0
+    let skipped = 0
+    for (const userId of targets) {
+      const passed = await ctx.db
+        .query('testPasses')
+        .withIndex('by_user_topic_kind', q => q.eq('userId', userId).eq('topicId', topicId).eq('kind', 'assigned'))
+        .collect()
+      if (passed[0]) {
+        skipped += 1
+        continue
+      }
+      const live = await ctx.db
+        .query('testAssignments')
+        .withIndex('by_user_topic', q => q.eq('userId', userId).eq('topicId', topicId))
+        .filter(q => q.eq(q.field('deletedAt'), undefined))
+        .collect()
+      if (live[0]) {
+        skipped += 1
+        continue
+      }
+      await ctx.db.insert('testAssignments', { createdAt: Date.now(), createdBy: email, dueAtMs, topicId, userId })
+      created += 1
+    }
+    await ctx.db.insert('auditLogs', {
+      args: JSON.stringify({
+        assignmentsCreated: created,
+        audience,
+        department,
+        dueAtMs,
+        skipped,
+        topics: [topic.name],
+        triggeredBy: email
+      }),
+      command: 'training.assign.runNow',
+      mode: 'admin',
+      ok: true,
+      owner: AGENT_OWNER,
+      severity: 'medium'
+    })
+    return { assignmentsCreated: created, skipped }
+  }
+})
 export {
   adminDeleteTopic,
   adminEditQuestion,
   adminRetireQuestion,
   approveSuggestion,
   approveSuggestionPublic,
+  assignComposer,
   assignEligibleNow,
   autoAssign,
   inferBatchSubstantive,

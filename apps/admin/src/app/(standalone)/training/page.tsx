@@ -12,6 +12,7 @@ import {
 } from '@a/ui/components/alert-dialog'
 import { Button } from '@a/ui/components/button'
 import { Checkbox } from '@a/ui/components/checkbox'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@a/ui/components/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +21,8 @@ import {
   DropdownMenuTrigger
 } from '@a/ui/components/dropdown-menu'
 import { Input } from '@a/ui/components/input'
+import { Label } from '@a/ui/components/label'
+import { NativeSelect, NativeSelectOption } from '@a/ui/components/native-select'
 import { Switch } from '@a/ui/components/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@a/ui/components/table'
 import { api } from 'backend/convex/_generated/api'
@@ -28,24 +31,14 @@ import { Bot } from 'lucide-react'
 import { Fragment, useId, useState } from 'react'
 import { toast } from 'sonner'
 const ACTIONS_TRIGGER = <Button aria-label='Topic actions' size='icon-sm' variant='ghost' />
-type ActionKind = 'assign' | 'assignSelected' | 'rearm' | 'unassign'
+type ActionKind = 'rearm' | 'unassign'
 interface PendingAction {
   kind: ActionKind
   topicId: string
   topicName: string
-  userIds?: string[]
 }
+const DEPARTMENTS = ['HR', 'Sales', 'IT', 'Unassigned'] as const
 const ACTION_COPY: Record<ActionKind, { confirm: string; desc: string; title: string }> = {
-  assign: {
-    confirm: 'Assign to all',
-    desc: 'Assigns this test to every user account. Anyone who already passed it or has a live assignment is skipped automatically.',
-    title: 'Assign test to all users?'
-  },
-  assignSelected: {
-    confirm: 'Assign to selected',
-    desc: 'Assigns this test only to the users you checked. Anyone already passed or with a live assignment is skipped.',
-    title: 'Assign test to selected users?'
-  },
   rearm: {
     confirm: 'Mark substantive',
     desc: 'Marks the corpus change substantive: every assigned-pass earned before now is revoked and those users are re-assigned. Self-passes are untouched.',
@@ -78,14 +71,15 @@ const TrainingPage = (): React.ReactElement => {
   const [page, setPage] = useState(0)
   const roster = useQuery(api.dashboard.trainingUsers, { page, search })
   const autoAssign = useQuery(api.settings.getForAdmin, { key: 'agent_auto_assign_enabled' })
-  const activity = useQuery(api.dashboard.agentActivity, {})
+  const [actSearch, setActSearch] = useState('')
+  const [actPage, setActPage] = useState(0)
+  const activity = useQuery(api.dashboard.agentActivity, { page: actPage, search: actSearch })
   const dueSetting = useQuery(api.settings.getForAdmin, { key: 'assignment_due_days' })
   const setSetting = useMutation(api.settings.setForAdmin)
-  const assignAll = useMutation(api.trainingAssignments.assignAllForTopic)
-  const assignUsers = useMutation(api.trainingAssignments.assignUsersForTopic)
   const unassignAll = useMutation(api.trainingAssignments.unassignAllForTopic)
   const rearm = useMutation(api.training.markTopicSubstantive)
   const assignNow = useAction(api.training.assignEligibleNow)
+  const assignComposer = useMutation(api.training.assignComposer)
   const [pending, setPending] = useState<null | PendingAction>(null)
   const [running, setRunning] = useState(false)
   const [autoBusy, setAutoBusy] = useState(false)
@@ -94,6 +88,12 @@ const TrainingPage = (): React.ReactElement => {
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(() => new Set())
   const [expanded, setExpanded] = useState<null | string>(null)
   const [agentOpen, setAgentOpen] = useState(false)
+  const [composerOpen, setComposerOpen] = useState(false)
+  const [cTopic, setCTopic] = useState('')
+  const [cAudience, setCAudience] = useState<'all' | 'department' | 'selected'>('all')
+  const [cDept, setCDept] = useState<string>('HR')
+  const [cDueDays, setCDueDays] = useState('')
+  const [cBusy, setCBusy] = useState(false)
   const switchId = useId()
   const dueId = useId()
   const toggleUser = (userId: string): void =>
@@ -147,13 +147,7 @@ const TrainingPage = (): React.ReactElement => {
     setRunning(true)
     try {
       const id = pending.topicId as never
-      if (pending.kind === 'assign') {
-        const r = await assignAll({ topicId: id })
-        toast.success(`Assigned ${pending.topicName}: ${r.assignmentsCreated} new`)
-      } else if (pending.kind === 'assignSelected') {
-        const r = await assignUsers({ topicId: id, userIds: pending.userIds ?? [] })
-        toast.success(`Assigned ${pending.topicName}: ${r.assignmentsCreated} new, ${r.skipped} skipped`)
-      } else if (pending.kind === 'unassign') {
+      if (pending.kind === 'unassign') {
         const r = await unassignAll({ topicId: id })
         toast.success(`Un-assigned ${pending.topicName}: ${r.assignmentsCancelled} removed`)
       } else {
@@ -165,6 +159,30 @@ const TrainingPage = (): React.ReactElement => {
       toast.error(String(error))
     } finally {
       setRunning(false)
+    }
+  }
+  const runComposer = async (): Promise<void> => {
+    if (!cTopic) {
+      toast.error('Pick a test')
+      return
+    }
+    setCBusy(true)
+    try {
+      const days = cDueDays.trim() ? Number.parseInt(cDueDays, 10) : Number.NaN
+      const dueAtMs = Number.isFinite(days) && days > 0 ? Date.now() + days * 86_400_000 : undefined
+      const r = await assignComposer({
+        audience: cAudience,
+        department: cAudience === 'department' ? cDept : undefined,
+        dueAtMs,
+        topicId: cTopic as never,
+        userIds: cAudience === 'selected' ? [...selectedUsers] : undefined
+      })
+      toast.success(`Assigned ${r.assignmentsCreated} · ${r.skipped} skipped`)
+      setComposerOpen(false)
+    } catch (error: unknown) {
+      toast.error(String(error))
+    } finally {
+      setCBusy(false)
     }
   }
   if (summary === null) return <div className='p-6 text-destructive'>Admin role required.</div>
@@ -212,6 +230,16 @@ const TrainingPage = (): React.ReactElement => {
             <label htmlFor={switchId}>Agent auto-assign</label>
           </div>
           <Button
+            onClick={() => {
+              setCTopic(summary.tests[0]?.topicId ?? '')
+              setCAudience('all')
+              setCDueDays('')
+              setComposerOpen(true)
+            }}
+            size='sm'>
+            Assign a test
+          </Button>
+          <Button
             disabled={assignNowBusy}
             onClick={() => {
               // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
@@ -251,21 +279,66 @@ const TrainingPage = (): React.ReactElement => {
               <li>assigns a test the moment it reaches enough questions to go live</li>
               <li>re-fills anything accidentally un-assigned, so nobody slips through</li>
             </ul>
-            <div className='mt-2 font-medium text-foreground'>Recent activity</div>
+            <div className='mt-2 mb-1 flex items-center gap-2'>
+              <span className='font-medium text-foreground'>Recent activity</span>
+              <Input
+                className='h-7 w-48'
+                onChange={e => {
+                  setActSearch(e.target.value)
+                  setActPage(0)
+                }}
+                placeholder='Search by test name…'
+                value={actSearch}
+              />
+            </div>
             {activity && activity.events.length > 0 ? (
-              <ul className='mt-1 space-y-1'>
-                {activity.events.map(e => (
-                  <li key={`${e.at}-${e.mode}`}>
-                    <span className='text-foreground'>{relTime(e.at)}</span> — agent assigned{' '}
-                    <span className='font-medium text-foreground'>{e.assignmentsCreated}</span> test
-                    {e.assignmentsCreated === 1 ? '' : 's'} across {e.topicsProcessed} topic
-                    {e.topicsProcessed === 1 ? '' : 's'}
-                  </li>
-                ))}
-              </ul>
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>When</TableHead>
+                      <TableHead>Source</TableHead>
+                      <TableHead className='text-right'>Assigned</TableHead>
+                      <TableHead>Tests</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {activity.events.map(e => (
+                      <TableRow key={`${e.at}-${e.mode}`}>
+                        <TableCell className='text-foreground'>{relTime(e.at)}</TableCell>
+                        <TableCell>{e.mode === 'admin' ? 'Manual' : 'Agent'}</TableCell>
+                        <TableCell className='text-right tabular-nums'>{e.assignmentsCreated}</TableCell>
+                        <TableCell className='text-foreground'>
+                          {e.topics.length > 0 ? e.topics.join(', ') : `${e.topicsProcessed} topics`}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <div className='mt-1 flex items-center justify-between'>
+                  <span>{activity.total} events</span>
+                  <div className='flex items-center gap-2'>
+                    <Button disabled={actPage === 0} onClick={() => setActPage(p => p - 1)} size='sm' variant='outline'>
+                      Prev
+                    </Button>
+                    <span>
+                      {actPage + 1} / {activity.pageCount}
+                    </span>
+                    <Button
+                      disabled={actPage + 1 >= activity.pageCount}
+                      onClick={() => setActPage(p => p + 1)}
+                      size='sm'
+                      variant='outline'>
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              </>
             ) : (
               <p className='mt-1'>
-                No assignments created yet — everyone eligible is already assigned, or auto-assign is off.
+                {actSearch
+                  ? 'No activity matches that test name.'
+                  : 'No assignments created yet — everyone eligible is already assigned, or auto-assign is off.'}
               </p>
             )}
           </div>
@@ -370,22 +443,6 @@ const TrainingPage = (): React.ReactElement => {
                     <DropdownMenu>
                       <DropdownMenuTrigger render={ACTIONS_TRIGGER}>⋯</DropdownMenuTrigger>
                       <DropdownMenuContent align='end'>
-                        <DropdownMenuItem
-                          onClick={() => setPending({ kind: 'assign', topicId: t.topicId, topicName: t.name })}>
-                          Assign to all
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          disabled={selectedUsers.size === 0}
-                          onClick={() =>
-                            setPending({
-                              kind: 'assignSelected',
-                              topicId: t.topicId,
-                              topicName: t.name,
-                              userIds: [...selectedUsers]
-                            })
-                          }>
-                          Assign to selected ({selectedUsers.size})
-                        </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => setPending({ kind: 'unassign', topicId: t.topicId, topicName: t.name })}>
                           Un-assign all
@@ -555,6 +612,83 @@ const TrainingPage = (): React.ReactElement => {
           ) : null}
         </AlertDialogContent>
       </AlertDialog>
+      <Dialog onOpenChange={setComposerOpen} open={composerOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign a test</DialogTitle>
+            <DialogDescription>
+              Pick a test and who gets it. People who already passed it or have a live assignment are skipped
+              automatically.
+            </DialogDescription>
+          </DialogHeader>
+          <div className='space-y-3'>
+            <div className='space-y-1'>
+              <Label htmlFor='c-topic'>Test</Label>
+              <NativeSelect id='c-topic' onChange={e => setCTopic(e.target.value)} value={cTopic}>
+                {summary.tests.length === 0 ? (
+                  <NativeSelectOption value=''>No tests with enough questions yet</NativeSelectOption>
+                ) : (
+                  summary.tests.map(t => (
+                    <NativeSelectOption key={t.topicId} value={t.topicId}>
+                      {t.name} ({t.poolSize} questions)
+                    </NativeSelectOption>
+                  ))
+                )}
+              </NativeSelect>
+            </div>
+            <div className='space-y-1'>
+              <Label htmlFor='c-audience'>Who</Label>
+              <NativeSelect
+                id='c-audience'
+                onChange={e => setCAudience(e.target.value as 'all' | 'department' | 'selected')}
+                value={cAudience}>
+                <NativeSelectOption value='all'>Everyone</NativeSelectOption>
+                <NativeSelectOption value='department'>A department</NativeSelectOption>
+                <NativeSelectOption value='selected'>
+                  Selected users ({selectedUsers.size} ticked in the table)
+                </NativeSelectOption>
+              </NativeSelect>
+            </div>
+            {cAudience === 'department' ? (
+              <div className='space-y-1'>
+                <Label htmlFor='c-dept'>Department</Label>
+                <NativeSelect id='c-dept' onChange={e => setCDept(e.target.value)} value={cDept}>
+                  {DEPARTMENTS.map(d => (
+                    <NativeSelectOption key={d} value={d}>
+                      {d}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
+              </div>
+            ) : null}
+            <div className='space-y-1'>
+              <Label htmlFor='c-due'>Overdue after (days)</Label>
+              <Input
+                className='w-32'
+                id='c-due'
+                inputMode='numeric'
+                onChange={e => setCDueDays(e.target.value)}
+                placeholder={`default ${dueDays}`}
+                value={cDueDays}
+              />
+              <p className='text-muted-foreground text-xs'>Leave blank to use the standard {dueDays}-day window.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button disabled={cBusy} onClick={() => setComposerOpen(false)} variant='outline'>
+              Cancel
+            </Button>
+            <Button
+              disabled={cBusy || !cTopic || (cAudience === 'selected' && selectedUsers.size === 0)}
+              onClick={() => {
+                // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
+                runComposer().catch((error: unknown) => toast.error(String(error)))
+              }}>
+              {cBusy ? 'Assigning…' : 'Assign'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
