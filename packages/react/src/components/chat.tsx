@@ -65,15 +65,23 @@ const Chat = ({
   const id = activeChatId ?? 'new'
   const [value, setValue, clearValue] = useDraft(activeChatId ?? null)
   const [autoFocusTick, setAutoFocusTick] = useState(0)
+  const [attachments, setAttachments] = useState<UploadedFile[]>([])
   const pane = usePaneOptional()
   const draftedLines = pane?.draftedLines ?? EMPTY_DRAFTS
   const submit = (): void => {
     const typed = value.trim()
     const drafted = draftedLines.map(d => d.text).join('\n')
-    const text = [drafted, typed].filter(Boolean).join('\n')
+    const attachNote =
+      attachments.length > 0
+        ? `(Files I just attached to my documents — read them with the docs tools in the "mine" scope: ${attachments
+            .map(a => a.filename)
+            .join(', ')})`
+        : ''
+    const text = [drafted, typed, attachNote].filter(Boolean).join('\n')
     if (!text) return
     sendMessage(text)
     clearValue()
+    setAttachments([])
     if (drafted) pane?.clearDrafts()
   }
   const handleEscape = (): void => {
@@ -117,10 +125,12 @@ const Chat = ({
         )}
         {pane && draftedLines.length > 0 ? <DraftedChips lines={draftedLines} onRemove={handleRemoveDraft} /> : null}
         <MultimodalInput
+          attachments={attachments}
           focusTick={autoFocusTick}
           hasMessages={inChat}
           lockedReason={lockedReason}
           mentionItems={mentionItems}
+          onAttachmentsChange={setAttachments}
           onChange={setValue}
           onEscape={handleEscape}
           onFileUpload={onFileUpload}
