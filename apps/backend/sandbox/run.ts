@@ -76,6 +76,7 @@ process.chdir('/workspace')
 const opts = {
   allowDangerouslySkipPermissions: true,
   cwd: '/workspace',
+  disallowedTools: ['WebSearch', 'WebFetch'],
   effort: config.EFFORT,
   env: cleanEnv,
   maxBudgetUsd: config.MAX_BUDGET_USD,
