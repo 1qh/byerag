@@ -13,10 +13,12 @@ import type { MentionItem } from './mention-autocomplete'
 import { activeMentionAt } from '../hooks/use-mention-parser'
 import { MentionAutocomplete } from './mention-autocomplete'
 interface MultimodalInputProps {
+  attachments: UploadedFile[]
   focusTick?: number
   hasMessages: boolean
   lockedReason?: null | string
   mentionItems?: MentionItem[]
+  onAttachmentsChange: (a: UploadedFile[]) => void
   onChange: (v: string) => void
   onEscape?: () => void
   onFileUpload?: (file: File) => Promise<null | UploadedFile>
@@ -31,10 +33,12 @@ interface UploadedFile {
   storageId: string
 }
 const PureMultimodalInput = ({
+  attachments,
   focusTick,
   hasMessages,
   lockedReason,
   mentionItems,
+  onAttachmentsChange,
   onChange,
   onEscape,
   onFileUpload,
@@ -50,7 +54,6 @@ const PureMultimodalInput = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [cursor, setCursor] = useState(0)
-  const [attachments, setAttachments] = useState<UploadedFile[]>([])
   useEffect(() => {
     if (focusTick !== undefined && focusTick > 0) {
       textareaRef.current?.focus()
@@ -94,7 +97,7 @@ const PureMultimodalInput = ({
       if (r.result) uploaded.push(r.result)
       else toast.error(`Failed to upload ${r.file.name}`)
     if (uploaded.length === 0) return
-    setAttachments(prev => [...prev, ...uploaded])
+    onAttachmentsChange([...attachments, ...uploaded])
   }
   return (
     <section
@@ -129,10 +132,7 @@ const PureMultimodalInput = ({
             return
           }
           if (status === 'ready') {
-            if (value.trim()) {
-              onSubmit()
-              setAttachments([])
-            }
+            if (value.trim() || attachments.length > 0) onSubmit()
           } else toast.error('Please wait for the model to finish its response!')
         }}>
         {attachments.length > 0 ? (
@@ -146,7 +146,7 @@ const PureMultimodalInput = ({
                 <button
                   aria-label={`Remove ${a.filename}`}
                   className='shrink-0 text-muted-foreground hover:text-foreground'
-                  onClick={() => setAttachments(prev => prev.filter((_, j) => j !== i))}
+                  onClick={() => onAttachmentsChange(attachments.filter((_, j) => j !== i))}
                   type='button'>
                   <X className='size-3' />
                 </button>
