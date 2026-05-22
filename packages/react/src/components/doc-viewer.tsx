@@ -3,6 +3,7 @@ import type { Id } from 'backend/convex/_generated/dataModel'
 import { MessageResponse } from '@a/ui/components/ai-elements/message'
 import { api } from 'backend/convex/_generated/api'
 import { useQuery } from 'convex/react'
+import Image from 'next/image'
 
 interface DocViewerProps {
   docId: Id<'docs'>
@@ -33,9 +34,16 @@ const DocViewer = ({ docId }: DocViewerProps): React.ReactElement => {
         </p>
       </header>
       {isPdf && url ? (
-        <iframe className='h-[80vh] w-full rounded-md border' src={url} title={result.filename} />
+        <iframe
+          className='h-[80vh] w-full rounded-md border'
+          sandbox='allow-same-origin allow-popups'
+          src={url}
+          title={result.filename}
+        />
       ) : isImage && url ? (
-        <img alt={result.filename} className='max-h-[80vh] rounded-md border object-contain' src={url} />
+        <div className='relative h-[80vh] w-full'>
+          <Image alt={result.filename} className='rounded-md border object-contain' fill src={url} unoptimized />
+        </div>
       ) : isMarkdown ? (
         <MessageResponse className='w-full'>{content}</MessageResponse>
       ) : (

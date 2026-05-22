@@ -10,10 +10,10 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 
 const clampW = (n: number): number => Math.min(640, Math.max(240, n))
+const pad2 = (n: number): string => String(n).padStart(2, '0')
 const fmtVN = (ms: number): string => {
   const v = new Date(ms + 7 * 3_600_000)
-  const p = (n: number): string => String(n).padStart(2, '0')
-  return `${v.getUTCFullYear()}-${p(v.getUTCMonth() + 1)}-${p(v.getUTCDate())} ${p(v.getUTCHours())}:${p(v.getUTCMinutes())} VN`
+  return `${v.getUTCFullYear()}-${pad2(v.getUTCMonth() + 1)}-${pad2(v.getUTCDate())} ${pad2(v.getUTCHours())}:${pad2(v.getUTCMinutes())} VN`
 }
 const DeletedDocsPage = (): React.ReactElement => {
   const rows = useQuery(api.docs.listDeleted, {})
@@ -27,11 +27,11 @@ const DeletedDocsPage = (): React.ReactElement => {
     const startW = listW
     const move = (ev: PointerEvent): void => setListW(clampW(startW + ev.clientX - startX))
     const up = (): void => {
-      window.removeEventListener('pointermove', move)
-      window.removeEventListener('pointerup', up)
+      globalThis.removeEventListener('pointermove', move)
+      globalThis.removeEventListener('pointerup', up)
     }
-    window.addEventListener('pointermove', move)
-    window.addEventListener('pointerup', up)
+    globalThis.addEventListener('pointermove', move)
+    globalThis.addEventListener('pointerup', up)
   }
   const onRestore = async (docId: string): Promise<void> => {
     setBusy(docId)
@@ -61,7 +61,7 @@ const DeletedDocsPage = (): React.ReactElement => {
         </p>
         {rows === undefined ? (
           <div className='p-4 text-muted-foreground text-sm'>Loading…</div>
-        ) : rows === null || rows.length === 0 ? (
+        ) : rows.length === 0 ? (
           <div className='p-4 text-muted-foreground text-sm'>No deleted documents.</div>
         ) : (
           <ul className='flex-1 space-y-1 overflow-auto p-2 text-sm'>

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
 'use client'
 import { CitationAnchor } from '@a/react/components'
 import { cn } from '@a/ui'
@@ -81,6 +82,7 @@ const AttemptPage = ({ params }: { params: Promise<{ attemptId: string }> }): Re
       setSubmitting(false)
     }
   }
+  // oxlint-disable-next-line no-unnecessary-condition
   const allAnswered = answers.length === a.questionSnapshots.length && answers.every(v => v !== undefined)
   return (
     <div className='mx-auto max-w-2xl space-y-4 p-6'>

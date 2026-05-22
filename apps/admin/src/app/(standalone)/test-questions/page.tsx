@@ -1,3 +1,5 @@
+/* eslint-disable no-await-in-loop */
+/** biome-ignore-all lint/performance/noAwaitInLoops: sequential ops */
 'use client'
 import { cn } from '@a/ui'
 import { Button } from '@a/ui/components/button'

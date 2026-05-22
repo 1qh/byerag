@@ -16,14 +16,19 @@ const DocSheet = (): null | React.ReactElement => {
     const startW = width
     const move = (ev: PointerEvent): void => setWidth(clampW(startW - (ev.clientX - startX)))
     const up = (): void => {
-      window.removeEventListener('pointermove', move)
-      window.removeEventListener('pointerup', up)
+      globalThis.removeEventListener('pointermove', move)
+      globalThis.removeEventListener('pointerup', up)
     }
-    window.addEventListener('pointermove', move)
-    window.addEventListener('pointerup', up)
+    globalThis.addEventListener('pointermove', move)
+    globalThis.addEventListener('pointerup', up)
   }
   return (
-    <Sheet modal={false} onOpenChange={next => !next && close()} open={open}>
+    <Sheet
+      modal={false}
+      onOpenChange={next => {
+        if (!next) close()
+      }}
+      open={open}>
       <SheetContent
         className='overflow-auto'
         side='right'

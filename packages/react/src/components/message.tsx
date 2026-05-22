@@ -32,15 +32,18 @@ const formatOutput = (v: unknown): string => {
   if (Array.isArray(v) && v.every(isTextPart)) return v.map(p => p.text).join('')
   return JSON.stringify(v, null, 2)
 }
-const basename = (p: string): string => p.split('/').filter(Boolean).at(-1) ?? p
+const basename = (p: string): string => p.split('/').findLast(Boolean) ?? p
 const oneLine = (s: string): string => s.replaceAll(/\s+/gu, ' ').trim()
+const QUERY_RE = /--query\s+"(?<query>[^"]+)"/u
+const ID_RE = /--id\s+(?<id>\S+)/u
+const SCOPE_RE = /--scope\s+(?<scope>\S+)/u
 const toolLabel = (toolName: string, input: Record<string, unknown> | undefined): string => {
   const path = parseToolPath(input)
   if (path) {
     const cmd = typeof input?.command === 'string' ? input.command : ''
-    const q = /--query\s+"([^"]+)"/u.exec(cmd)?.[1]
-    const id = /--id\s+(\S+)/u.exec(cmd)?.[1]
-    const scope = /--scope\s+(\S+)/u.exec(cmd)?.[1]
+    const q = QUERY_RE.exec(cmd)?.groups?.query
+    const id = ID_RE.exec(cmd)?.groups?.id
+    const scope = SCOPE_RE.exec(cmd)?.groups?.scope
     const hint = q ? `"${q}"` : (id ?? scope ?? '')
     return oneLine(`${path.join(' ')}${hint ? ` ${hint}` : ''}`).slice(0, 70)
   }
@@ -104,6 +107,19 @@ const ActivityRow = ({ part }: { part: ActivityPart }): ReactNode => {
     </div>
   )
 }
+const activityKey = (part: ActivityPart): string =>
+  part.type === 'data-tool-x'
+    ? `x:${toolLabel(part.toolName, part.input)}`
+    : `${part.type}:${oneLine(part.text).slice(0, 24)}`
+const ActivityRows = ({ parts }: { parts: ActivityPart[] }): ReactNode => {
+  const seen = new Map<string, number>()
+  return parts.map(part => {
+    const base = activityKey(part)
+    const n = seen.get(base) ?? 0
+    seen.set(base, n + 1)
+    return <ActivityRow key={`${base}#${n}`} part={part} />
+  })
+}
 const ActivityGroup = ({ initiallyOpen, parts }: { initiallyOpen: boolean; parts: ActivityPart[] }): ReactNode => {
   const [open, setOpen] = useState(initiallyOpen)
   return (
@@ -117,9 +133,7 @@ const ActivityGroup = ({ initiallyOpen, parts }: { initiallyOpen: boolean; parts
       </button>
       {open ? (
         <div className='mt-1 ml-4 space-y-0.5 border-muted border-l pl-3'>
-          {parts.map((part, i) => (
-            <ActivityRow key={`act-${i}`} part={part} />
-          ))}
+          <ActivityRows parts={parts} />
         </div>
       ) : null}
     </div>
@@ -132,55 +146,46 @@ const PurePreviewMessage = ({ chatId, isLoading, message }: PreviewMessageProps)
   let buffer: ActivityPart[] = []
   const flush = (idx: number): void => {
     if (buffer.length === 0) return
-    nodes.push(<ActivityGroup initiallyOpen={isLoading} key={`${message.id}-act-${idx}`} parts={buffer} />)
+    const grouped = buffer
+    nodes.push(
+      // oxlint-disable-next-line react-perf/jsx-no-new-array-as-prop
+      <ActivityGroup initiallyOpen={isLoading} key={`${message.id}-act-${idx}`} parts={grouped} />
+    )
     buffer = []
   }
-  message.parts.forEach((part, index) => {
+  for (const [index, part] of message.parts.entries()) {
     const key = `${message.id}-part-${index}`
     const custom = customRenderers?.[part.type]
-    if (custom) {
+    const toolCardNode =
+      !custom && part.type === 'data-tool-x' && ToolCard ? ToolCard({ input: part.input, output: part.output }) : null
+    if (!(custom || toolCardNode) && isActivity(part.type)) buffer.push(part as ActivityPart)
+    else {
       flush(index)
-      nodes.push(<Fragment key={key}>{custom(part, { isLoading, message })}</Fragment>)
-      return
+      if (custom) nodes.push(<Fragment key={key}>{custom(part, { isLoading, message })}</Fragment>)
+      else if (toolCardNode) nodes.push(<Fragment key={key}>{toolCardNode}</Fragment>)
+      else if (part.type === 'text')
+        nodes.push(<MessageTextPart key={key} messageId={message.id} messageRole={message.role} text={part.text} />)
+      else if (part.type === 'data-sources') {
+        const entries = sourcesEntriesFor(part.items)
+        if (entries.length > 0)
+          nodes.push(
+            <Sources key={key}>
+              <SourcesTrigger count={entries.length} />
+              <SourcesContent>
+                {entries.map(e => (
+                  <Source href={e.url} key={e.url} title={`${e.domain} — ${e.title}`} />
+                ))}
+              </SourcesContent>
+            </Sources>
+          )
+      } else
+        nodes.push(
+          <pre className='text-xs opacity-70 overflow-x-auto' data-verbose='debug' key={key}>
+            {formatOutput('value' in part ? part.value : part)}
+          </pre>
+        )
     }
-    if (part.type === 'data-tool-x' && ToolCard) {
-      const toolNode = ToolCard({ input: part.input, output: part.output })
-      if (toolNode) {
-        flush(index)
-        nodes.push(<Fragment key={key}>{toolNode}</Fragment>)
-        return
-      }
-    }
-    if (isActivity(part.type)) {
-      buffer.push(part as ActivityPart)
-      return
-    }
-    flush(index)
-    if (part.type === 'text') {
-      nodes.push(<MessageTextPart key={key} messageId={message.id} messageRole={message.role} text={part.text} />)
-      return
-    }
-    if (part.type === 'data-sources') {
-      const entries = sourcesEntriesFor(part.items)
-      if (entries.length === 0) return
-      nodes.push(
-        <Sources key={key}>
-          <SourcesTrigger count={entries.length} />
-          <SourcesContent>
-            {entries.map(e => (
-              <Source href={e.url} key={e.url} title={`${e.domain} — ${e.title}`} />
-            ))}
-          </SourcesContent>
-        </Sources>
-      )
-      return
-    }
-    nodes.push(
-      <pre className='text-xs opacity-70 overflow-x-auto' data-verbose='debug' key={key}>
-        {formatOutput('value' in part ? part.value : part)}
-      </pre>
-    )
-  })
+  }
   flush(message.parts.length)
   return (
     <div className='group/message [content-visibility:auto] [contain-intrinsic-size:0_200px]'>

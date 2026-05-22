@@ -1,7 +1,6 @@
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops by design */
 /** biome-ignore-all lint/nursery/noContinue: control flow shape */
 /** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
-/* oxlint-disable eslint(no-shadow) */
 /* eslint-disable no-await-in-loop, complexity, no-continue -- sequential Convex DB ops by design; control flow shape; widened types from generated API */
 import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
@@ -315,7 +314,7 @@ const persistSuggestionsWithEmbedding = internalMutation({
         if (lt) {
           const n = lt.count + 1
           const merged = lt.centroid
-            ? lt.centroid.map((v, i) => (v * lt.count + (q.promptEmbedding[i] ?? 0)) / n)
+            ? lt.centroid.map((cv, i) => (cv * lt.count + (q.promptEmbedding[i] ?? 0)) / n)
             : q.promptEmbedding
           lt.centroid = merged
           lt.count = n
@@ -629,7 +628,7 @@ const resolvePairAction = mutation({
     action: v.union(v.literal('accept-swap'), v.literal('keep-old'), v.literal('keep-both'), v.literal('reject-both')),
     pairId: v.id('testQuestionSuggestions')
   },
-  handler: async (ctx, { pairId, action }): Promise<{ approvedQuestionId?: string; retiredQuestionId?: string }> => {
+  handler: async (ctx, { pairId, action: act }): Promise<{ approvedQuestionId?: string; retiredQuestionId?: string }> => {
     const identity = await ctx.auth.getUserIdentity()
     const email = identity?.email?.toLowerCase()
     if (!email) throw new Error('not authenticated')
@@ -658,7 +657,7 @@ const resolvePairAction = mutation({
     })
     let approvedQuestionId: string | undefined
     let retiredQuestionId: string | undefined
-    if (action === 'accept-swap' || action === 'keep-both') {
+    if (act === 'accept-swap' || act === 'keep-both') {
       if (newSug.kind !== 'new' || !newSug.prompt || !newSug.choices || newSug.correctIndex === undefined)
         throw new Error('new-suggestion shape invalid')
       approvedQuestionId = await ctx.db.insert('testQuestions', {
@@ -674,7 +673,7 @@ const resolvePairAction = mutation({
       await ctx.db.patch(newSug._id, resolved('approve'))
     } else await ctx.db.patch(newSug._id, resolved('reject'))
     if (retireSug)
-      if (action === 'accept-swap' && retireSug.targetQuestionId) {
+      if (act === 'accept-swap' && retireSug.targetQuestionId) {
         await ctx.db.patch(retireSug.targetQuestionId, { deleteReason: 'agent-retire-conflict', deletedAt: now })
         retiredQuestionId = retireSug.targetQuestionId
         await ctx.db.patch(retireSug._id, resolved('approve'))

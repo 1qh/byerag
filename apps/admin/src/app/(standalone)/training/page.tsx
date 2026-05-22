@@ -1,3 +1,4 @@
+/* eslint-disable complexity */
 'use client'
 import { cn } from '@a/ui'
 import {
@@ -27,11 +28,13 @@ import { Switch } from '@a/ui/components/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@a/ui/components/table'
 import { api } from 'backend/convex/_generated/api'
 import { useAction, useMutation, useQuery } from 'convex/react'
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 const ACTIONS_TRIGGER = <Button aria-label='Topic actions' size='icon-sm' variant='ghost' />
+const FILTER_TRIGGER = <Button className='-ml-2 h-auto gap-1 px-2 py-1 font-medium' size='sm' variant='ghost' />
 const DEPARTMENTS = ['Safety, Health and Environment'] as const
+const HOURS = Array.from({ length: 24 }, (_, h) => String(h))
 const WEEKDAYS = [
   { l: 'Mon', v: '1' },
   { l: 'Tue', v: '2' },
@@ -48,10 +51,10 @@ const relTime = (ms: number): string => {
   if (d < 86_400_000) return `${Math.floor(d / 3_600_000)}h ago`
   return `${Math.floor(d / 86_400_000)}d ago`
 }
+const pad2 = (n: number): string => String(n).padStart(2, '0')
 const fmtVN = (ms: number): string => {
   const v = new Date(ms + 7 * 3_600_000)
-  const p = (n: number): string => String(n).padStart(2, '0')
-  return `${v.getUTCFullYear()}-${p(v.getUTCMonth() + 1)}-${p(v.getUTCDate())} ${p(v.getUTCHours())}:${p(v.getUTCMinutes())} VN`
+  return `${v.getUTCFullYear()}-${pad2(v.getUTCMonth() + 1)}-${pad2(v.getUTCDate())} ${pad2(v.getUTCHours())}:${pad2(v.getUTCMinutes())} VN`
 }
 const nextRunMs = (hourStr: string, weekdays: Set<string>): null | number => {
   if (hourStr === '') return null
@@ -61,9 +64,7 @@ const nextRunMs = (hourStr: string, weekdays: Set<string>): null | number => {
     const probe = new Date(Date.now() + 7 * 3_600_000 + i * 86_400_000)
     probe.setUTCHours(hour, 0, 0, 0)
     const realMs = probe.getTime() - 7 * 3_600_000
-    if (realMs <= Date.now()) continue
-    if (weekdays.size > 0 && !weekdays.has(String(probe.getUTCDay()))) continue
-    return realMs
+    if (realMs > Date.now() && (weekdays.size === 0 || weekdays.has(String(probe.getUTCDay())))) return realMs
   }
   return null
 }
@@ -85,6 +86,43 @@ const ACTION_COPY: Record<ActionKind, { confirm: string; desc: string; title: st
     title: 'Un-assign all users?'
   }
 }
+const AgentStatusBadge = ({
+  autoAssign,
+  hourSetting,
+  lastRunSetting,
+  wdSetting
+}: {
+  autoAssign: null | string | undefined
+  hourSetting: null | string | undefined
+  lastRunSetting: null | string | undefined
+  wdSetting: null | string | undefined
+}): React.ReactElement => {
+  const on = autoAssign === 'true'
+  const hourStr = hourSetting ?? ''
+  const wd = new Set((wdSetting ?? '').split(',').filter(Boolean))
+  const lastMs = Number(lastRunSetting)
+  const hasLast = Number.isFinite(lastMs) && lastMs > 0
+  const next = nextRunMs(hourStr, wd)
+  const when =
+    hourStr === '' ? 'continuously (every few min)' : next === null ? `${hourStr.padStart(2, '0')}:00 VN` : fmtVN(next)
+  const last = hasLast ? `${fmtVN(lastMs)} (${relTime(lastMs)})` : 'not yet run'
+  return (
+    <span
+      className={cn(
+        'flex items-center gap-2 rounded-full border px-3 py-1 text-xs',
+        on ? 'border-green-600/30 bg-green-600/10 text-green-700 dark:text-green-400' : 'text-muted-foreground'
+      )}
+      title={on ? `Next assign: ${when} · Last run: ${last}` : 'Auto-assign is off'}>
+      <span
+        className={cn(
+          'size-1.5 rounded-full',
+          on ? 'animate-pulse bg-green-600 dark:bg-green-400' : 'bg-muted-foreground/50'
+        )}
+      />
+      {on ? `Next assign ${when} · last ${last}` : 'Agent off'}
+    </span>
+  )
+}
 const Card = ({ children, title }: { children: React.ReactNode; title: string }): React.ReactElement => (
   <div className='rounded-lg border bg-card p-4'>
     <div className='mb-2 font-semibold text-muted-foreground text-xs uppercase tracking-wide'>{title}</div>
@@ -103,8 +141,7 @@ const FilterHeader = ({
   selected: string[]
 }): React.ReactElement => (
   <DropdownMenu>
-    <DropdownMenuTrigger
-      render={<Button className='-ml-2 h-auto gap-1 px-2 py-1 font-medium' size='sm' variant='ghost' />}>
+    <DropdownMenuTrigger render={FILTER_TRIGGER}>
       {label}
       {selected.length > 0 ? (
         <span className='rounded bg-primary/15 px-1 text-primary text-xs'>{selected.length}</span>
@@ -133,6 +170,7 @@ const FilterHeader = ({
     </DropdownMenuContent>
   </DropdownMenu>
 )
+// oxlint-disable-next-line complexity
 const TrainingPage = (): React.ReactElement => {
   const summary = useQuery(api.dashboard.trainingSummary, {})
   const autoAssign = useQuery(api.settings.getForAdmin, { key: 'agent_auto_assign_enabled' })
@@ -159,6 +197,11 @@ const TrainingPage = (): React.ReactElement => {
     statuses: fStatus,
     tests: fTest
   })
+  const deptOptions = useMemo(() => at?.facets.departments ?? [], [at?.facets.departments])
+  const testOptions = useMemo(() => at?.facets.tests ?? [], [at?.facets.tests])
+  const statusOptions = useMemo(() => at?.facets.statuses ?? [], [at?.facets.statuses])
+  const deadlineOptions = useMemo(() => at?.facets.deadlines ?? [], [at?.facets.deadlines])
+  const assignedOptions = useMemo(() => at?.facets.assigneds ?? [], [at?.facets.assigneds])
   const [sSearch, setSSearch] = useState('')
   const [sPage, setSPage] = useState(0)
   const userSum = useQuery(api.dashboard.userSummary, { page: sPage, search: sSearch })
@@ -184,6 +227,11 @@ const TrainingPage = (): React.ReactElement => {
   const seenAtRef = useRef<null | number>(null)
   const switchId = useId()
   const dueId = useId()
+  const hourId = useId()
+  const cTopicId = useId()
+  const cAudienceId = useId()
+  const cDeptId = useId()
+  const cDueId = useId()
   useEffect(() => {
     const l = at?.latest
     if (!l) return
@@ -325,37 +373,12 @@ const TrainingPage = (): React.ReactElement => {
       <div className='flex flex-wrap items-center gap-4'>
         <h1 className='font-semibold text-xl'>Training</h1>
         <div className='ml-auto flex flex-wrap items-center gap-3'>
-          {(() => {
-            const on = autoAssign === 'true'
-            const hourStr = String(hourSetting ?? '')
-            const wd = new Set((wdSetting ?? '').split(',').filter(Boolean))
-            const lastMs = Number(lastRunSetting)
-            const hasLast = Number.isFinite(lastMs) && lastMs > 0
-            const next = nextRunMs(hourStr, wd)
-            const when =
-              hourStr === ''
-                ? 'continuously (every few min)'
-                : next === null
-                  ? `${hourStr.padStart(2, '0')}:00 VN`
-                  : fmtVN(next)
-            const last = hasLast ? `${fmtVN(lastMs)} (${relTime(lastMs)})` : 'not yet run'
-            return (
-              <span
-                className={cn(
-                  'flex items-center gap-2 rounded-full border px-3 py-1 text-xs',
-                  on ? 'border-green-600/30 bg-green-600/10 text-green-700 dark:text-green-400' : 'text-muted-foreground'
-                )}
-                title={on ? `Next assign: ${when} · Last run: ${last}` : 'Auto-assign is off'}>
-                <span
-                  className={cn(
-                    'size-1.5 rounded-full',
-                    on ? 'animate-pulse bg-green-600 dark:bg-green-400' : 'bg-muted-foreground/50'
-                  )}
-                />
-                {on ? `Next assign ${when} · last ${last}` : 'Agent off'}
-              </span>
-            )
-          })()}
+          <AgentStatusBadge
+            autoAssign={autoAssign}
+            hourSetting={hourSetting}
+            lastRunSetting={lastRunSetting}
+            wdSetting={wdSetting}
+          />
           <Button
             onClick={() => {
               setCTopic(summary.tests[0]?.topicId ?? '')
@@ -587,7 +610,7 @@ const TrainingPage = (): React.ReactElement => {
                     setFDept(v)
                     setAPage(0)
                   }}
-                  options={at?.facets.departments ?? []}
+                  options={deptOptions}
                   selected={fDept}
                 />
               </TableHead>
@@ -598,7 +621,7 @@ const TrainingPage = (): React.ReactElement => {
                     setFTest(v)
                     setAPage(0)
                   }}
-                  options={at?.facets.tests ?? []}
+                  options={testOptions}
                   selected={fTest}
                 />
               </TableHead>
@@ -609,7 +632,7 @@ const TrainingPage = (): React.ReactElement => {
                     setFStatus(v)
                     setAPage(0)
                   }}
-                  options={at?.facets.statuses ?? []}
+                  options={statusOptions}
                   selected={fStatus}
                 />
               </TableHead>
@@ -620,7 +643,7 @@ const TrainingPage = (): React.ReactElement => {
                     setFDeadline(v)
                     setAPage(0)
                   }}
-                  options={at?.facets.deadlines ?? []}
+                  options={deadlineOptions}
                   selected={fDeadline}
                 />
               </TableHead>
@@ -631,7 +654,7 @@ const TrainingPage = (): React.ReactElement => {
                     setFAssigned(v)
                     setAPage(0)
                   }}
-                  options={at?.facets.assigneds ?? []}
+                  options={assignedOptions}
                   selected={fAssigned}
                 />
               </TableHead>
@@ -701,7 +724,11 @@ const TrainingPage = (): React.ReactElement => {
           </div>
         ) : null}
       </section>
-      <AlertDialog onOpenChange={open => !(open || running) && setPending(null)} open={pending !== null}>
+      <AlertDialog
+        onOpenChange={open => {
+          if (!(open || running)) setPending(null)
+        }}
+        open={pending !== null}>
         <AlertDialogContent>
           {pending ? (
             <>
@@ -765,12 +792,12 @@ const TrainingPage = (): React.ReactElement => {
               />
             </div>
             <div className='space-y-1'>
-              <Label htmlFor='a-hour'>Assign at (Vietnam time)</Label>
-              <NativeSelect className='w-44' id='a-hour' onChange={e => setHourDraft(e.target.value)} value={hourVal}>
+              <Label htmlFor={hourId}>Assign at (Vietnam time)</Label>
+              <NativeSelect className='w-44' id={hourId} onChange={e => setHourDraft(e.target.value)} value={hourVal}>
                 <NativeSelectOption value=''>Continuously (every few min)</NativeSelectOption>
-                {Array.from({ length: 24 }, (_, h) => (
-                  <NativeSelectOption key={h} value={String(h)}>
-                    {String(h).padStart(2, '0')}:00
+                {HOURS.map(h => (
+                  <NativeSelectOption key={h} value={h}>
+                    {h.padStart(2, '0')}:00
                   </NativeSelectOption>
                 ))}
               </NativeSelect>
@@ -835,8 +862,8 @@ const TrainingPage = (): React.ReactElement => {
           </DialogHeader>
           <div className='space-y-3'>
             <div className='space-y-1'>
-              <Label htmlFor='c-topic'>Test</Label>
-              <NativeSelect id='c-topic' onChange={e => setCTopic(e.target.value)} value={cTopic}>
+              <Label htmlFor={cTopicId}>Test</Label>
+              <NativeSelect id={cTopicId} onChange={e => setCTopic(e.target.value)} value={cTopic}>
                 {summary.tests.length === 0 ? (
                   <NativeSelectOption value=''>No tests with enough questions yet</NativeSelectOption>
                 ) : (
@@ -849,9 +876,9 @@ const TrainingPage = (): React.ReactElement => {
               </NativeSelect>
             </div>
             <div className='space-y-1'>
-              <Label htmlFor='c-audience'>Who</Label>
+              <Label htmlFor={cAudienceId}>Who</Label>
               <NativeSelect
-                id='c-audience'
+                id={cAudienceId}
                 onChange={e => setCAudience(e.target.value as 'all' | 'department')}
                 value={cAudience}>
                 <NativeSelectOption value='all'>Everyone</NativeSelectOption>
@@ -860,8 +887,8 @@ const TrainingPage = (): React.ReactElement => {
             </div>
             {cAudience === 'department' ? (
               <div className='space-y-1'>
-                <Label htmlFor='c-dept'>Department</Label>
-                <NativeSelect id='c-dept' onChange={e => setCDept(e.target.value)} value={cDept}>
+                <Label htmlFor={cDeptId}>Department</Label>
+                <NativeSelect id={cDeptId} onChange={e => setCDept(e.target.value)} value={cDept}>
                   {DEPARTMENTS.map(d => (
                     <NativeSelectOption key={d} value={d}>
                       {d}
@@ -871,10 +898,10 @@ const TrainingPage = (): React.ReactElement => {
               </div>
             ) : null}
             <div className='space-y-1'>
-              <Label htmlFor='c-due'>Overdue after (days)</Label>
+              <Label htmlFor={cDueId}>Overdue after (days)</Label>
               <Input
                 className='w-32'
-                id='c-due'
+                id={cDueId}
                 inputMode='numeric'
                 onChange={e => setCDueDays(e.target.value)}
                 placeholder={`default ${dueDays}`}

@@ -1,5 +1,5 @@
+/* eslint-disable no-await-in-loop */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops */
-/* oxlint-disable eslint(no-await-in-loop) */
 import { v } from 'convex/values'
 import { mutation, query } from './_generated/server'
 

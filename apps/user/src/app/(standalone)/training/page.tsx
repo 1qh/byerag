@@ -1,4 +1,5 @@
 'use client'
+import { cn } from '@a/ui'
 import { Badge } from '@a/ui/components/badge'
 import { Button } from '@a/ui/components/button'
 import { api } from 'backend/convex/_generated/api'
@@ -7,16 +8,70 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 
 const POOL_MIN = 5
+const pad2 = (n: number): string => String(n).padStart(2, '0')
 const fmtVN = (ms: number): string => {
   const v = new Date(ms + 7 * 3_600_000)
-  const p = (n: number): string => String(n).padStart(2, '0')
-  return `${v.getUTCFullYear()}-${p(v.getUTCMonth() + 1)}-${p(v.getUTCDate())} ${p(v.getUTCHours())}:${p(v.getUTCMinutes())} VN`
+  return `${v.getUTCFullYear()}-${pad2(v.getUTCMonth() + 1)}-${pad2(v.getUTCDate())} ${pad2(v.getUTCHours())}:${pad2(v.getUTCMinutes())} VN`
+}
+interface AssignMeta {
+  assignedAtMs: number
+  deadlineMs: number
+}
+const StartButton = ({
+  id,
+  onStart,
+  starting
+}: {
+  id: string
+  onStart: (id: string) => Promise<void>
+  starting: null | string
+}): React.ReactElement => (
+  <Button
+    disabled={starting !== null}
+    onClick={() => {
+      // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
+      onStart(id).catch((error: unknown) => toast.error(String(error)))
+    }}
+    size='sm'>
+    {starting === id ? 'Starting…' : 'Start (5 questions)'}
+  </Button>
+)
+const AssignedMeta = ({
+  meta,
+  name,
+  nowMs,
+  poolSize
+}: {
+  meta?: AssignMeta
+  name: string
+  nowMs: number
+  poolSize: number
+}): React.ReactElement => {
+  const overdue = meta ? meta.deadlineMs < nowMs : false
+  return (
+    <div>
+      <p className='font-medium'>{name}</p>
+      <p className='text-muted-foreground text-xs'>Required · {poolSize} questions in pool</p>
+      {meta ? (
+        <p className='mt-1 text-xs'>
+          <span className='text-muted-foreground'>Assigned {fmtVN(meta.assignedAtMs)}</span>
+          {' · '}
+          <span className={cn('text-muted-foreground', overdue && 'font-medium text-yellow-700 dark:text-yellow-400')}>
+            Deadline {fmtVN(meta.deadlineMs)}
+            {overdue ? ' (overdue)' : ''}
+          </span>
+        </p>
+      ) : null}
+    </div>
+  )
 }
 const TrainingPage = (): React.ReactElement => {
   const topics = useQuery(api.training.listMyTopics)
   const assignments = useQuery(api.trainingAssignments.myActiveAssignments)
   const startAttempt = useMutation(api.trainingAttempts.startAttempt)
   const [starting, setStarting] = useState<null | string>(null)
+  // eslint-disable-next-line react/hook-use-state
+  const [nowMs] = useState(() => Date.now())
   const onStart = async (topicId: string): Promise<void> => {
     setStarting(topicId)
     try {
@@ -38,17 +93,6 @@ const TrainingPage = (): React.ReactElement => {
   const assigned = startable.filter(t => assignedIds.has(t._id) && t.myStatus !== 'passed-assigned')
   const practice = startable.filter(t => !(assignedIds.has(t._id) || t.myStatus.startsWith('passed-')))
   const completed = startable.filter(t => t.myStatus.startsWith('passed-'))
-  const StartButton = ({ id }: { id: string }): React.ReactElement => (
-    <Button
-      disabled={starting !== null}
-      onClick={() => {
-        // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
-        onStart(id).catch((error: unknown) => toast.error(String(error)))
-      }}
-      size='sm'>
-      {starting === id ? 'Starting…' : 'Start (5 questions)'}
-    </Button>
-  )
   return (
     <div className='mx-auto max-w-2xl space-y-8 p-6'>
       <section className='space-y-3'>
@@ -65,30 +109,8 @@ const TrainingPage = (): React.ReactElement => {
           <ul className='space-y-2'>
             {assigned.map(t => (
               <li className='flex items-center justify-between gap-4 rounded-lg border bg-card p-4' key={t._id}>
-                {(() => {
-                  const m = assignMeta.get(t._id)
-                  const overdue = m ? m.deadlineMs < Date.now() : false
-                  return (
-                    <div>
-                      <p className='font-medium'>{t.name}</p>
-                      <p className='text-muted-foreground text-xs'>Required · {t.poolSize} questions in pool</p>
-                      {m ? (
-                        <p className='mt-1 text-xs'>
-                          <span className='text-muted-foreground'>Assigned {fmtVN(m.assignedAtMs)}</span>
-                          {' · '}
-                          <span
-                            className={
-                              overdue ? 'font-medium text-yellow-700 dark:text-yellow-400' : 'text-muted-foreground'
-                            }>
-                            Deadline {fmtVN(m.deadlineMs)}
-                            {overdue ? ' (overdue)' : ''}
-                          </span>
-                        </p>
-                      ) : null}
-                    </div>
-                  )
-                })()}
-                <StartButton id={t._id} />
+                <AssignedMeta meta={assignMeta.get(t._id)} name={t.name} nowMs={nowMs} poolSize={t.poolSize} />
+                <StartButton id={t._id} onStart={onStart} starting={starting} />
               </li>
             ))}
           </ul>
@@ -101,7 +123,7 @@ const TrainingPage = (): React.ReactElement => {
             {practice.map(t => (
               <li className='flex items-center justify-between gap-4 p-3' key={t._id}>
                 <span className='text-sm'>{t.name}</span>
-                <StartButton id={t._id} />
+                <StartButton id={t._id} onStart={onStart} starting={starting} />
               </li>
             ))}
           </ul>

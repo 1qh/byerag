@@ -49,11 +49,11 @@ const DocsPage = (): React.ReactElement => {
     const startW = listW
     const move = (ev: PointerEvent): void => setListW(clampW(startW + ev.clientX - startX))
     const up = (): void => {
-      window.removeEventListener('pointermove', move)
-      window.removeEventListener('pointerup', up)
+      globalThis.removeEventListener('pointermove', move)
+      globalThis.removeEventListener('pointerup', up)
     }
-    window.addEventListener('pointermove', move)
-    window.addEventListener('pointerup', up)
+    globalThis.addEventListener('pointermove', move)
+    globalThis.addEventListener('pointerup', up)
   }
   return (
     <div className='flex h-dvh'>

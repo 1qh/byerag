@@ -8,6 +8,7 @@ import type { QueryCtx } from './_generated/server'
 import { query } from './_generated/server'
 
 const BILLING_CYCLE_ANCHOR_DAY = 5
+const has = (arr: string[] | undefined, v2: string): boolean => !arr || arr.length === 0 || arr.includes(v2)
 const requireAdmin = async (ctx: QueryCtx): Promise<null | string> => {
   const identity = await ctx.auth.getUserIdentity()
   const email = identity?.email?.toLowerCase()
@@ -409,7 +410,6 @@ const assignmentsTable = query({
       statuses: uniqSorted(all.map(r => STATUS_LABEL[r.status])),
       tests: uniqSorted(all.map(r => r.test))
     }
-    const has = (arr: string[] | undefined, v2: string): boolean => !arr || arr.length === 0 || arr.includes(v2)
     const filtered = all.filter(
       r =>
         has(departments, r.department) &&

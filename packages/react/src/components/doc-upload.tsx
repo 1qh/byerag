@@ -1,3 +1,7 @@
+/* eslint-disable no-await-in-loop */
+/* oxlint-disable promise/prefer-await-to-then, promise/prefer-await-to-callbacks, promise/catch-or-return */
+/** biome-ignore-all lint/performance/noAwaitInLoops: sequential uploads */
+/** biome-ignore-all lint/nursery/noUnnecessaryConditions: intentional while-true drain loop */
 'use client'
 import { cn } from '@a/ui'
 import { Button } from '@a/ui/components/button'
@@ -41,12 +45,13 @@ const STATUS_LABEL: Record<ItemStatus, string> = {
   uploading: 'Uploading',
   'waiting-conflict': 'Waiting'
 }
-const uploadWithProgress = async (
-  url: string,
-  file: File,
-  mime: string,
+interface UploadArgs {
+  file: File
+  mime: string
   onProgress: (pct: number) => void
-): Promise<string> =>
+  url: string
+}
+const uploadWithProgress = async ({ file, mime, onProgress, url }: UploadArgs): Promise<string> =>
   new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
     xhr.open('POST', url)
@@ -60,7 +65,7 @@ const uploadWithProgress = async (
           const j = JSON.parse(xhr.responseText) as { storageId: string }
           resolve(j.storageId)
         } catch (error) {
-          reject(error)
+          reject(new Error(String(error)))
         }
       else reject(new Error(`upload ${xhr.status}`))
     })
@@ -76,7 +81,9 @@ const DocUpload = ({ isAdmin, scope }: DocUploadProps): React.ReactElement => {
   const itemsRef = useRef<QueueItem[]>([])
   const conflictRef = useRef<ConflictState | null>(null)
   const runningRef = useRef(false)
+  // eslint-disable-next-line react-hooks/refs
   itemsRef.current = items
+  // eslint-disable-next-line react-hooks/refs
   conflictRef.current = conflict
   const patch = (id: string, p: Partial<QueueItem>): void => {
     setItems(prev => prev.map(it => (it.id === id ? { ...it, ...p } : it)))
@@ -87,7 +94,7 @@ const DocUpload = ({ isAdmin, scope }: DocUploadProps): React.ReactElement => {
     const mime = file.type || 'application/octet-stream'
     patch(itemId, { progress: 0, status: 'uploading' })
     const url = await genUrl({})
-    const storageId = await uploadWithProgress(url, file, mime, pct => patch(itemId, { progress: pct }))
+    const storageId = await uploadWithProgress({ file, mime, onProgress: pct => patch(itemId, { progress: pct }), url })
     const r = await finalize({
       filename,
       keepBoth: mode.keepBoth,
@@ -158,7 +165,6 @@ const DocUpload = ({ isAdmin, scope }: DocUploadProps): React.ReactElement => {
     setItems(prev => [...prev, ...fresh])
     itemsRef.current = [...itemsRef.current, ...fresh]
     e.target.value = ''
-    // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React event handler cannot be async; .catch is byerag pattern
     drain().catch((error: unknown) => toast.error(String(error)))
   }
   const resolveConflict = (mode: { keepBoth?: boolean; replace?: boolean }): void => {
@@ -168,14 +174,11 @@ const DocUpload = ({ isAdmin, scope }: DocUploadProps): React.ReactElement => {
     conflictRef.current = null
     const item = itemsRef.current.find(it => it.id === c.itemId)
     if (!item) return
-    // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- handler chain
     submit(c.itemId, item.file, mode)
       .catch((error: unknown) => {
         patch(c.itemId, { message: String(error), status: 'error' })
       })
-      // oxlint-disable-next-line promise/prefer-await-to-then -- continue draining queue
       .finally(() => {
-        // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
         drain().catch((error: unknown) => toast.error(String(error)))
       })
   }
@@ -185,7 +188,6 @@ const DocUpload = ({ isAdmin, scope }: DocUploadProps): React.ReactElement => {
     patch(c.itemId, { message: 'cancelled', status: 'error' })
     setConflict(null)
     conflictRef.current = null
-    // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
     drain().catch((error: unknown) => toast.error(String(error)))
   }
   const clearFinished = (): void => {

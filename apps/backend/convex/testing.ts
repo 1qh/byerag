@@ -1,7 +1,6 @@
-/* eslint-disable no-continue */
+/* eslint-disable no-continue, complexity */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops */
 /** biome-ignore-all lint/nursery/noContinue: control flow shape */
-/* oxlint-disable eslint(complexity) */
 /** biome-ignore-all lint/suspicious/useAwait: vitest async */
 /** biome-ignore-all lint/style/noProcessEnv: TEST_SECRET standalone test env */
 /** biome-ignore-all lint/complexity/useLiteralKeys: env bracket */
@@ -1040,15 +1039,15 @@ const seedDepartmentCohort = mutation({
         .query('userProfiles')
         .withIndex('by_userId', q => q.eq('userId', userId))
         .first()
-      if (prof) await ctx.db.patch(prof._id, { department: DEPT, role: 'user', updatedAt: Date.now(), updatedBy: 'seed' })
-      else
-        await ctx.db.insert('userProfiles', {
-          department: DEPT,
-          role: 'user',
-          updatedAt: Date.now(),
-          updatedBy: 'seed',
-          userId
-        })
+      await (prof
+        ? ctx.db.patch(prof._id, { department: DEPT, role: 'user', updatedAt: Date.now(), updatedBy: 'seed' })
+        : ctx.db.insert('userProfiles', {
+            department: DEPT,
+            role: 'user',
+            updatedAt: Date.now(),
+            updatedBy: 'seed',
+            userId
+          }))
       for (const topicId of topics) {
         const live = await ctx.db
           .query('testAssignments')
@@ -1324,6 +1323,7 @@ const wipeUserProfiles = mutation({
 })
 const purgeUserProbe = mutation({
   args: { testSecret: v.string(), userId: v.string() },
+  // oxlint-disable-next-line complexity
   handler: async (ctx, { userId, testSecret }): Promise<Record<string, number>> => {
     verifyTestSecret(testSecret)
     const email = userId.toLowerCase()

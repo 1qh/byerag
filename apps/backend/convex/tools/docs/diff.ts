@@ -6,6 +6,18 @@ import { arg, defineQuery, makeFail } from '../_api'
 const CONTEXT_LINES = 3
 const aclCheck = (row: { owner?: string; scope: 'mine' | 'shared' }, caller: string): boolean =>
   row.scope === 'shared' || row.owner === caller
+interface DocRow {
+  _id: string
+  deletedAt?: number
+  extractedText?: string
+  filename: string
+  owner?: string
+  policyStatus?: string
+  scanStatus?: string
+  scope: 'mine' | 'shared'
+}
+const visible = (r: DocRow): boolean =>
+  r.deletedAt === undefined && r.scanStatus === 'clean' && r.policyStatus === 'approved'
 const unifiedDiff = (a: string[], b: string[], context: number): string => {
   const out: string[] = []
   const maxLen = Math.max(a.length, b.length)
@@ -45,18 +57,6 @@ const action = defineQuery({
   examples: ['docs diff --a kx7abc --b kx7def'],
   handler: async (ctx, args) => {
     const fail = makeFail('FORBIDDEN', 'NOT_FOUND')
-    interface DocRow {
-      _id: string
-      deletedAt?: number
-      extractedText?: string
-      filename: string
-      owner?: string
-      policyStatus?: string
-      scanStatus?: string
-      scope: 'mine' | 'shared'
-    }
-    const visible = (r: DocRow): boolean =>
-      r.deletedAt === undefined && r.scanStatus === 'clean' && r.policyStatus === 'approved'
     const rowA = (await ctx.db.get(args.a as never)) as DocRow | null
     if (!(rowA && visible(rowA))) throw fail('NOT_FOUND', `doc ${args.a} not found`)
     if (!aclCheck(rowA, ctx.auth.owner)) throw fail('FORBIDDEN', 'doc A not in caller scope')

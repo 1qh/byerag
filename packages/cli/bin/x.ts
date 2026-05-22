@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 /** biome-ignore-all lint/style/noProcessEnv: CLI binary reads env directly */
+/** biome-ignore-all lint/nursery/noUndeclaredEnvVars: CLI binary reads runtime env directly */
 /** biome-ignore-all lint/suspicious/noControlCharactersInRegex: sanitize strips control chars */
 /** biome-ignore-all lint/nursery/noContinue: parser skip-lines */
 /* eslint-disable no-console, no-continue, no-control-regex, @typescript-eslint/no-unnecessary-condition */
@@ -308,7 +309,8 @@ const materializeDocsReadIfApplicable = (path: string[], data: unknown): unknown
   mkdirSync(DOCS_CACHE_DIR, { recursive: true })
   const filePath = join(DOCS_CACHE_DIR, `${docId}.md`)
   writeFileSync(filePath, body, 'utf8')
-  const { body: _omitted, ...rest } = d
+  const rest: Record<string, unknown> = {}
+  for (const [k, val] of Object.entries(d)) if (k !== 'body') rest[k] = val
   return { ...rest, path: filePath }
 }
 const runCommand = async (path: string[], cmd: ManifestCommand, flagTokens: string[]): Promise<void> => {

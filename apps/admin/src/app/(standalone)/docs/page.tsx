@@ -1,3 +1,5 @@
+/* eslint-disable no-await-in-loop */
+/** biome-ignore-all lint/performance/noAwaitInLoops: sequential deletes */
 'use client'
 import type { Id } from 'backend/convex/_generated/dataModel'
 import { DocUpload, DocViewer } from '@a/react/components'
@@ -35,11 +37,11 @@ const DocsPage = (): React.ReactElement => {
     const startW = listW
     const move = (ev: PointerEvent): void => setListW(clampW(startW + ev.clientX - startX))
     const up = (): void => {
-      window.removeEventListener('pointermove', move)
-      window.removeEventListener('pointerup', up)
+      globalThis.removeEventListener('pointermove', move)
+      globalThis.removeEventListener('pointerup', up)
     }
-    window.addEventListener('pointermove', move)
-    window.addEventListener('pointerup', up)
+    globalThis.addEventListener('pointermove', move)
+    globalThis.addEventListener('pointerup', up)
   }
   const toggle = (id: string): void =>
     setChecked(prev => {
