@@ -457,7 +457,7 @@ const userSummary = query({
       (a, b) =>
         b.overdue - a.overdue || b.assigned - b.passed - (a.assigned - a.passed) || a.userId.localeCompare(b.userId)
     )
-    const pageSize = 25
+    const pageSize = 5
     const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize))
     const p = Math.min(Math.max(0, page ?? 0), pageCount - 1)
     return { pageCount, rows: sorted.slice(p * pageSize, p * pageSize + pageSize), total: sorted.length }

@@ -6,6 +6,11 @@ import { useMutation, useQuery } from 'convex/react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 const POOL_MIN = 5
+const fmtVN = (ms: number): string => {
+  const v = new Date(ms + 7 * 3_600_000)
+  const p = (n: number): string => String(n).padStart(2, '0')
+  return `${v.getUTCFullYear()}-${p(v.getUTCMonth() + 1)}-${p(v.getUTCDate())} ${p(v.getUTCHours())}:${p(v.getUTCMinutes())} VN`
+}
 const TrainingPage = (): React.ReactElement => {
   const topics = useQuery(api.training.listMyTopics)
   const assignments = useQuery(api.trainingAssignments.myActiveAssignments)
@@ -27,6 +32,7 @@ const TrainingPage = (): React.ReactElement => {
   }
   if (topics === undefined || assignments === undefined) return <p className='p-6'>Loading…</p>
   const assignedIds = new Set(assignments.map(a => a.topicId))
+  const assignMeta = new Map(assignments.map(a => [a.topicId, a]))
   const startable = topics.filter(t => t.poolSize >= POOL_MIN)
   const assigned = startable.filter(t => assignedIds.has(t._id) && t.myStatus !== 'passed-assigned')
   const practice = startable.filter(t => !(assignedIds.has(t._id) || t.myStatus.startsWith('passed-')))
@@ -58,10 +64,26 @@ const TrainingPage = (): React.ReactElement => {
           <ul className='space-y-2'>
             {assigned.map(t => (
               <li className='flex items-center justify-between gap-4 rounded-lg border bg-card p-4' key={t._id}>
-                <div>
-                  <p className='font-medium'>{t.name}</p>
-                  <p className='text-muted-foreground text-xs'>Required · {t.poolSize} questions in pool</p>
-                </div>
+                {(() => {
+                  const m = assignMeta.get(t._id)
+                  const overdue = m ? m.deadlineMs < Date.now() : false
+                  return (
+                    <div>
+                      <p className='font-medium'>{t.name}</p>
+                      <p className='text-muted-foreground text-xs'>Required · {t.poolSize} questions in pool</p>
+                      {m ? (
+                        <p className='mt-1 text-xs'>
+                          <span className='text-muted-foreground'>Assigned {fmtVN(m.assignedAtMs)}</span>
+                          {' · '}
+                          <span className={overdue ? 'font-medium text-yellow-700 dark:text-yellow-400' : 'text-muted-foreground'}>
+                            Deadline {fmtVN(m.deadlineMs)}
+                            {overdue ? ' (overdue)' : ''}
+                          </span>
+                        </p>
+                      ) : null}
+                    </div>
+                  )
+                })()}
                 <StartButton id={t._id} />
               </li>
             ))}

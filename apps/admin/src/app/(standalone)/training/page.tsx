@@ -40,6 +40,32 @@ const WEEKDAYS = [
   { l: 'Sat', v: '6' },
   { l: 'Sun', v: '0' }
 ] as const
+const relTime = (ms: number): string => {
+  const d = Date.now() - ms
+  if (d < 60_000) return 'just now'
+  if (d < 3_600_000) return `${Math.floor(d / 60_000)}m ago`
+  if (d < 86_400_000) return `${Math.floor(d / 3_600_000)}h ago`
+  return `${Math.floor(d / 86_400_000)}d ago`
+}
+const fmtVN = (ms: number): string => {
+  const v = new Date(ms + 7 * 3_600_000)
+  const p = (n: number): string => String(n).padStart(2, '0')
+  return `${v.getUTCFullYear()}-${p(v.getUTCMonth() + 1)}-${p(v.getUTCDate())} ${p(v.getUTCHours())}:${p(v.getUTCMinutes())} VN`
+}
+const nextRunMs = (hourStr: string, weekdays: Set<string>): null | number => {
+  if (hourStr === '') return null
+  const hour = Number(hourStr)
+  if (!Number.isFinite(hour)) return null
+  for (let i = 0; i < 14; i += 1) {
+    const probe = new Date(Date.now() + 7 * 3_600_000 + i * 86_400_000)
+    probe.setUTCHours(hour, 0, 0, 0)
+    const realMs = probe.getTime() - 7 * 3_600_000
+    if (realMs <= Date.now()) continue
+    if (weekdays.size > 0 && !weekdays.has(String(probe.getUTCDay()))) continue
+    return realMs
+  }
+  return null
+}
 type ActionKind = 'rearm' | 'unassign'
 interface PendingAction {
   kind: ActionKind
@@ -112,6 +138,7 @@ const TrainingPage = (): React.ReactElement => {
   const dueSetting = useQuery(api.settings.getForAdmin, { key: 'assignment_due_days' })
   const hourSetting = useQuery(api.settings.getForAdmin, { key: 'agent_auto_assign_hour' })
   const wdSetting = useQuery(api.settings.getForAdmin, { key: 'agent_auto_assign_weekdays' })
+  const lastRunSetting = useQuery(api.settings.getForAdmin, { key: 'agent_auto_assign_last_run' })
   const setSetting = useMutation(api.settings.setForAdmin)
   const unassignAll = useMutation(api.trainingAssignments.unassignAllForTopic)
   const rearm = useMutation(api.training.markTopicSubstantive)
@@ -297,6 +324,37 @@ const TrainingPage = (): React.ReactElement => {
       <div className='flex flex-wrap items-center gap-4'>
         <h1 className='font-semibold text-xl'>Training</h1>
         <div className='ml-auto flex flex-wrap items-center gap-3'>
+          {(() => {
+            const on = autoAssign === 'true'
+            const hourStr = String(hourSetting ?? '')
+            const wd = new Set((wdSetting ?? '').split(',').filter(Boolean))
+            const lastMs = Number(lastRunSetting)
+            const hasLast = Number.isFinite(lastMs) && lastMs > 0
+            const next = nextRunMs(hourStr, wd)
+            const when =
+              hourStr === ''
+                ? 'continuously (every few min)'
+                : next === null
+                  ? `${hourStr.padStart(2, '0')}:00 VN`
+                  : `${fmtVN(next)}`
+            const last = hasLast ? `${fmtVN(lastMs)} (${relTime(lastMs)})` : 'not yet run'
+            return (
+              <span
+                className={cn(
+                  'flex items-center gap-2 rounded-full border px-3 py-1 text-xs',
+                  on ? 'border-green-600/30 bg-green-600/10 text-green-700 dark:text-green-400' : 'text-muted-foreground'
+                )}
+                title={on ? `Next assign: ${when} · Last run: ${last}` : 'Auto-assign is off'}>
+                <span
+                  className={cn(
+                    'size-1.5 rounded-full',
+                    on ? 'animate-pulse bg-green-600 dark:bg-green-400' : 'bg-muted-foreground/50'
+                  )}
+                />
+                {on ? `Next assign ${when} · last ${last}` : 'Agent off'}
+              </span>
+            )
+          })()}
           <Button
             onClick={() => {
               setCTopic(summary.tests[0]?.topicId ?? '')
@@ -567,7 +625,7 @@ const TrainingPage = (): React.ReactElement => {
               </TableHead>
               <TableHead>
                 <FilterHeader
-                  label='Assigned'
+                  label='Assigned at'
                   onChange={v => {
                     setFAssigned(v)
                     setAPage(0)
@@ -615,7 +673,7 @@ const TrainingPage = (): React.ReactElement => {
                     )}>
                     {r.deadline}
                   </TableCell>
-                  <TableCell className='text-muted-foreground tabular-nums'>{r.assigned}</TableCell>
+                  <TableCell className='text-muted-foreground tabular-nums'>{fmtVN(r.at)}</TableCell>
                 </TableRow>
               ))
             )}

@@ -205,7 +205,12 @@ const getRowsSnippet = internalQuery({
     const out: RowSnippet[] = []
     for (const id of ids) {
       const row = await ctx.db.get(id)
-      if (row)
+      if (
+        row &&
+        row.deletedAt === undefined &&
+        row.scanStatus === 'clean' &&
+        row.policyStatus === 'approved'
+      )
         out.push({
           _id: row._id,
           filename: row.filename,
@@ -275,7 +280,15 @@ const getChunkRows = internalQuery({
     const out: ChunkRow[] = []
     for (const id of ids) {
       const row = await ctx.db.get(id)
-      if (row) out.push({ _id: row._id, docId: row.docId, seq: row.seq, text: row.text })
+      if (!row) continue
+      const parent = await ctx.db.get(row.docId)
+      if (
+        parent &&
+        parent.deletedAt === undefined &&
+        parent.scanStatus === 'clean' &&
+        parent.policyStatus === 'approved'
+      )
+        out.push({ _id: row._id, docId: row.docId, seq: row.seq, text: row.text })
     }
     return out
   }
@@ -292,6 +305,7 @@ const getForConflict = internalQuery({
   handler: async (ctx, { docId }): Promise<ConflictDoc | null> => {
     const row = await ctx.db.get(docId)
     if (!row?.extractedText) return null
+    if (row.deletedAt !== undefined || row.scanStatus !== 'clean' || row.policyStatus !== 'approved') return null
     return { _id: row._id, extractedText: row.extractedText, filename: row.filename, owner: row.owner, scope: row.scope }
   }
 })
@@ -500,6 +514,61 @@ const adminDeleteDoc = mutation({
       severity: 'medium'
     })
     return { pendingSuggestionsCancelled, questionsSoftDeleted }
+  }
+})
+const listDeleted = query({
+  args: {},
+  handler: async (
+    ctx
+  ): Promise<{ _id: Id<'docs'>; deletedAt: number; filename: string; scope: 'mine' | 'shared'; version: number }[]> => {
+    const identity = await ctx.auth.getUserIdentity()
+    const email = identity?.email?.toLowerCase()
+    if (!email) return []
+    const profile = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', email))
+      .first()
+    if (profile?.role !== 'admin') return []
+    const rows = await ctx.db
+      .query('docs')
+      .withIndex('by_deletedAt')
+      .filter(q => q.neq(q.field('deletedAt'), undefined))
+      .take(500)
+    return rows
+      .toSorted((a, b) => (b.deletedAt ?? 0) - (a.deletedAt ?? 0))
+      .map(r => ({
+        _id: r._id,
+        deletedAt: r.deletedAt ?? 0,
+        filename: r.filename,
+        scope: r.scope,
+        version: r.version
+      }))
+  }
+})
+const adminRestoreDoc = mutation({
+  args: { docId: v.id('docs') },
+  handler: async (ctx, { docId }): Promise<{ ok: true }> => {
+    const identity = await ctx.auth.getUserIdentity()
+    const email = identity?.email?.toLowerCase()
+    if (!email) throw new Error('not authenticated')
+    const profile = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', email))
+      .first()
+    if (profile?.role !== 'admin') throw new Error('admin only')
+    const doc = await ctx.db.get(docId)
+    if (!doc) throw new Error('doc not found')
+    if (doc.deletedAt === undefined) throw new Error('doc is not deleted')
+    await ctx.db.patch(docId, { deletedAt: undefined })
+    await ctx.db.insert('auditLogs', {
+      args: JSON.stringify({ docId, filename: doc.filename }),
+      command: 'docs.adminRestore',
+      mode: 'session',
+      ok: true,
+      owner: email,
+      severity: 'medium'
+    })
+    return { ok: true }
   }
 })
 const requestReview = mutation({
@@ -785,6 +854,7 @@ export {
   adminApproveReview,
   adminConfirmReject,
   adminDeleteDoc,
+  adminRestoreDoc,
   adminScanCancel,
   adminScanOverride,
   countRecentQuarantines,
@@ -800,6 +870,7 @@ export {
   getRowsSnippet,
   insertQuarantined,
   insertRow,
+  listDeleted,
   listForQuarantine,
   listMine,
   listMineForSandbox,

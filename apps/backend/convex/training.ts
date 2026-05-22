@@ -907,7 +907,7 @@ const assignComposer = mutation({
     const identity = await ctx.auth.getUserIdentity()
     const email = identity?.email?.toLowerCase()
     if (!email) throw new Error('not authenticated')
-    const profile = ctx.db
+    const profile = await ctx.db
       .query('userProfiles')
       .withIndex('by_userId', q => q.eq('userId', email))
       .first()

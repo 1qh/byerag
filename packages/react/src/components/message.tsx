@@ -1,14 +1,13 @@
 'use client'
 import type { UIMessage } from '@a/react/lib'
 import type { Id } from 'backend/convex/_generated/dataModel'
-import { extractSources } from '@a/react/lib'
+import { extractSources, parseToolPath } from '@a/react/lib'
 import { Source, Sources, SourcesContent, SourcesTrigger } from '@a/ui/components/ai-elements/sources'
-import { Tool, ToolContent, ToolHeader, ToolInput, ToolOutput } from '@a/ui/components/ai-elements/tool'
 import { cn } from '@a/ui/lib/utils'
-import { Fragment, memo } from 'react'
+import { ChevronRight } from 'lucide-react'
+import { Fragment, memo, type ReactNode, useState } from 'react'
 import { useMessagePartRegistry, useToolCard } from '../registries'
 import { Actions } from './message-actions'
-import { MessageReasoning } from './message-reasoning'
 import { MessageTextPart } from './message-text-part'
 interface PreviewMessageProps {
   chatId?: Id<'chats'> | null
@@ -30,6 +29,22 @@ const formatOutput = (v: unknown): string => {
   if (typeof v === 'string') return v
   if (Array.isArray(v) && v.every(isTextPart)) return v.map(p => p.text).join('')
   return JSON.stringify(v, null, 2)
+}
+const basename = (p: string): string => p.split('/').filter(Boolean).at(-1) ?? p
+const oneLine = (s: string): string => s.replace(/\s+/gu, ' ').trim()
+const toolLabel = (toolName: string, input: Record<string, unknown> | undefined): string => {
+  const path = parseToolPath(input)
+  if (path) {
+    const cmd = typeof input?.command === 'string' ? input.command : ''
+    const q = /--query\s+"([^"]+)"/u.exec(cmd)?.[1]
+    const id = /--id\s+(\S+)/u.exec(cmd)?.[1]
+    const scope = /--scope\s+(\S+)/u.exec(cmd)?.[1]
+    const hint = q ? `"${q}"` : (id ?? scope ?? '')
+    return oneLine(`${path.join(' ')}${hint ? ` ${hint}` : ''}`).slice(0, 70)
+  }
+  if (toolName === 'Read' && typeof input?.file_path === 'string') return `Read ${basename(input.file_path)}`
+  if (toolName === 'Read' && typeof input?.path === 'string') return `Read ${basename(input.path)}`
+  return toolName
 }
 type DataSourcesPart = Extract<UIMessage['parts'][number], { type: 'data-sources' }>
 const sourcesCache = new WeakMap<DataSourcesPart['items'], ReturnType<typeof extractSources>>()
@@ -57,67 +72,117 @@ const partsSignature = (m: UIMessage): string => {
   partsSigCache.set(m.parts, sig)
   return sig
 }
+type ActivityPart =
+  | Extract<UIMessage['parts'][number], { type: 'data-tool-x' }>
+  | Extract<UIMessage['parts'][number], { type: 'reasoning' }>
+  | Extract<UIMessage['parts'][number], { type: 'status' }>
+const isActivity = (t: string): boolean => t === 'reasoning' || t === 'status' || t === 'data-tool-x'
+const ActivityRow = ({ part }: { part: ActivityPart }): ReactNode => {
+  if (part.type === 'reasoning')
+    return <div className='py-0.5 text-muted-foreground/80 text-xs italic'>{oneLine(part.text)}</div>
+  if (part.type === 'status')
+    return (
+      <div
+        className={cn(
+          'py-0.5 text-xs',
+          part.tone === 'error'
+            ? 'text-destructive'
+            : part.tone === 'warn'
+              ? 'text-yellow-700 dark:text-yellow-400'
+              : 'text-muted-foreground/80'
+        )}>
+        {oneLine(part.text)}
+      </div>
+    )
+  const out = part.output === undefined ? '' : oneLine(formatOutput(part.output)).slice(0, 120)
+  return (
+    <div className='py-0.5 text-xs'>
+      <span className='font-mono text-muted-foreground'>{toolLabel(part.toolName, part.input)}</span>
+      {out ? <span className='ml-2 text-muted-foreground/60'>{out}</span> : null}
+    </div>
+  )
+}
+const ActivityGroup = ({ initiallyOpen, parts }: { initiallyOpen: boolean; parts: ActivityPart[] }): ReactNode => {
+  const [open, setOpen] = useState(initiallyOpen)
+  return (
+    <div className='my-1.5'>
+      <button
+        className='flex items-center gap-1 text-muted-foreground text-xs hover:text-foreground'
+        onClick={() => setOpen(o => !o)}
+        type='button'>
+        <ChevronRight aria-hidden className={cn('size-3 transition-transform', open && 'rotate-90')} />
+        Worked through {parts.length} step{parts.length === 1 ? '' : 's'}
+      </button>
+      {open ? (
+        <div className='mt-1 ml-4 space-y-0.5 border-muted border-l pl-3'>
+          {parts.map((part, i) => (
+            <ActivityRow key={`act-${i}`} part={part} />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
 const PurePreviewMessage = ({ chatId, isLoading, message }: PreviewMessageProps) => {
   const ToolCard = useToolCard()
   const customRenderers = useMessagePartRegistry()
+  const nodes: ReactNode[] = []
+  let buffer: ActivityPart[] = []
+  const flush = (idx: number): void => {
+    if (buffer.length === 0) return
+    nodes.push(<ActivityGroup initiallyOpen={isLoading} key={`${message.id}-act-${idx}`} parts={buffer} />)
+    buffer = []
+  }
+  message.parts.forEach((part, index) => {
+    const key = `${message.id}-part-${index}`
+    const custom = customRenderers?.[part.type]
+    if (custom) {
+      flush(index)
+      nodes.push(<Fragment key={key}>{custom(part, { isLoading, message })}</Fragment>)
+      return
+    }
+    if (part.type === 'data-tool-x' && ToolCard) {
+      const toolNode = ToolCard({ input: part.input, output: part.output })
+      if (toolNode) {
+        flush(index)
+        nodes.push(<Fragment key={key}>{toolNode}</Fragment>)
+        return
+      }
+    }
+    if (isActivity(part.type)) {
+      buffer.push(part as ActivityPart)
+      return
+    }
+    flush(index)
+    if (part.type === 'text') {
+      nodes.push(<MessageTextPart key={key} messageId={message.id} messageRole={message.role} text={part.text} />)
+      return
+    }
+    if (part.type === 'data-sources') {
+      const entries = sourcesEntriesFor(part.items)
+      if (entries.length === 0) return
+      nodes.push(
+        <Sources key={key}>
+          <SourcesTrigger count={entries.length} />
+          <SourcesContent>
+            {entries.map(e => (
+              <Source href={e.url} key={e.url} title={`${e.domain} — ${e.title}`} />
+            ))}
+          </SourcesContent>
+        </Sources>
+      )
+      return
+    }
+    nodes.push(
+      <pre className='text-xs opacity-70 overflow-x-auto' data-verbose='debug' key={key}>
+        {formatOutput(part.value)}
+      </pre>
+    )
+  })
+  flush(message.parts.length)
   return (
     <div className='group/message [content-visibility:auto] [contain-intrinsic-size:0_200px]'>
-      {message.parts.map((part, index) => {
-        const key = `${message.id}-part-${index}`
-        const custom = customRenderers?.[part.type]
-        if (custom) return <Fragment key={key}>{custom(part, { isLoading, message })}</Fragment>
-        if (part.type === 'reasoning') return <MessageReasoning isLoading={isLoading} key={key} reasoning={part.text} />
-        if (part.type === 'status') {
-          const cls =
-            part.tone === 'error'
-              ? 'border-destructive/40 bg-destructive/5 text-destructive'
-              : part.tone === 'warn'
-                ? 'border-yellow-500/40 bg-yellow-500/5 text-yellow-700 dark:text-yellow-400'
-                : 'border-border bg-muted text-muted-foreground'
-          return (
-            <div className={cn('my-2 rounded-md border px-3 py-2 text-xs flex items-center gap-2', cls)} key={key}>
-              <span aria-hidden className='size-1.5 shrink-0 rounded-full bg-current animate-pulse' />
-              <span className='truncate'>{part.text}</span>
-            </div>
-          )
-        }
-        if (part.type === 'text')
-          return <MessageTextPart key={key} messageId={message.id} messageRole={message.role} text={part.text} />
-        if (part.type === 'data-tool-x') {
-          const toolNode = ToolCard ? ToolCard({ input: part.input, output: part.output }) : null
-          if (toolNode) return <Fragment key={key}>{toolNode}</Fragment>
-          return (
-            <Tool key={key}>
-              <ToolHeader state={part.state} toolName={part.toolName} type='dynamic-tool' />
-              <ToolContent>
-                {part.input ? <ToolInput input={part.input} /> : null}
-                {part.output === undefined ? null : (
-                  <ToolOutput errorText={undefined} output={formatOutput(part.output)} />
-                )}
-              </ToolContent>
-            </Tool>
-          )
-        }
-        if (part.type === 'data-sources') {
-          const entries = sourcesEntriesFor(part.items)
-          if (entries.length === 0) return null
-          return (
-            <Sources key={key}>
-              <SourcesTrigger count={entries.length} />
-              <SourcesContent>
-                {entries.map(e => (
-                  <Source href={e.url} key={e.url} title={`${e.domain} — ${e.title}`} />
-                ))}
-              </SourcesContent>
-            </Sources>
-          )
-        }
-        return (
-          <pre className='text-xs opacity-70 overflow-x-auto' data-verbose='debug' key={key}>
-            {formatOutput(part.value)}
-          </pre>
-        )
-      })}
+      {nodes}
       {message.role !== 'user' && (
         <Actions chatId={chatId} isLoading={isLoading} key={`action-${message.id}`} message={message} />
       )}

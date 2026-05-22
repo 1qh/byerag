@@ -145,7 +145,9 @@ const unassignAllForTopic = mutation({
 })
 const myActiveAssignments = query({
   args: {},
-  handler: async (ctx): Promise<{ _id: string; topicId: string }[]> => {
+  handler: async (
+    ctx
+  ): Promise<{ _id: string; assignedAtMs: number; deadlineMs: number; topicId: string }[]> => {
     const identity = await ctx.auth.getUserIdentity()
     const userId = identity?.email?.toLowerCase()
     if (!userId) return []
@@ -153,7 +155,18 @@ const myActiveAssignments = query({
       .query('testAssignments')
       .withIndex('by_user_deletedAt', q => q.eq('userId', userId).eq('deletedAt', undefined))
       .take(500)
-    return rows.map(r => ({ _id: r._id, topicId: r.topicId }))
+    const dueSetting = await ctx.db
+      .query('settings')
+      .withIndex('by_key', q => q.eq('key', 'assignment_due_days'))
+      .first()
+    const dueDays = Number.parseInt(dueSetting?.value ?? '14', 10)
+    const windowMs = (Number.isFinite(dueDays) && dueDays > 0 ? dueDays : 14) * 86_400_000
+    return rows.map(r => ({
+      _id: r._id,
+      assignedAtMs: r.createdAt,
+      deadlineMs: r.dueAtMs ?? r.createdAt + windowMs,
+      topicId: r.topicId
+    }))
   }
 })
 export { assignAllForTopic, assignUsersForTopic, myActiveAssignments, unassignAllForTopic }

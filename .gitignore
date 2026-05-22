@@ -6,8 +6,10 @@ dist/
 bun.lock
 .env
 .env.local
+.env.*
 apps/*/.env
 apps/*/.env.local
+apps/*/.env*
 *.log
 secrets/
 apps/backend/test-fixtures/
