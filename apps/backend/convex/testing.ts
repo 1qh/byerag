@@ -1035,7 +1035,8 @@ const seedDepartmentCohort = mutation({
     let passes = 0
     for (let i = 1; i <= 10; i += 1) {
       const userId = `she${i}@user.test`
-      const prof = ctx.db
+      // biome-ignore lint/nursery/noPlaywrightUselessAwait: Convex .first() returns thenable
+      const prof = await ctx.db
         .query('userProfiles')
         .withIndex('by_userId', q => q.eq('userId', userId))
         .first()
@@ -1066,7 +1067,8 @@ const seedDepartmentCohort = mutation({
       }
       if (i <= 3)
         for (const topicId of topics.slice(0, 3)) {
-          const had = ctx.db
+          // biome-ignore lint/nursery/noPlaywrightUselessAwait: Convex .first() returns thenable
+          const had = await ctx.db
             .query('testPasses')
             .withIndex('by_user_topic_kind', q =>
               q

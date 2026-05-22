@@ -152,7 +152,8 @@ const myActiveAssignments = query({
       .query('testAssignments')
       .withIndex('by_user_deletedAt', q => q.eq('userId', userId).eq('deletedAt', undefined))
       .take(500)
-    const dueSetting = ctx.db
+    // biome-ignore lint/nursery/noPlaywrightUselessAwait: Convex .first() returns thenable
+    const dueSetting = await ctx.db
       .query('settings')
       .withIndex('by_key', q => q.eq('key', 'assignment_due_days'))
       .first()
