@@ -1,4 +1,5 @@
 import { z } from 'zod/v4'
+
 const MAX_HTTP_BODY = 2_000_000
 const streamEventBody = z.object({
   chatId: z.string().min(1).max(64),

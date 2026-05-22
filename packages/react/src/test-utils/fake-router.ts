@@ -1,8 +1,6 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: test fake */
 /** biome-ignore-all lint/performance/useTopLevelRegex: inline regex in fake router */
 /** biome-ignore-all lint/nursery/useNamedCaptureGroup: simple match */
 /* eslint-disable @eslint-react/no-unnecessary-use-prefix, prefer-named-capture-group */
-/* oxlint-disable eslint(prefer-named-capture-group) */
 interface FakeRouterState {
   back: () => void
   pathname: string

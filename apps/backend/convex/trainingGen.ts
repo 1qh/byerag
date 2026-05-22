@@ -1,11 +1,5 @@
 /* eslint-disable no-await-in-loop, @typescript-eslint/no-unsafe-assignment */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops */
-/** biome-ignore-all lint/nursery/noContinue: control flow shape */
-/** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
-/* oxlint-disable eslint(no-await-in-loop), eslint(complexity), eslint(no-shadow), eslint(no-unused-vars), eslint(no-sequences), unicorn(no-array-reduce), unicorn(prefer-ternary), eslint(max-params) */
-/** biome-ignore-all lint/style/noProcessEnv: env loader site */
-/** biome-ignore-all lint/nursery/noUndeclaredEnvVars: KIMI vars */
-/** biome-ignore-all lint/suspicious/useAwait: fetch chain */
 'use node'
 import { v } from 'convex/values'
 import type { ActionCtx } from './_generated/server'
@@ -13,6 +7,7 @@ import { internal } from './_generated/api'
 import { internalAction } from './_generated/server'
 import { embedQuery } from './docsEmbed'
 import { env } from './env'
+
 const KIMI_TIMEOUT_MS = 60_000
 const KIMI_MAX_TOKENS = 4000
 const MAX_PROMPT_DOC_CHARS = 12_000

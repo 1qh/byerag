@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 import { runSmoke } from '@a/react/smoke'
+
 await runSmoke({
   app: 'user',
   assert: ({ all }) => all.includes('pong'),

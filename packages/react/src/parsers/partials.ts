@@ -1,5 +1,5 @@
-/** biome-ignore-all lint/complexity/useLiteralKeys: Record<string,unknown> bracket access */
 import type { StreamEvent } from 'backend/convex/streamProtocol'
+
 interface LiveBucket extends StreamDeltaBucket {
   msgId: null | string
 }

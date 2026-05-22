@@ -1,14 +1,16 @@
 'use client'
 import type { UIMessage } from '@a/react/lib'
 import type { Id } from 'backend/convex/_generated/dataModel'
+import type { ReactNode } from 'react'
 import { extractSources, parseToolPath } from '@a/react/lib'
 import { Source, Sources, SourcesContent, SourcesTrigger } from '@a/ui/components/ai-elements/sources'
 import { cn } from '@a/ui/lib/utils'
 import { ChevronRight } from 'lucide-react'
-import { Fragment, memo, type ReactNode, useState } from 'react'
+import { Fragment, memo, useState } from 'react'
 import { useMessagePartRegistry, useToolCard } from '../registries'
 import { Actions } from './message-actions'
 import { MessageTextPart } from './message-text-part'
+
 interface PreviewMessageProps {
   chatId?: Id<'chats'> | null
   isLoading: boolean
@@ -31,7 +33,7 @@ const formatOutput = (v: unknown): string => {
   return JSON.stringify(v, null, 2)
 }
 const basename = (p: string): string => p.split('/').filter(Boolean).at(-1) ?? p
-const oneLine = (s: string): string => s.replace(/\s+/gu, ' ').trim()
+const oneLine = (s: string): string => s.replaceAll(/\s+/gu, ' ').trim()
 const toolLabel = (toolName: string, input: Record<string, unknown> | undefined): string => {
   const path = parseToolPath(input)
   if (path) {
@@ -175,7 +177,7 @@ const PurePreviewMessage = ({ chatId, isLoading, message }: PreviewMessageProps)
     }
     nodes.push(
       <pre className='text-xs opacity-70 overflow-x-auto' data-verbose='debug' key={key}>
-        {formatOutput(part.value)}
+        {formatOutput('value' in part ? part.value : part)}
       </pre>
     )
   })

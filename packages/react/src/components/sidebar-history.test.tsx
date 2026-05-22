@@ -5,6 +5,7 @@ import { render } from '@a/react/test-utils/render'
 import { SidebarProvider } from '@a/ui/components/sidebar'
 import { beforeEach, describe, expect, test } from 'bun:test'
 import { SidebarHistory } from './sidebar-history'
+
 const noop = (): void => {
   /* Empty */
 }

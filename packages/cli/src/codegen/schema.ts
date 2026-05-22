@@ -1,10 +1,9 @@
-/** biome-ignore-all lint/complexity/useSimplifiedLogicExpression: ts.TypeFlags bitwise tests */
 /** biome-ignore-all lint/nursery/noContinue: recursive walker */
 /** biome-ignore-all lint/suspicious/noBitwiseOperators: ts.TypeFlags needs bitwise */
 /* eslint-disable complexity, no-bitwise, no-continue, @typescript-eslint/no-unnecessary-condition */
-/* oxlint-disable eslint(complexity), eslint(no-bitwise) */
 import { resolve } from 'node:path'
 import ts from 'typescript'
+
 interface Extracted {
   args: null | SchemaNode
   jsdoc: null | string

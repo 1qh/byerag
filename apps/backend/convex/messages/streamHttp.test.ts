@@ -1,8 +1,8 @@
-/* oxlint-disable eslint(no-await-in-loop) */
 import { describe, expect, test } from 'bun:test'
 import type { Id } from '../_generated/dataModel'
 import { makeTest } from '../../test-utils/convex'
 import { hashSecret } from '../secretHash'
+
 const SECRET = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'
 const seedChat = async (
   t: ReturnType<typeof makeTest>,

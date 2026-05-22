@@ -4,6 +4,7 @@ import { render } from '@a/react/test-utils/render'
 import { cleanup } from '@testing-library/react'
 import { afterEach, describe, expect, test } from 'bun:test'
 import { CommandPalette } from './command-palette'
+
 const wrap = (ui: ReactElement): ReactElement => <VerbosityProvider>{ui}</VerbosityProvider>
 const noop = (): void => {
   /* Empty */

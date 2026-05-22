@@ -3,6 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { api } from 'backend/convex/_generated/api'
 import { useQuery } from 'convex/react'
 import { use } from 'react'
+
 const fmt = (n?: number): string => (n === undefined ? '—' : new Date(n).toISOString().slice(0, 19).replace('T', ' '))
 const UserTopicDetailPage = ({ params }: { params: Promise<{ topicId: string; userId: string }> }): React.ReactElement => {
   const { userId, topicId } = use(params)

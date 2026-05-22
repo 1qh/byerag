@@ -1,6 +1,6 @@
-/** biome-ignore-all lint/nursery/useExpect: setup helper uses throw */
 import { beforeAll, describe, expect, setDefaultTimeout, test } from 'bun:test'
 import { downloadZip, fresh, killAllSandboxes, listFiles, readFile, sendMessage, uploadFile, waitFor } from './helpers'
+
 setDefaultTimeout(5 * 60 * 1000)
 const email = fresh('files')
 let sandboxReady = false

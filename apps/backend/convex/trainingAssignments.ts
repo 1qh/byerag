@@ -1,11 +1,10 @@
 /* eslint-disable no-await-in-loop, no-continue */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops */
 /** biome-ignore-all lint/nursery/noContinue: control flow shape */
-/** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
-/* oxlint-disable eslint(no-await-in-loop), eslint(complexity), eslint(no-shadow), eslint(no-unused-vars), eslint(no-sequences), unicorn(no-array-reduce), unicorn(prefer-ternary), eslint(max-params) */
 import { v } from 'convex/values'
 import type { MutationCtx } from './_generated/server'
 import { mutation, query } from './_generated/server'
+
 const POOL_MIN = 5
 const requireAdminEmail = async (ctx: MutationCtx): Promise<string> => {
   const identity = await ctx.auth.getUserIdentity()
@@ -145,9 +144,7 @@ const unassignAllForTopic = mutation({
 })
 const myActiveAssignments = query({
   args: {},
-  handler: async (
-    ctx
-  ): Promise<{ _id: string; assignedAtMs: number; deadlineMs: number; topicId: string }[]> => {
+  handler: async (ctx): Promise<{ _id: string; assignedAtMs: number; deadlineMs: number; topicId: string }[]> => {
     const identity = await ctx.auth.getUserIdentity()
     const userId = identity?.email?.toLowerCase()
     if (!userId) return []
@@ -155,7 +152,7 @@ const myActiveAssignments = query({
       .query('testAssignments')
       .withIndex('by_user_deletedAt', q => q.eq('userId', userId).eq('deletedAt', undefined))
       .take(500)
-    const dueSetting = await ctx.db
+    const dueSetting = ctx.db
       .query('settings')
       .withIndex('by_key', q => q.eq('key', 'assignment_due_days'))
       .first()

@@ -13,6 +13,7 @@ import { Messages } from './messages'
 import { MultimodalInput } from './multimodal-input'
 import { DraftedChips } from './pane/drafted-chips'
 import { usePaneOptional } from './pane/pane-context'
+
 const DebugPanel = dynamic(async () => (await import('./debug-panel')).DebugPanel, { ssr: false })
 const ExportChat = dynamic(async () => (await import('./export-chat')).ExportChat, { ssr: false })
 const emptyTitleFont = Source_Serif_4({ subsets: ['vietnamese'] })

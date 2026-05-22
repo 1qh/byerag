@@ -1,19 +1,14 @@
 /* eslint-disable @typescript-eslint/no-shadow, no-await-in-loop */
-/* oxlint-disable eslint(no-unused-vars) */
-/** biome-ignore-all lint/nursery/noContinue: control flow shape */
 /** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
-/** biome-ignore-all lint/performance/useTopLevelRegex: scoped regex ok */
-/** biome-ignore-all lint/style/useExplicitLengthCheck: idiomatic */
-/** biome-ignore-all lint/correctness/noUnusedVariables: pending feature */
 /** biome-ignore-all lint/style/noProcessEnv: OLLAMA_HOST env */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: OLLAMA_HOST optional */
-/** biome-ignore-all lint/suspicious/useAwait: fetch chain */
 'use node'
 import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
 import { internal } from './_generated/api'
 import { internalAction } from './_generated/server'
+
 const OLLAMA_HOST = process.env.OLLAMA_HOST ?? 'host.docker.internal'
 const OLLAMA_PORT = process.env.OLLAMA_PORT ?? '11434'
 const EMBED_MODEL = 'nomic-embed-text-v2-moe'

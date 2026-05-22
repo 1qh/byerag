@@ -4,6 +4,7 @@ import { Sheet, SheetContent } from '@a/ui/components/sheet'
 import { useState } from 'react'
 import { useDocSheet } from './doc-sheet-context'
 import { DocViewer } from './doc-viewer'
+
 const clampW = (n: number): number => Math.min(1100, Math.max(360, n))
 const DocSheet = (): null | React.ReactElement => {
   const { docId, close } = useDocSheet()

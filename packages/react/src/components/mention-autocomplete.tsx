@@ -18,6 +18,7 @@ import {
 import { useMemo } from 'react'
 import type { ActiveMention } from '../hooks/use-mention-parser'
 import { KIND_TONES } from './mention-chip'
+
 interface MentionItem {
   kind: string
   lastModifiedAt?: number

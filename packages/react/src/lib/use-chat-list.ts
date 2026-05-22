@@ -4,6 +4,7 @@ import { api } from 'backend/convex/_generated/api'
 import { useQuery } from 'convex/react'
 import { useEffect, useMemo } from 'react'
 import { useApp } from '../app-context'
+
 type ChatRow = FunctionReturnType<typeof api.chats.list>[number]
 const KEY_PREFIX = 'chatsList.v1.'
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000

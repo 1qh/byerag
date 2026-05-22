@@ -10,6 +10,7 @@ import type {
   ValidatorJson
 } from './types'
 import { introspect } from './types'
+
 interface Meta {
   enum?: readonly string[]
   max?: number

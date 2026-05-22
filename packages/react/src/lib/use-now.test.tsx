@@ -1,6 +1,7 @@
 import { render } from '@testing-library/react'
 import { describe, expect, test } from 'bun:test'
 import { useNow } from './use-now'
+
 const Probe = () => {
   const now = useNow()
   return <span>{String(now)}</span>

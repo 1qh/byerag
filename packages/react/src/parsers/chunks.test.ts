@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import type { RawEvent } from './chunks'
 import { sourceToChunks } from './chunks'
+
 const userEvent = (id: string, text: string): RawEvent => ({
   _id: id,
   content: JSON.stringify({ message: { content: [{ text, type: 'text' }], role: 'user' }, type: 'user' })

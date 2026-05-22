@@ -1,7 +1,7 @@
-/* oxlint-disable eslint(no-await-in-loop) */
 import { describe, expect, test } from 'bun:test'
 import { makeTest } from '../test-utils/convex'
 import { internal } from './_generated/api'
+
 const ONE_HOUR_MS = 60 * 60 * 1000
 describe('sandboxes.upsert branches', () => {
   test('first upsert creates row, accepted=true', async () => {

@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+
 const PARSERS_DIR = import.meta.dirname
 const parserSrc = [
   readFileSync(join(PARSERS_DIR, 'chunks.ts'), 'utf8'),

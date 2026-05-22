@@ -2,6 +2,7 @@ import { v } from 'convex/values'
 import type { MutationCtx, QueryCtx } from './_generated/server'
 import { internalMutation, internalQuery, query } from './_generated/server'
 import { getOwnerEmailOrNull } from './authHelpers'
+
 const findByUser = async (ctx: MutationCtx | QueryCtx, userId: string) =>
   ctx.db
     .query('userContexts')

@@ -7,6 +7,7 @@ import { useMutation, useQuery } from 'convex/react'
 import Link from 'next/link'
 import { useState } from 'react'
 import { toast } from 'sonner'
+
 const TestQuestionsPage = (): React.ReactElement => {
   const rows = useQuery(api.training.listPendingSuggestionsForAdmin, {})
   const approve = useMutation(api.training.approveSuggestionPublic)

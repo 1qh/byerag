@@ -20,6 +20,7 @@ import { PanelLeft, SquarePen } from 'lucide-react'
 import { Roboto_Serif } from 'next/font/google'
 import { SidebarHistory } from './sidebar-history'
 import { SidebarUserNav } from './sidebar-user-nav'
+
 const robotoSerifText = Roboto_Serif({ display: 'swap', subsets: ['latin'], weight: '400' })
 interface AppSidebarProps {
   activeChatId: Id<'chats'> | null

@@ -1,8 +1,8 @@
 /** biome-ignore-all lint/nursery/noContinue: state-machine loop, continue is clearest */
 /* eslint-disable complexity, no-continue */
-/* oxlint-disable eslint(complexity) */
 import type { ContentBlock } from 'backend/convex/streamProtocol'
 import type { ChatChunk } from '../parsers/chunks'
+
 interface SearchItem {
   content: unknown
   type: 'code_execution_tool_result' | 'web_fetch_tool_result' | 'web_search_tool_result'

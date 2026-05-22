@@ -3,6 +3,7 @@ import type { Id } from 'backend/convex/_generated/dataModel'
 import { api } from 'backend/convex/_generated/api'
 import { useQuery } from 'convex/react'
 import { useMemo } from 'react'
+
 interface StreamRow {
   _id: string
   content: string

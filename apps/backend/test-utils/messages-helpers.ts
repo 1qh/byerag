@@ -1,10 +1,10 @@
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential test inserts */
 /* eslint-disable no-await-in-loop, @typescript-eslint/max-params */
-/* oxlint-disable eslint(no-await-in-loop), eslint(max-params) */
 import type { TestConvex } from 'convex-test'
 import type { Id } from '../convex/_generated/dataModel'
 import type schema from '../convex/schema'
 import { internal } from '../convex/_generated/api'
+
 type ChatId = Id<'chats'>
 type T = TestConvex<typeof schema>
 const sendSecrets = new Map<ChatId, string>()

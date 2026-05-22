@@ -6,6 +6,7 @@ import { render } from '@a/react/test-utils/render'
 import { SidebarProvider } from '@a/ui/components/sidebar'
 import { beforeEach, describe, expect, test } from 'bun:test'
 import { Chat } from './chat'
+
 const wrap = (ui: ReactElement): ReactElement => <SidebarProvider>{ui}</SidebarProvider>
 const userEvent = (id: string, text: string) => ({
   _creationTime: 1,

@@ -1,16 +1,15 @@
 /** biome-ignore-all lint/style/noProcessEnv: sandbox runtime env access */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: secrets scrubbed post-parse */
-/** biome-ignore-all lint/suspicious/noEmptyBlockStatements: intentional empty catch blocks */
-/** biome-ignore-all lint/complexity/useLiteralKeys: env key access */
 /** biome-ignore-all lint/performance/noDelete: cleaning env vars */
 /** biome-ignore-all lint/performance/useTopLevelRegex: inline validation regex */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential retry backoff */
-/* oxlint-disable eslint(no-empty), eslint(no-await-in-loop), promise/prefer-await-to-then, unicorn/prefer-top-level-await */
+/* oxlint-disable promise/prefer-await-to-then, unicorn/prefer-top-level-await */
 /* eslint-disable no-await-in-loop */
 import { unstable_v2_createSession, unstable_v2_resumeSession } from '@anthropic-ai/claude-agent-sdk'
 import { execSync } from 'node:child_process'
 import { mkdirSync, unlinkSync, writeFileSync } from 'node:fs'
 import { z } from 'zod/v4'
+
 type CreateSessionFn = (opts: Record<string, unknown>) => SDKSession
 type ResumeSessionFn = (id: string, opts: Record<string, unknown>) => SDKSession
 interface SDKSession {

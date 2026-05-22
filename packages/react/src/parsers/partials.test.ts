@@ -1,6 +1,7 @@
 import type { StreamEvent } from 'backend/convex/streamProtocol'
 import { describe, expect, test } from 'bun:test'
 import { applyDelta, assemblePartials, messageIdFromStart, startBlock } from './partials'
+
 const wrap = (event: unknown, id: string): { _id: string; e: StreamEvent } =>
   ({ _id: id, e: { event, type: 'stream_event', uuid: id } }) as unknown as { _id: string; e: StreamEvent }
 describe('startBlock', () => {

@@ -1,6 +1,5 @@
 /** biome-ignore-all lint/performance/noAwaitInLoops: bounded-concurrency tree walker */
 /* eslint-disable no-await-in-loop */
-/* oxlint-disable eslint(no-await-in-loop) */
 'use client'
 import { errorMessage } from '@a/react/lib'
 import { api } from 'backend/convex/_generated/api'
@@ -8,6 +7,7 @@ import { WORKSPACE_PATH } from 'backend/convex/constants'
 import { useAction } from 'convex/react'
 import { Workspace } from 'idecn'
 import { useEffect, useState } from 'react'
+
 interface TreeItem {
   children?: TreeItem[]
   id: string

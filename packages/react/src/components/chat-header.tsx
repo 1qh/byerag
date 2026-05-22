@@ -3,6 +3,7 @@ import { Button } from '@a/ui/components/button'
 import { useSidebar } from '@a/ui/components/sidebar'
 import { Menu } from 'lucide-react'
 import { memo, useEffect } from 'react'
+
 interface ChatHeaderProps {
   chatId: string
 }

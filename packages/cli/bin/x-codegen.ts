@@ -1,8 +1,5 @@
 #!/usr/bin/env bun
-/** biome-ignore-all lint/style/noProcessEnv: CLI script env read */
-/** biome-ignore-all lint/nursery/noUndeclaredEnvVars: codegen reads any caller-provided env */
 /* eslint-disable no-console */
-/* oxlint-disable eslint-plugin-unicorn(no-process-exit) */
 /* eslint-disable no-continue, no-await-in-loop */
 /** biome-ignore-all lint/nursery/noContinue: classify loops */
 /** biome-ignore-all lint/performance/noAwaitInLoops: small N (apps), fs IO ordered */
@@ -12,6 +9,7 @@ import { dirname, resolve } from 'node:path'
 import { emitRegistry, emitShims, emitToolCallers, emitToolTypes } from '../src/codegen/emit'
 import { collect } from '../src/codegen/scan'
 import { extractSchemas } from '../src/codegen/schema'
+
 const PLATFORM_ROOT = resolve(process.cwd(), 'convex/tools')
 const APPS_DIR = resolve(process.cwd(), '../')
 const APPS_MANIFEST_OUT = resolve(process.cwd(), 'convex/apps/_apps.ts')

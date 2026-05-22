@@ -1,7 +1,7 @@
-/* oxlint-disable eslint(no-await-in-loop) */
 import { describe, expect, test } from 'bun:test'
 import type { UsageReport } from './streamHelpers'
 import { sseCostTap } from './streamHelpers'
+
 const enc = new TextEncoder()
 const streamFromBytes = (bytes: Uint8Array, chunkSize = 32): ReadableStream<Uint8Array> => {
   let offset = 0

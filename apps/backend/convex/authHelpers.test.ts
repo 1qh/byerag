@@ -1,7 +1,7 @@
 /* eslint-disable no-script-url */
-/* oxlint-disable eslint(no-script-url) */
 import { describe, expect, test } from 'bun:test'
 import { canonicalizeEmail, parseAllowed, parseSiteUrls, validateProfileEmail, validateRedirectTo } from './authHelpers'
+
 describe('canonicalizeEmail', () => {
   test('lowercases', () => {
     expect(canonicalizeEmail('Foo@Example.COM')).toBe('foo@example.com')

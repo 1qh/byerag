@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowLeft, X } from 'lucide-react'
 import { OneShotTooltip } from '../one-shot-tooltip'
 import { usePane } from './pane-context'
+
 interface PaneProps {
   renderSubject: (kind: string, payload: unknown) => ReactNode
 }

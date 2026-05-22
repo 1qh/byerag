@@ -1,5 +1,6 @@
 import type { ContentBlock, StreamEvent } from 'backend/convex/streamProtocol'
 import { rawEnvelope, sdkEnvelope, streamEvent } from 'backend/convex/streamProtocol'
+
 const parseMessageFromObject = (json: unknown, rawFallback: string): { blocks: ContentBlock[]; type: string } => {
   const sdk = sdkEnvelope.safeParse(json)
   if (sdk.success) return { blocks: (sdk.data.message.content ?? []) as ContentBlock[], type: sdk.data.type }

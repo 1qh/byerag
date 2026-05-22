@@ -7,6 +7,7 @@ import { DefaultLoginScreen } from '../components/default-login-screen'
 import { DefaultMainLayout } from './default-main-layout'
 import { DefaultProviders } from './default-providers'
 import { DefaultRootLayout } from './default-root-layout'
+
 interface DefineAppConfig {
   appId: string
   callbacks?: AppCallbacks

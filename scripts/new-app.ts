@@ -1,14 +1,14 @@
 #!/usr/bin/env bun
 /** biome-ignore-all lint/style/noProcessEnv: scaffold reads env */
-/** biome-ignore-all lint/nursery/noUndeclaredEnvVars: scaffold reads env */
 /** biome-ignore-all lint/nursery/noContinue: classify-or-skip loops */
 /** biome-ignore-all lint/performance/noAwaitInLoops: small N (apps), fs IO ordered */
 /* eslint-disable no-console, no-await-in-loop, no-continue, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 import { Vercel } from '@vercel/sdk'
-/* oxlint-disable unicorn/no-process-exit, unicorn/prefer-ternary */
+/* oxlint-disable unicorn/prefer-ternary */
 import { $ } from 'bun'
 import { copyFile, mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
+
 const REPO_ROOT = resolve(import.meta.dirname, '..')
 const APPS_DIR = join(REPO_ROOT, 'apps')
 const TEMPLATE = 'mini'

@@ -1,8 +1,9 @@
 import type { UIMessage } from '@a/react/lib'
-/* oxlint-disable eslint-plugin-react-perf(jsx-no-new-array-as-prop), react-perf/jsx-no-new-array-as-prop, react-perf/jsx-no-new-object-as-prop */
+/* oxlint-disable eslint-plugin-react-perf(jsx-no-new-array-as-prop), react-perf/jsx-no-new-array-as-prop */
 import { render } from '@testing-library/react'
 import { describe, expect, test } from 'bun:test'
 import { Messages } from './messages'
+
 const user = (id: string, text: string): UIMessage => ({ id, parts: [{ text, type: 'text' }], role: 'user' })
 const assistant = (id: string, text: string): UIMessage => ({ id, parts: [{ text, type: 'text' }], role: 'assistant' })
 describe('Messages', () => {

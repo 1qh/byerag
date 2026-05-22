@@ -2,6 +2,7 @@ import type { UIMessage } from '@a/react/lib'
 import { render } from '@testing-library/react'
 import { describe, expect, test } from 'bun:test'
 import { Actions } from './message-actions'
+
 const msg = (text: string): UIMessage => ({
   id: 'm1',
   parts: text ? [{ text, type: 'text' }] : [],

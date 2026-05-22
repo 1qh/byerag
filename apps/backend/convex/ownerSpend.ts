@@ -1,21 +1,14 @@
-/* oxlint-disable eslint(no-unused-vars) */
-/** biome-ignore-all lint/nursery/noContinue: control flow shape */
-/** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
-/** biome-ignore-all lint/performance/useTopLevelRegex: scoped regex ok */
-/** biome-ignore-all lint/style/useExplicitLengthCheck: idiomatic */
-/** biome-ignore-all lint/correctness/noUnusedVariables: pending feature */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential dup-row consolidation */
 /** biome-ignore-all lint/style/noProcessEnv: Convex env is process.env at runtime */
-/** biome-ignore-all lint/nursery/noUndeclaredEnvVars: ALLOWED_EMAILS is platform env */
 /* eslint-disable no-await-in-loop */
-/* oxlint-disable eslint(no-await-in-loop) */
 import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
 import { internal } from './_generated/api'
 import { internalMutation, internalQuery } from './_generated/server'
 import { log } from './utils'
+
 const DAILY_USD_CAP = 25
 const DAILY_CENTS_CAP = DAILY_USD_CAP * 100
 const isAdmin = (owner: string): boolean => {

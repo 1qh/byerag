@@ -10,6 +10,7 @@ import { useMutation } from 'convex/react'
 import { Fragment, useCallback, useMemo } from 'react'
 import { toast } from 'sonner'
 import { ChatItem } from './sidebar-history-item'
+
 interface SidebarHistoryProps {
   activeChatId: Id<'chats'> | null
   onSelect: (id: Id<'chats'>) => void

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect } from 'react'
 import { useChatList } from './use-chat-list'
+
 const DOT_PREFIX_RE = /^● /u
 const stripDot = (s: string): string => s.replace(DOT_PREFIX_RE, '')
 const useStreamingTitle = (): void => {

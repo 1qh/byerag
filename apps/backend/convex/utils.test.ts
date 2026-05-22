@@ -1,5 +1,6 @@
 import { describe, expect, it, spyOn } from 'bun:test'
 import { constantTimeEqual, log } from './utils'
+
 describe(constantTimeEqual, () => {
   it('equal strings → true', () => {
     expect(constantTimeEqual('abc', 'abc')).toBeTruthy()

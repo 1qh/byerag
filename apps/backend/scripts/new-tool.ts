@@ -1,9 +1,9 @@
 /* eslint-disable no-console */
 /* oxlint-disable unicorn/no-process-exit */
-/** biome-ignore-all lint/style/useFilenamingConvention: script */
 import { $ } from 'bun'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+
 const args = process.argv.slice(2)
 const pathArg = args.find(a => !a.startsWith('--'))
 const kindFlag = args.find(a => a.startsWith('--kind='))?.slice(7) ?? 'action'

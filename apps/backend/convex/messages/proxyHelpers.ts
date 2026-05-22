@@ -1,4 +1,5 @@
 import { VALID_CHATID_RE as CHATID_SHAPE_RE } from '../constants'
+
 const OAUTH_FAKE_PREFIX = 'sk-ant-oat01-proxy_'
 const MAX_PROXY_TOKEN_LEN = 256
 const BEARER_RE = /^Bearer\s+/iu

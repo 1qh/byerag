@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { extractSources } from './source-parse'
+
 describe('extractSources', () => {
   test('empty input', () => {
     expect(extractSources(undefined)).toEqual([])

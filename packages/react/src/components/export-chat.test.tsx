@@ -1,9 +1,10 @@
-/* oxlint-disable react-perf/jsx-no-new-array-as-prop, react-perf/jsx-no-new-object-as-prop */
+/* oxlint-disable react-perf/jsx-no-new-array-as-prop */
 /* eslint-disable @typescript-eslint/unbound-method */
 /* oxlint-disable eslint-plugin-react-perf(jsx-no-new-array-as-prop) */
 import { fireEvent, render } from '@testing-library/react'
 import { describe, expect, test } from 'bun:test'
 import { ExportChat } from './export-chat'
+
 const userEvt = (text: string) => ({
   _creationTime: 1,
   _id: 'u',

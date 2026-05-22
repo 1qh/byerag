@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import { Button } from '@a/ui/components/button'
 import { useState } from 'react'
+
 interface TosOverlayProps {
   agreed: boolean | undefined
   onAccept: () => Promise<unknown>

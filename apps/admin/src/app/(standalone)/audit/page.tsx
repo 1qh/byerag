@@ -2,6 +2,7 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@a/ui/components/table'
 import { api } from 'backend/convex/_generated/api'
 import { useQuery } from 'convex/react'
+
 const AuditPage = (): React.ReactElement => {
   const rows = useQuery(api.lib.listAuditLogsForAdmin, { limit: 200 })
   if (rows === undefined) return <div className='p-6'>Loading…</div>

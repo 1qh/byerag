@@ -1,5 +1,3 @@
-/* oxlint-disable unicorn/prefer-ternary */
-/** biome-ignore-all lint/suspicious/useAwait: Convex httpAction handler signature */
 /** biome-ignore-all lint/performance/noAwaitInLoops: polling + sequential delete loops are intentional */
 /** biome-ignore-all lint/style/noProcessEnv: ALLOW_DEV_TOKENS env gate */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: dev gate env */
@@ -24,6 +22,7 @@ import { httpAction, internalMutation, internalQuery } from '../../_generated/se
 import { hashSecret } from '../../secretHash'
 import { REGISTRY } from '../generated/registry'
 import { MENTION_RE } from './mentionResolver'
+
 const CLI_STREAM_TTL_MS = 60 * 60 * 1000
 const POLL_INTERVAL_MS = 200
 const POLL_TIMEOUT_MS = 5 * 60 * 1000

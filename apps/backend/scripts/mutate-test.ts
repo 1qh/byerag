@@ -1,10 +1,10 @@
 #!/usr/bin/env bun
 /* eslint-disable no-console, no-await-in-loop, no-continue */
-/* oxlint-disable eslint(no-await-in-loop) */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential mutation rounds by design */
 /** biome-ignore-all lint/nursery/noContinue: skip-when-not-applicable */
 import { $, file, write } from 'bun'
 import { join } from 'node:path'
+
 const TARGETS: { src: string; tests: string }[] = [
   { src: 'convex/authHelpers.ts', tests: 'convex/authHelpers.test.ts' },
   { src: '../web/src/lib/chat-state.ts', tests: '../web/src/lib/chat-state.test.ts ../web/src/lib/chat-routing.test.ts' },

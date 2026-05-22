@@ -1,9 +1,9 @@
 /* eslint-disable no-console */
 /* oxlint-disable unicorn/no-process-exit */
-/** biome-ignore-all lint/style/useFilenamingConvention: script */
 import { $ } from 'bun'
 import { existsSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
+
 const pathArg = process.argv[2]
 if (!pathArg) {
   console.error('usage: bun run remove-tool <provider>/<...segments>')

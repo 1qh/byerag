@@ -1,19 +1,18 @@
 /* eslint-disable no-continue */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops */
 /** biome-ignore-all lint/nursery/noContinue: control flow shape */
-/** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
-/* oxlint-disable eslint(no-await-in-loop), eslint(complexity), eslint(no-shadow), eslint(no-unused-vars), unicorn(no-array-reduce), eslint(max-params) */
+/* oxlint-disable eslint(complexity) */
 /** biome-ignore-all lint/suspicious/useAwait: vitest async */
 /** biome-ignore-all lint/style/noProcessEnv: TEST_SECRET standalone test env */
 /** biome-ignore-all lint/complexity/useLiteralKeys: env bracket */
 /* eslint-disable no-await-in-loop, @typescript-eslint/dot-notation */
-/* oxlint-disable eslint(no-await-in-loop), eslint(dot-notation) */
 import { paginationOptsValidator } from 'convex/server'
 import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
 import { internal } from './_generated/api'
 import { action, internalMutation, internalQuery, mutation, query } from './_generated/server'
 import { constantTimeEqual } from './utils'
+
 const verifyTestSecret = (secret: string) => {
   // biome-ignore lint/nursery/noUndeclaredEnvVars: NODE_ENV=test (in-process bun:test) OR ALLOW_TESTING_ENDPOINTS=1 (real backend opt-in)
   const allowed = process.env['NODE_ENV'] === 'test' || process.env['ALLOW_TESTING_ENDPOINTS'] === '1'

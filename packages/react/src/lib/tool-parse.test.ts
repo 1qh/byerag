@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { parseStdout, parseToolPath } from './tool-parse'
+
 describe('parseStdout', () => {
   test('null when input missing', () => {
     expect(parseStdout(undefined)).toBe(null)

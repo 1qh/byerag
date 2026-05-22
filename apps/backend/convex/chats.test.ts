@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test'
 import { makeTest } from '../test-utils/convex'
 import { authed, listChats, send } from '../test-utils/messages-helpers'
 import { api, internal } from './_generated/api'
+
 test('list returns chats for a user, sorted desc', async () => {
   const t = makeTest()
   await send(t, 'u@test.com', 'First')

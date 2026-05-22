@@ -3,6 +3,7 @@ import { NativeSelect, NativeSelectOption } from '@a/ui/components/native-select
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@a/ui/components/table'
 import { api } from 'backend/convex/_generated/api'
 import { useQuery } from 'convex/react'
+
 const DEPARTMENTS = ['Safety, Health and Environment'] as const
 const UsersPage = (): React.ReactElement => {
   const rows = useQuery(api.lib.listUserProfilesForAdmin, {})

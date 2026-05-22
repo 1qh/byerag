@@ -1,6 +1,7 @@
 import { getAuthUserId } from '@convex-dev/auth/server'
 import { z } from 'zod/v4'
 import type { MutationCtx, QueryCtx } from './_generated/server'
+
 const authUser = z.object({
   email: z.string().optional(),
   image: z.string().optional(),

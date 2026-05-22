@@ -1,13 +1,13 @@
 /** biome-ignore-all lint/style/noProcessEnv: Convex env read at runtime */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: SITE_URL + BOOTSTRAP_ADMIN_EMAIL via Convex env */
 /* eslint-disable @typescript-eslint/require-await */
-/* oxlint-disable eslint(complexity) */
 import Google from '@auth/core/providers/google'
 import { Anonymous } from '@convex-dev/auth/providers/Anonymous'
 import { convexAuth } from '@convex-dev/auth/server'
 import type { DataModel } from './_generated/dataModel'
 import type { DatabaseWriter } from './_generated/server'
 import { parseAllowed, parseSiteUrls, validateProfileEmail, validateRedirectTo } from './authHelpers'
+
 const { allowedOrigins: ALLOWED_ORIGINS, primary: PRIMARY_SITE_URL } = parseSiteUrls(process.env.SITE_URL)
 const BOOTSTRAP_ADMIN_EMAILS = parseAllowed(process.env.BOOTSTRAP_ADMIN_EMAIL)
 if (BOOTSTRAP_ADMIN_EMAILS.size === 0)

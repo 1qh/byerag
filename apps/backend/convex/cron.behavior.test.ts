@@ -1,8 +1,8 @@
-/* oxlint-disable eslint(no-await-in-loop) */
 import { describe, expect, test } from 'bun:test'
 import type { Id } from './_generated/dataModel'
 import { makeTest } from '../test-utils/convex'
 import { internal } from './_generated/api'
+
 const STREAMING_TIMEOUT_MS = 10 * 60 * 1000
 const SOFT_DELETE_GRACE_MS = 5 * 60_000
 const SEQ_SERVER_ERROR = -1

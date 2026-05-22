@@ -1,7 +1,7 @@
 /** biome-ignore-all lint/style/noProcessEnv: proxy NODE_ENV + CONVEX_URL gate */
-/** biome-ignore-all lint/nursery/noUndeclaredEnvVars: NEXT_PUBLIC_CONVEX_URL */
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
+
 const isDev = process.env.NODE_ENV !== 'production'
 const HTTPS_PREFIX = /^https/u
 const HTTP_PREFIX = /^http/u

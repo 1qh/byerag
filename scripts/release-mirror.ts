@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 /* eslint-disable no-console */
 import { $, Glob } from 'bun'
+
 const T = process.argv[2]
 if (!T) throw new Error('usage: release-mirror.ts <target-path>')
 if ((await $`git status --porcelain`.text()).trim()) throw new Error('dirty dev repo')

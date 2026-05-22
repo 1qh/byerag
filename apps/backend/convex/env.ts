@@ -2,6 +2,7 @@
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: env loader reads all known vars */
 /* eslint-disable @typescript-eslint/no-unnecessary-type-parameters */
 import { z } from 'zod/v4'
+
 const schema = z.object({
   CONVEX_SELF_HOSTED_URL: z.url().startsWith('http'),
   CONVEX_SITE_URL: z.url().startsWith('http'),

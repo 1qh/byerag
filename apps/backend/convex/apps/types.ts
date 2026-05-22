@@ -1,5 +1,6 @@
 import type { PublicHttpAction } from 'convex/server'
 import type { ActionCtx } from '../_generated/server'
+
 interface AppConfig {
   buildSystemPrompt: (ctx: AppPromptCtx) => Promise<string> | string
   cliProviders: readonly string[]

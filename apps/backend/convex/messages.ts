@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops */
 /* eslint-disable complexity, no-await-in-loop */
-/* oxlint-disable eslint(no-await-in-loop), eslint(no-control-regex), eslint(complexity) */
 import { paginationOptsValidator } from 'convex/server'
 import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
@@ -35,6 +34,7 @@ import { redactSecrets } from './redactor'
 import { generateSecret, hashSecret } from './secretHash'
 import { errorEventEnvelope } from './streamProtocol'
 import { constantTimeEqual, log } from './utils'
+
 const ANTHROPIC_VERSION_RE = /^\d{4}-\d{2}-\d{2}(?:-[a-z0-9]+)?$/u
 const ALLOWED_UPSTREAM_PATHS = new Set(['/v1/messages', '/v1/messages/count_tokens'])
 const TRAILING_SLASH_RE = /\/$/u

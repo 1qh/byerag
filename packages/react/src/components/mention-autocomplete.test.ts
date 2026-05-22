@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { buildSuggestions } from './mention-autocomplete'
+
 const items = [
   { kind: 'collection', lastModifiedAt: 100, name: 'germany-q2' },
   { kind: 'collection', lastModifiedAt: 200, name: 'dach-coffee' },

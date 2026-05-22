@@ -1,5 +1,4 @@
 /** biome-ignore-all lint/suspicious/noControlCharactersInRegex: test fixtures */
-/* oxlint-disable eslint(max-params) */
 import type { TestConvex } from 'convex-test'
 import { expect, test } from 'bun:test'
 import type schema from './schema'
@@ -15,6 +14,7 @@ import {
   send
 } from '../test-utils/messages-helpers'
 import { api, internal } from './_generated/api'
+
 test('send creates a chat with correct title and inserts user message', async () => {
   const t = makeTest()
   const chatId = await send(t, 'alice@test.com', 'Hello world from test')

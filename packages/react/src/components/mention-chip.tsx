@@ -2,6 +2,7 @@
 import { cn } from '@a/ui'
 import { Badge } from '@a/ui/components/badge'
 import { OneShotTooltip } from './one-shot-tooltip'
+
 const KIND_TONES: Record<string, string> = {
   bookmark: 'border-amber-500/30 bg-amber-500/10 text-amber-700',
   collection: 'border-sky-500/30 bg-sky-500/10 text-sky-700',

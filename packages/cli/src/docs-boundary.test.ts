@@ -4,6 +4,7 @@ import { Glob } from 'bun'
 import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+
 const REPO_ROOT = resolve(import.meta.dirname, '../../..')
 const FORBIDDEN = ['macmap', 'typesense', 'serper', 'tariff', 'hscode']
 const ALLOWLIST = new Set(['CLAUDE.md', 'readonly'])

@@ -15,6 +15,7 @@ import { useQuery } from 'convex/react'
 import { CheckIcon, EyeIcon, MessageSquareIcon, PlusIcon, SunMoonIcon } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
+
 interface Props {
   onCreate: () => void
   onSelect: (id: Id<'chats'>) => void

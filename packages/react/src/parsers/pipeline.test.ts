@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import type { RawEvent } from './chunks'
 import { chunksToMessages } from '../lib/ui-messages'
 import { sourceToChunks } from './chunks'
+
 const streamEvent = (id: string, seq: number, eventObj: unknown): RawEvent =>
   ({
     _creationTime: 1000 + seq,

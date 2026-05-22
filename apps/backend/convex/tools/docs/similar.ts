@@ -1,12 +1,11 @@
 /* eslint-disable no-await-in-loop, no-continue */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops */
 /** biome-ignore-all lint/nursery/noContinue: control flow shape */
-/** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
-/* oxlint-disable eslint(no-await-in-loop), eslint(complexity), eslint(no-shadow), eslint(no-unused-vars), eslint(no-sequences), unicorn(no-array-reduce), unicorn(prefer-ternary), eslint(max-params) */
 import type { Id } from '../../_generated/dataModel'
 import { internal } from '../../_generated/api'
 import { embedQuery, matryoshkaTruncate } from '../../docsEmbed'
 import { arg, defineTool } from '../_api'
+
 const SCOPES = ['shared', 'mine', 'both'] as const
 interface ChunkRow {
   _id: Id<'docChunks'>

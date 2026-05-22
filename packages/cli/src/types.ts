@@ -1,4 +1,5 @@
 import type { GenericValidator, Validator } from 'convex/values'
+
 interface ArgConstraints {
   /** Allowed values for enum args. Populated by `arg.enum`. */
   enum?: readonly string[]

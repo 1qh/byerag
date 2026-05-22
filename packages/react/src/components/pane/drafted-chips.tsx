@@ -1,5 +1,6 @@
 'use client'
 import type { DraftedLine } from './pane-context'
+
 interface DraftedChipsProps {
   lines: readonly DraftedLine[]
   onRemove: (id: string) => void

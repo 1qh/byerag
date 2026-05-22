@@ -1,5 +1,5 @@
-/** biome-ignore-all lint/style/useConsistentMemberAccessibility: class members */
 import type { DispatchError, ErrorCategory } from './types'
+
 interface ToolErrorOpts {
   cause?: unknown
   code: string

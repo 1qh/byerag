@@ -1,6 +1,7 @@
 import { act, fireEvent, render } from '@testing-library/react'
 import { beforeEach, describe, expect, test } from 'bun:test'
 import { useVerbosity, VerbosityProvider } from './verbosity'
+
 const Probe = () => {
   const { mode, toggle } = useVerbosity()
   return (

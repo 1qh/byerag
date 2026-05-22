@@ -5,6 +5,7 @@ import { api } from 'backend/convex/_generated/api'
 import { useMutation, useQuery } from 'convex/react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
+
 const PolicyPage = (): React.ReactElement => {
   const current = useQuery(api.settings.getForAdmin, { key: 'corpus_policy' })
   const save = useMutation(api.settings.setForAdmin)

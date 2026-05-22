@@ -6,6 +6,7 @@ import { Badge } from '@a/ui/components/badge'
 import { api } from 'backend/convex/_generated/api'
 import { useQuery } from 'convex/react'
 import { useDocSheet } from './doc-sheet-context'
+
 const DOC_HREF_RE = /^\/docs\/(?<docId>[^/#?]+)(?:#(?<anchor>[^?]+))?$/u
 interface CitationAnchorProps extends ComponentProps<'a'> {
   children?: ReactNode

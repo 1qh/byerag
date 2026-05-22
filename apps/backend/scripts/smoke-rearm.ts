@@ -1,11 +1,8 @@
 #!/usr/bin/env bun
 /* eslint-disable no-console */
-/** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
-/* oxlint-disable eslint(no-await-in-loop), eslint(no-shadow), eslint(no-unused-expressions), eslint(max-params), eslint(no-unused-vars), promise(param-names), unicorn(prefer-native-coercion-functions), unicorn(prefer-ternary) */
-/** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
-/** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+
 const env = Object.fromEntries(
   readFileSync(join(import.meta.dir, '..', '.env'), 'utf8')
     .split('\n')

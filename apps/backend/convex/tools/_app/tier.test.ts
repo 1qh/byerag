@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import { makeTest } from '../../../test-utils/convex'
+
 beforeEach(() => {
   process.env.X_API_KEY = 'user-key'
 })

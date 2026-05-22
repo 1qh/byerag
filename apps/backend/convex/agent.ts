@@ -7,7 +7,6 @@ import { internal } from './_generated/api'
 import { internalAction } from './_generated/server'
 /* eslint-disable complexity */
 import { AGENT_SCRIPT } from './agentScript'
-/* oxlint-disable eslint(complexity) */
 import { resolveApp } from './apps/manifest'
 import { CLI_SCRIPT } from './cliScript'
 import {
@@ -26,6 +25,7 @@ import { AGENT_RUN_PATH, buildSandboxEnv, prepareSandboxLayout, redactError, sit
 import { hashSecret } from './secretHash'
 import { agentEventEnvelope } from './streamProtocol'
 import { constantTimeEqual } from './utils'
+
 const userMessageContent = z.object({
   message: z.object({
     content: z.array(z.object({ text: z.string(), type: z.literal('text') })),

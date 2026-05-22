@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test'
 import { v } from 'convex/values'
 import type { ArgSpecs, IntrospectedValidator } from './types'
 import { introspect } from './types'
+
 const stringV = introspect(v.string())
 const numberV = introspect(v.number())
 const enumV = introspect(v.union(v.literal('a'), v.literal('b')))

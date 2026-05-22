@@ -7,6 +7,7 @@ import { useAction, useMutation } from 'convex/react'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { ScanOverrideModal } from './scan-override-modal'
+
 interface ConflictState {
   existingId: string
   filename: string

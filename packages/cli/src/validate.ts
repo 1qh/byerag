@@ -1,4 +1,5 @@
 import type { ArgSpec, ArgSpecs } from './types'
+
 interface ValidateErr {
   details: Record<string, unknown>
   message: string

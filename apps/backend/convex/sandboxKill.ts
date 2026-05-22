@@ -1,11 +1,11 @@
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential sandbox kills */
 /* eslint-disable no-await-in-loop */
-/* oxlint-disable eslint(no-await-in-loop) */
 'use node'
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import { internalAction } from './_generated/server'
 import { killSandbox } from './sandboxClient'
+
 const KILL_NOT_FOUND_RE = /404|not.{0,3}found|no such/iu
 const killOne = async (sandboxId: string): Promise<{ done: boolean; reason?: string }> => {
   try {

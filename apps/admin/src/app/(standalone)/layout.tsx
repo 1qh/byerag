@@ -7,6 +7,7 @@ import { Authenticated, AuthLoading, Unauthenticated, useQuery } from 'convex/re
 import { Source_Serif_4 } from 'next/font/google'
 import Link from 'next/link'
 import { AdminSidebarNav } from '../../sidebar-nav'
+
 const brandFont = Source_Serif_4({ subsets: ['vietnamese'] })
 const SidebarAccount = (): null | React.ReactElement => {
   const user = useQuery(api.chats.currentUser, {})

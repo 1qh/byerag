@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server'
 import { describe, expect, test } from 'bun:test'
 import { proxy } from './proxy'
+
 const makeReq = (url = 'https://example.com/'): NextRequest => {
   const init = new Request(url, { headers: { 'x-existing': 'preserved' } })
   return init as unknown as NextRequest

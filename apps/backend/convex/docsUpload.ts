@@ -1,8 +1,5 @@
 /* eslint-disable no-await-in-loop */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops */
-/** biome-ignore-all lint/nursery/noContinue: control flow shape */
-/** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
-/* oxlint-disable eslint(no-await-in-loop), eslint(complexity), eslint(no-shadow), eslint(no-unused-vars), eslint(no-sequences), unicorn(no-array-reduce), unicorn(prefer-ternary) */
 /** biome-ignore-all lint/style/noProcessEnv: clamav host env */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: CLAMAV_HOST optional */
 /** biome-ignore-all lint/suspicious/useAwait: scanBytes wraps net.Socket callback in Promise */
@@ -14,6 +11,7 @@ import type { Id } from './_generated/dataModel'
 import { internal } from './_generated/api'
 import { internalAction } from './_generated/server'
 import { canonicalizeEmail } from './authHelpers'
+
 const ALLOWED_MIMES = new Set<string>([
   'application/epub+zip',
   'application/pdf',

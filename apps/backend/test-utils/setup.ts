@@ -1,10 +1,6 @@
-/** biome-ignore-all lint/complexity/useLiteralKeys: env bracket access */
-/** biome-ignore-all lint/suspicious/useAwait: re-exports convex-test thenables */
 /** biome-ignore-all lint/suspicious/noMisplacedAssertion: test-utils wraps expect */
-/** biome-ignore-all lint/performance/noDelete: env cleanup */
 /** biome-ignore-all lint/style/noProcessEnv: test env */
 /* eslint-disable func-style, @typescript-eslint/max-params */
-/* oxlint-disable eslint(func-style), eslint(max-params) */
 import type { TestConvex } from 'convex-test'
 import { setHermeticAdapter } from '@a/cli'
 import { describe, expect } from 'bun:test'
@@ -12,6 +8,7 @@ import type schema from '../convex/schema'
 import type { ToolTable, Wrapped } from '../convex/tools/generated/toolCallers'
 import { fnByPath } from '../convex/tools/generated/toolCallers'
 import { makeTest } from './convex'
+
 type GenericOps = Record<string, { payload: unknown; response: unknown }>
 const ADMIN_AUTH = { mode: 'admin', owner: 'test', tier: 'admin' } as const
 const USER_AUTH = { mode: 'token', owner: 'test', tier: 'user' } as const

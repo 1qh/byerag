@@ -6,6 +6,7 @@ import { useCallback } from 'react'
 import { toast } from 'sonner'
 import { useApp } from '../app-context'
 import { FileUploadProvider } from './composer-extras-context'
+
 const ChatFileUploadProvider = ({ children }: { children: ReactNode }): React.ReactElement => {
   const genUrl = useMutation(api.docs.generateUploadUrl)
   const finalize = useAction(api.docs.upload)

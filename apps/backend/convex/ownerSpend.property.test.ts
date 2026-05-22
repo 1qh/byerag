@@ -1,7 +1,7 @@
-/* oxlint-disable eslint(no-await-in-loop) */
 import { afterEach, describe, expect, test } from 'bun:test'
 import { makeTest } from '../test-utils/convex'
 import { internal } from './_generated/api'
+
 const DAILY_CENTS_CAP = 2500
 const MAX_INFLIGHT_PER_OWNER = 8
 const realDateNow = Date.now.bind(Date)

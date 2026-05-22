@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { createStepSink } from './builder'
+
 describe(createStepSink, () => {
   it('step() appends to steps in order', () => {
     const s = createStepSink()

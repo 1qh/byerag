@@ -3,6 +3,7 @@
 /* eslint-disable no-console, no-continue */
 import { Glob } from 'bun'
 import { join } from 'node:path'
+
 const CONVEX_DIR = join(import.meta.dir, '..', 'convex')
 const VALID_PATH_SEGMENT = /^[A-Za-z_][A-Za-z0-9_.]*$/u
 const errors: string[] = []

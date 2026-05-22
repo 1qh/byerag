@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { AgentSubtype, StreamEvent } from './streamProtocol'
 import { agentEventEnvelope, errorEventEnvelope, streamEvent } from './streamProtocol'
+
 const protocolSrc = readFileSync(join(import.meta.dir, 'streamProtocol.ts'), 'utf8')
 const TYPE_LITERAL_RE = /z\.literal\('(?<t>[a-z_]+)'\)/gu
 const extractTypes = (src: string): Set<string> => {

@@ -3,6 +3,7 @@ import { arrayBufferToBase64, base64ToBytes } from './binary'
 import { groupByTime } from './chat-grouping'
 import { errorMessage } from './error-message'
 import { flagEmoji } from './flag'
+
 const DAY = 24 * 60 * 60 * 1000
 describe('groupByTime', () => {
   test('buckets chats by age + orders newest first within bucket', () => {

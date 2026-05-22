@@ -1,5 +1,6 @@
 import type { Step } from './builder'
 import { ToolError } from './error'
+
 interface Called<T> {
   result: T
   steps: readonly Step[]

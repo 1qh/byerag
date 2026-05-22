@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, test } from 'bun:test'
 import { useDraft } from './use-draft'
+
 afterEach(() => {
   globalThis.localStorage.clear()
 })

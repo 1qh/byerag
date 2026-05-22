@@ -2,7 +2,6 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: test fake — mirrors convex/react surface */
 /** biome-ignore-all lint/style/noProcessEnv: debug toggle */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: debug toggle */
-/** biome-ignore-all lint/suspicious/useAwait: async signature matching convex/react */
 interface FakeChat {
   _id: string
   streaming?: boolean

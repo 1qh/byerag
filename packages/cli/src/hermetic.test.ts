@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'bun:test'
 import { hermeticTry, setHermeticAdapter } from './hermetic'
+
 afterEach(() => setHermeticAdapter(null))
 describe('hermetic adapter', () => {
   it('returns undefined when no adapter set', () => {

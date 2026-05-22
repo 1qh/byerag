@@ -1,16 +1,10 @@
 #!/usr/bin/env bun
-/** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
-/** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
-/* oxlint-disable eslint(no-await-in-loop), eslint(no-shadow), eslint(no-unused-expressions), eslint(max-params), eslint(no-unused-vars), unicorn(prefer-native-coercion-functions) */
-/** biome-ignore-all lint/performance/useTopLevelRegex: scoped regex ok */
-/** biome-ignore-all lint/style/useExplicitLengthCheck: idiomatic */
 /* eslint-disable no-console, @typescript-eslint/max-params */
-/** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
-/** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
 import { ConvexHttpClient } from 'convex/browser'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { api } from '../convex/_generated/api'
+
 const ENV_LINE = /^\s*(?<key>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?<val>.*?)\s*$/u
 const parseEnv = (text: string): Record<string, string> => {
   const out: Record<string, string> = {}

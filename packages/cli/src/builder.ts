@@ -3,6 +3,7 @@ import type { Infer, PropertyValidators, Validator } from 'convex/values'
 import { v } from 'convex/values'
 import type { ArgSpec, ArgSpecs, CostClass, ToolMeta } from './types'
 import { toDispatchError, ToolError } from './error'
+
 interface ArgStringFn {
   <const A extends readonly string[] = readonly []>(
     opts: StringOptsBase<A> & { optional?: false }

@@ -1,6 +1,5 @@
 /** biome-ignore-all lint/suspicious/noControlCharactersInRegex: intentional security sanitization */
 /* eslint-disable no-control-regex, @typescript-eslint/max-params */
-/* oxlint-disable eslint(max-params), eslint(no-control-regex) */
 'use node'
 import type { GenericActionCtx } from 'convex/server'
 import { v } from 'convex/values'
@@ -20,6 +19,7 @@ import {
 } from './constants'
 import { connectSandbox } from './sandboxClient'
 import { log } from './utils'
+
 const MULTI_SLASH_RE = /\/+/gu
 const TRAILING_SLASH_RE = /\/$/u
 const INVALID_PATH_CHARS_RE = /[;|&`$(){}'"\\\u0000-\u001F\u007F]/u

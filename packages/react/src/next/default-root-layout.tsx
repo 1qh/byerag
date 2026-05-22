@@ -1,6 +1,7 @@
 import type { ComponentType, ReactNode } from 'react'
 import { cn } from '@a/ui'
 import { mono, sans } from './fonts'
+
 const DefaultRootLayout = ({
   Providers,
   children

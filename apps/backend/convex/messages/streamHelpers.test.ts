@@ -1,7 +1,7 @@
-/* oxlint-disable eslint(no-await-in-loop) */
 import { describe, expect, test } from 'bun:test'
 import type { UsageReport } from './streamHelpers'
 import { boundedBody, computeActualCents, sseCostTap, withCancelHook } from './streamHelpers'
+
 const enc = new TextEncoder()
 const streamFromChunks = (chunks: (string | Uint8Array)[]): ReadableStream<Uint8Array> =>
   new ReadableStream<Uint8Array>({

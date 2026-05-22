@@ -1,14 +1,8 @@
-/* oxlint-disable eslint(no-unused-vars) */
-/** biome-ignore-all lint/nursery/noContinue: control flow shape */
-/** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
-/** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
-/** biome-ignore-all lint/performance/useTopLevelRegex: scoped regex ok */
-/** biome-ignore-all lint/style/useExplicitLengthCheck: idiomatic */
-/** biome-ignore-all lint/correctness/noUnusedVariables: pending feature */
 import { v } from 'convex/values'
 import type { MutationCtx } from './_generated/server'
 import { internalMutation } from './_generated/server'
 import { computeActualCents } from './messages/streamHelpers'
+
 const dayKey = (epochMs: number): string => {
   const d = new Date(epochMs)
   const y = d.getUTCFullYear()

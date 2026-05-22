@@ -1,8 +1,8 @@
 /* oxlint-disable unicorn/no-useless-promise-resolve-reject */
-/** biome-ignore-all lint/suspicious/useAwait: Convex httpAction handler signature */
 import { jsonRes } from '@a/cli'
 import { httpAction } from '../../_generated/server'
 import { REGISTRY } from '../generated/registry'
+
 const SKILL_VERSION = 1
 const PREAMBLE = [
   '---',

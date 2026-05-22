@@ -29,6 +29,7 @@ import { api } from 'backend/convex/_generated/api'
 import { useAction, useMutation, useQuery } from 'convex/react'
 import { useEffect, useId, useRef, useState } from 'react'
 import { toast } from 'sonner'
+
 const ACTIONS_TRIGGER = <Button aria-label='Topic actions' size='icon-sm' variant='ghost' />
 const DEPARTMENTS = ['Safety, Health and Environment'] as const
 const WEEKDAYS = [
@@ -336,7 +337,7 @@ const TrainingPage = (): React.ReactElement => {
                 ? 'continuously (every few min)'
                 : next === null
                   ? `${hourStr.padStart(2, '0')}:00 VN`
-                  : `${fmtVN(next)}`
+                  : fmtVN(next)
             const last = hasLast ? `${fmtVN(lastMs)} (${relTime(lastMs)})` : 'not yet run'
             return (
               <span

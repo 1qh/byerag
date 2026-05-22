@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { didYouMean, parseFlags } from './parser'
+
 describe(parseFlags, () => {
   it('--key value form', () => {
     expect(parseFlags(['--query', 'inception'])).toStrictEqual({ args: { query: 'inception' }, positional: [] })

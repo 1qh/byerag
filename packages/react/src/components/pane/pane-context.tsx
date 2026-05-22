@@ -1,6 +1,7 @@
 'use client'
 import type { ReactNode } from 'react'
 import { createContext, use, useCallback, useMemo, useState } from 'react'
+
 const GROUP_WINDOW_MS = 500
 interface DraftedLine {
   addedAt: number

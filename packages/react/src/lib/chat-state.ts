@@ -1,5 +1,6 @@
 import type { Id } from 'backend/convex/_generated/dataModel'
 import type { UIMessage } from './ui-messages'
+
 type ChatIdOrNull = Id<'chats'> | null
 type ChatState =
   | { assistantHasText: boolean; chatId: Id<'chats'>; kind: 'streaming' }

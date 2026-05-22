@@ -1,4 +1,5 @@
 import { v } from 'convex/values'
+
 const AUTH_MODES = v.union(v.literal('admin'), v.literal('dev'), v.literal('sandbox'), v.literal('token'))
 const AUTH_TIERS = v.union(v.literal('admin'), v.literal('user'))
 const AUTH_VALIDATOR = v.object({

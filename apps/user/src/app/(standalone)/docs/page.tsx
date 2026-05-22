@@ -6,6 +6,7 @@ import { api } from 'backend/convex/_generated/api'
 import { useQuery } from 'convex/react'
 import { FileText } from 'lucide-react'
 import { useState } from 'react'
+
 const clampW = (n: number): number => Math.min(640, Math.max(240, n))
 interface DocRow {
   _id: Id<'docs'>

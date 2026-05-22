@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { PendingText } from './chat-state'
 import { filterLivePending, routeChatId, validCreatedChatId } from './chat-state'
+
 const CHAT_A = 'chat-a' as Id<'chats'>
 const CHAT_B = 'chat-b' as Id<'chats'>
 describe('routeChatId', () => {

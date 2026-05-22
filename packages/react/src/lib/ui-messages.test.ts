@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import type { ChatChunk } from '../parsers/chunks'
 import { chunksToMessages } from './ui-messages'
+
 describe('chunksToMessages', () => {
   test('empty → empty', () => {
     expect(chunksToMessages([])).toEqual([])

@@ -4,6 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { APPS } from './convex/apps/manifest'
+
 const skillsByApp: Record<string, Record<string, string>> = {}
 for (const [id, app] of Object.entries(APPS)) skillsByApp[id] = app.skills
 const rawSrc = await file('sandbox/run.ts').text()

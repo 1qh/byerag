@@ -1,9 +1,9 @@
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB deletes */
 /* eslint-disable no-await-in-loop */
-/* oxlint-disable eslint(no-await-in-loop) */
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import { internalMutation, internalQuery } from './_generated/server'
+
 const SANDBOX_TTL_MS = 24 * 60 * 60 * 1000
 const STALE_REPLACE_MS = 60 * 60 * 1000
 const lastActivity = (row: { _creationTime: number; lastUsedAt?: number }): number => row.lastUsedAt ?? row._creationTime

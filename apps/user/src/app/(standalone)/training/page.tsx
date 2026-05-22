@@ -5,6 +5,7 @@ import { api } from 'backend/convex/_generated/api'
 import { useMutation, useQuery } from 'convex/react'
 import { useState } from 'react'
 import { toast } from 'sonner'
+
 const POOL_MIN = 5
 const fmtVN = (ms: number): string => {
   const v = new Date(ms + 7 * 3_600_000)
@@ -75,7 +76,10 @@ const TrainingPage = (): React.ReactElement => {
                         <p className='mt-1 text-xs'>
                           <span className='text-muted-foreground'>Assigned {fmtVN(m.assignedAtMs)}</span>
                           {' · '}
-                          <span className={overdue ? 'font-medium text-yellow-700 dark:text-yellow-400' : 'text-muted-foreground'}>
+                          <span
+                            className={
+                              overdue ? 'font-medium text-yellow-700 dark:text-yellow-400' : 'text-muted-foreground'
+                            }>
                             Deadline {fmtVN(m.deadlineMs)}
                             {overdue ? ' (overdue)' : ''}
                           </span>

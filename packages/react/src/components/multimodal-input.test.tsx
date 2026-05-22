@@ -1,6 +1,7 @@
 import { fireEvent, render } from '@testing-library/react'
 import { describe, expect, mock, test } from 'bun:test'
 import { MultimodalInput } from './multimodal-input'
+
 const noop = (): void => {
   /* Empty */
 }

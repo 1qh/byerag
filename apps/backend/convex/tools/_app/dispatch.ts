@@ -1,7 +1,6 @@
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential DB deletes */
 /* eslint-disable no-await-in-loop, complexity */
 import type { DispatchError, RegistryEntry } from '@a/cli'
-/* oxlint-disable eslint(no-await-in-loop), eslint(complexity) */
 import type { FunctionReference } from 'convex/server'
 import {
   buildTree,
@@ -28,6 +27,7 @@ import { constantTimeEqual, log } from '../../utils'
 import { PROVIDERS, REGISTRY } from '../generated/registry'
 import { cliTokenAuth } from './cliAuth'
 import { MENTION_RE } from './mentionResolver'
+
 const ID_ARG_RE = /id$/iu
 const visibleToTier = (tier: ResolvedAuth['tier']) => (entry: RegistryEntry) => {
   if (tier === 'admin') return true

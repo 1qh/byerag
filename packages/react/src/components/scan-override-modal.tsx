@@ -4,6 +4,7 @@ import { api } from 'backend/convex/_generated/api'
 import { useMutation } from 'convex/react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
+
 interface ScanOverrideModalProps {
   docId: string
   filename: string

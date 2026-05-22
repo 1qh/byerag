@@ -1,6 +1,7 @@
 'use client'
 import { Reasoning, ReasoningContent, ReasoningTrigger } from '@a/ui/components/ai-elements/reasoning'
 import { Shimmer } from '@a/ui/components/ai-elements/shimmer'
+
 const SENTENCE_END_RE = /[.!?] /u
 const WS_RE = /\s+/gu
 const LEADING_WS_RE = /^\s+/u

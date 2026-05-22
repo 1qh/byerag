@@ -2,6 +2,7 @@ import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
 import { internalMutation } from './_generated/server'
+
 const STREAM_EVENT_HARD_CAP = 5000
 const PROXY_CALLS_PER_TURN_CAP = 200
 const getRuntime = async (ctx: MutationCtx | QueryCtx, chatId: Id<'chats'>) =>

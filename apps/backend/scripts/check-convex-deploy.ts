@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 /** biome-ignore-all lint/style/noProcessEnv: deploy creds */
-/** biome-ignore-all lint/nursery/noUndeclaredEnvVars: deploy creds */
 /* eslint-disable no-console */
 import { $ } from 'bun'
+
 const url = process.env.CONVEX_SELF_HOSTED_URL
 const adminKey = process.env.CONVEX_SELF_HOSTED_ADMIN_KEY
 if (!(url && adminKey)) {

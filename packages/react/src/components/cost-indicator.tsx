@@ -1,6 +1,7 @@
 'use client'
 import { parseWithCache } from '@a/react/parsers'
 import { useMemo } from 'react'
+
 const sumCost = (events: { content: string }[]): number => {
   let total = 0
   for (const e of events) {

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
+
 const keyFor = (chatId: null | string): string => `draft-${chatId ?? 'new'}`
 const QUOTA_SENTINEL = 'draft-quota-warned'
 const hasWarnedQuota = (): boolean => {

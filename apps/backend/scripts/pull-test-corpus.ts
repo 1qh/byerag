@@ -1,18 +1,13 @@
 #!/usr/bin/env bun
 /* eslint-disable no-useless-assignment */
-/** biome-ignore-all lint/nursery/noContinue: control flow shape */
-/** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
 /** biome-ignore-all lint/performance/useTopLevelRegex: scoped regex ok */
 /** biome-ignore-all lint/style/useExplicitLengthCheck: idiomatic */
-/** biome-ignore-all lint/correctness/noUnusedVariables: pending feature */
 /* eslint-disable no-console, no-await-in-loop */
-/* oxlint-disable eslint(no-await-in-loop) */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
-/** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
-/** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+
 const ENV_LINE = /^\s*(?<key>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?<val>.*?)\s*$/u
 const parseEnv = (text: string): Record<string, string> => {
   const out: Record<string, string> = {}

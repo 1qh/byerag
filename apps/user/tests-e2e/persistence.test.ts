@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, setDefaultTimeout, test } from 'bun:test'
 import { fresh, killAllSandboxes, listMessages, sendMessage, waitFor } from './helpers'
+
 setDefaultTimeout(5 * 60 * 1000)
 beforeAll(async () => {
   await killAllSandboxes()

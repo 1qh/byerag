@@ -2,6 +2,7 @@ import { renderHook } from '@a/react/test-utils/render'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { resetFakeConvex, setFakeStore } from '../test-utils/fake-convex'
 import { useStreamingTitle } from './use-streaming-title'
+
 const originalTitle = 'test-app'
 beforeEach(() => {
   resetFakeConvex()

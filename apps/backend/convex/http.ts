@@ -6,6 +6,7 @@ import { deviceInit, devicePoll, tokensRevoke } from './tools/_app/cliAuth'
 import { exec as cliExec, manifestHttp as cliManifest } from './tools/_app/dispatch'
 import { skillHttp } from './tools/_app/skill'
 import { execStreamHttp, streamHttp } from './tools/_app/stream'
+
 const http = httpRouter()
 auth.addHttpRoutes(http)
 http.route({ handler: cliManifest, method: 'POST', path: '/api/cli/manifest' })

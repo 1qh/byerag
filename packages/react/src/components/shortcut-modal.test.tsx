@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render } from '@testing-library/react'
 import { afterEach, describe, expect, test } from 'bun:test'
 import { ShortcutModal } from './shortcut-modal'
+
 afterEach(() => {
   cleanup()
 })

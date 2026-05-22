@@ -1,7 +1,8 @@
-/* oxlint-disable eslint-plugin-react-perf(jsx-no-new-array-as-prop), react-perf/jsx-no-new-array-as-prop, react-perf/jsx-no-new-object-as-prop */
+/* oxlint-disable eslint-plugin-react-perf(jsx-no-new-array-as-prop), react-perf/jsx-no-new-array-as-prop */
 import { render } from '@testing-library/react'
 import { describe, expect, test } from 'bun:test'
 import { CostIndicator } from './cost-indicator'
+
 const result = (costUsd: number): string =>
   JSON.stringify({
     duration_ms: 1,

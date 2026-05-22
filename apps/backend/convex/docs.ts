@@ -1,16 +1,13 @@
 /* eslint-disable no-await-in-loop, no-continue */
 /** biome-ignore-all lint/nursery/noContinue: control flow shape */
-/** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
-/** biome-ignore-all lint/performance/useTopLevelRegex: scoped regex ok */
-/** biome-ignore-all lint/style/useExplicitLengthCheck: idiomatic */
-/** biome-ignore-all lint/correctness/noUnusedVariables: pending feature */
 /** biome-ignore-all lint/nursery/noPlaywrightUselessAwait: Convex .first() is thenable */
 import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
 import { internal } from './_generated/api'
 import { action, internalMutation, internalQuery, mutation, query } from './_generated/server'
 import { requireOwnerEmail } from './authHelpers'
+
 interface DocRow {
   _id: Id<'docs'>
   filename: string
@@ -205,12 +202,7 @@ const getRowsSnippet = internalQuery({
     const out: RowSnippet[] = []
     for (const id of ids) {
       const row = await ctx.db.get(id)
-      if (
-        row &&
-        row.deletedAt === undefined &&
-        row.scanStatus === 'clean' &&
-        row.policyStatus === 'approved'
-      )
+      if (row && row.deletedAt === undefined && row.scanStatus === 'clean' && row.policyStatus === 'approved')
         out.push({
           _id: row._id,
           filename: row.filename,
@@ -282,12 +274,7 @@ const getChunkRows = internalQuery({
       const row = await ctx.db.get(id)
       if (!row) continue
       const parent = await ctx.db.get(row.docId)
-      if (
-        parent &&
-        parent.deletedAt === undefined &&
-        parent.scanStatus === 'clean' &&
-        parent.policyStatus === 'approved'
-      )
+      if (parent && parent.deletedAt === undefined && parent.scanStatus === 'clean' && parent.policyStatus === 'approved')
         out.push({ _id: row._id, docId: row.docId, seq: row.seq, text: row.text })
     }
     return out

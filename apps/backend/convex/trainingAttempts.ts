@@ -1,9 +1,8 @@
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops */
-/** biome-ignore-all lint/nursery/noContinue: control flow shape */
-/** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
-/* oxlint-disable eslint(no-await-in-loop), eslint(complexity), eslint(no-shadow), eslint(no-unused-vars), eslint(no-sequences), unicorn(no-array-reduce), unicorn(prefer-ternary), eslint(max-params) */
+/* oxlint-disable eslint(no-await-in-loop) */
 import { v } from 'convex/values'
 import { mutation, query } from './_generated/server'
+
 const REQUIRED_PER_ATTEMPT = 5
 const POOL_MIN = 5
 const shuffle = <T>(arr: T[]): T[] => {

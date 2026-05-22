@@ -1,4 +1,5 @@
 import { arg, defineQuery } from '../_api'
+
 const SCOPES = ['shared', 'mine', 'both'] as const
 const action = defineQuery({
   args: {

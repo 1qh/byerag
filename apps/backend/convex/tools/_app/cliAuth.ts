@@ -1,4 +1,3 @@
-/** biome-ignore-all lint/suspicious/useAwait: handler signature required by Convex */
 import { errorRes, jsonRes } from '@a/cli'
 import { v } from 'convex/values'
 import type { Doc, Id } from '../../_generated/dataModel'
@@ -7,6 +6,7 @@ import type { ResolvedAuth } from './auth'
 import { internal } from '../../_generated/api'
 import { httpAction, internalMutation, internalQuery, mutation, query } from '../../_generated/server'
 import { hashSecret } from '../../secretHash'
+
 const DEVICE_CODE_TTL_MS = 10 * 60 * 1000
 const POLL_INTERVAL_MS = 5000
 const findCliTokenByHash = async (ctx: MutationCtx | QueryCtx, tokenHash: string): Promise<Doc<'cliTokens'> | null> =>

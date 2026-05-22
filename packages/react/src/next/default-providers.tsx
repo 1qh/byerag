@@ -1,5 +1,4 @@
 /** biome-ignore-all lint/style/noProcessEnv: Next.js NEXT_PUBLIC_* env read at client boundary */
-/** biome-ignore-all lint/nursery/noUndeclaredEnvVars: NEXT_PUBLIC_CONVEX_URL */
 'use client'
 import type { ReactNode } from 'react'
 import { Toaster } from '@a/ui/components/sonner'
@@ -15,6 +14,7 @@ import { DocSheetProvider } from '../components/doc-sheet-context'
 import { PaneProvider } from '../components/pane/pane-context'
 import { VerbosityProvider } from '../lib'
 import { MessagePartRegistry, ToolCardProvider } from '../registries'
+
 const envUrl = process.env.NEXT_PUBLIC_CONVEX_URL ?? ''
 const convex = envUrl ? new ConvexReactClient(envUrl) : null
 const ConfigError = () => (

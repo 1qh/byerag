@@ -2,6 +2,7 @@ import { setHermeticAdapter } from '@a/cli'
 import { afterEach, describe, expect, it } from 'bun:test'
 import { makeTest } from '../../../test-utils/convex'
 import { internal } from '../../_generated/api'
+
 afterEach(() => {
   setHermeticAdapter(null)
 })

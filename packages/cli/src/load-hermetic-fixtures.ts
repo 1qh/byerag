@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { setHermeticAdapter } from './hermetic'
+
 type FixtureMap = Record<string, unknown>
 interface FixtureRule {
   match?: string

@@ -12,6 +12,7 @@ import { toast } from 'sonner'
 import type { MentionItem } from './mention-autocomplete'
 import { activeMentionAt } from '../hooks/use-mention-parser'
 import { MentionAutocomplete } from './mention-autocomplete'
+
 interface MultimodalInputProps {
   attachments: UploadedFile[]
   focusTick?: number

@@ -1,8 +1,8 @@
-/* oxlint-disable eslint(no-await-in-loop) */
 /* eslint-disable no-console */
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { makeTest } from '../../test-utils/convex'
 import { hashSecret } from '../secretHash'
+
 const enc = new TextEncoder()
 const realFetch = globalThis.fetch
 const realApiKey = process.env.ANTHROPIC_API_KEY

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/only-throw-error -- fail() returns never (throws ToolError internally); rule misclassifies */
 import { arg, defineQuery, makeFail } from '../_api'
+
 const SCOPES = ['shared', 'mine', 'both'] as const
 const MAX_HITS = 200
 const SNIPPET_CHARS = 160

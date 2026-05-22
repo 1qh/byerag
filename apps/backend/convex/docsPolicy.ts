@@ -1,11 +1,4 @@
-/* oxlint-disable eslint(no-unused-vars) */
-/** biome-ignore-all lint/nursery/noContinue: control flow shape */
-/** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
-/** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
 /** biome-ignore-all lint/performance/useTopLevelRegex: scoped regex ok */
-/** biome-ignore-all lint/style/useExplicitLengthCheck: idiomatic */
-/** biome-ignore-all lint/correctness/noUnusedVariables: pending feature */
-/** biome-ignore-all lint/suspicious/useAwait: fetch chain */
 'use node'
 import { v } from 'convex/values'
 import type { ActionCtx } from './_generated/server'
@@ -13,6 +6,7 @@ import { internal } from './_generated/api'
 import { internalAction } from './_generated/server'
 import { env } from './env'
 import { CORPUS_POLICY_DEFAULT } from './settings'
+
 const MAX_PROMPT_CHARS = 4000
 const KIMI_TIMEOUT_MS = 30_000
 const POLICY_CATEGORIES = new Set(['abusive', 'off-topic', 'on-topic', 'promotional', 'prompt-injection', 'spam'])

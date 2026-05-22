@@ -1,11 +1,7 @@
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops */
-/** biome-ignore-all lint/nursery/noContinue: control flow shape */
-/** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
-/* oxlint-disable eslint(no-await-in-loop), eslint(complexity), eslint(no-shadow), eslint(no-unused-vars), eslint(no-sequences), unicorn(no-array-reduce), unicorn(prefer-ternary), eslint(max-params) */
 /** biome-ignore-all lint/style/noProcessEnv: TEST_SECRET standalone test env */
 /** biome-ignore-all lint/complexity/useLiteralKeys: env bracket */
 /* eslint-disable @typescript-eslint/dot-notation, no-await-in-loop */
-/* oxlint-disable eslint(dot-notation), eslint(no-await-in-loop) */
 'use node'
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
@@ -13,6 +9,7 @@ import { action } from './_generated/server'
 import { embedQuery, matryoshkaTruncate } from './docsEmbed'
 import { killSandbox, listSandboxIds } from './sandboxClient'
 import { constantTimeEqual } from './utils'
+
 const verifyTestSecret = (secret: string) => {
   // biome-ignore lint/nursery/noUndeclaredEnvVars: NODE_ENV=test (in-process bun:test) OR ALLOW_TESTING_ENDPOINTS=1 (real backend opt-in)
   const allowed = process.env['NODE_ENV'] === 'test' || process.env['ALLOW_TESTING_ENDPOINTS'] === '1'

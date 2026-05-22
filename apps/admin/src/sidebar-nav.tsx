@@ -1,10 +1,10 @@
 'use client'
+import type { LucideIcon } from 'lucide-react'
 import {
   ClipboardList,
   FileText,
   GraduationCap,
   LayoutDashboard,
-  type LucideIcon,
   ScrollText,
   ShieldAlert,
   ShieldCheck,
@@ -12,6 +12,7 @@ import {
   Users
 } from 'lucide-react'
 import Link from 'next/link'
+
 const LINKS: { href: string; icon: LucideIcon; label: string }[] = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/docs', icon: FileText, label: 'Docs' },

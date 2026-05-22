@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { assert, constantFrom, domain, emailAddress, property, string, stringMatching, webUrl } from 'fast-check'
 import { canonicalizeEmail, validateRedirectTo } from './authHelpers'
+
 const allowedOrigins = new Set(['http://localhost:3000', 'https://app.example.com'])
 const primarySite = 'https://app.example.com'
 describe('validateRedirectTo — fuzz', () => {

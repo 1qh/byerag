@@ -1,10 +1,10 @@
-/* oxlint-disable eslint(no-await-in-loop) */
 import { describe, expect, test } from 'bun:test'
 import type { Id } from './_generated/dataModel'
 import { makeTest } from '../test-utils/convex'
 import { authed } from '../test-utils/messages-helpers'
 import { internal } from './_generated/api'
 import { hashSecret } from './secretHash'
+
 const seedExistingChat = async (
   t: ReturnType<typeof makeTest>,
   owner: string,

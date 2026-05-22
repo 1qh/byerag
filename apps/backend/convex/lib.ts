@@ -1,11 +1,11 @@
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB deletes */
 /** biome-ignore-all lint/suspicious/noControlCharactersInRegex: intentional security sanitization */
 /* eslint-disable no-await-in-loop, no-control-regex */
-/* oxlint-disable eslint(no-await-in-loop), eslint(no-control-regex) */
 import { v } from 'convex/values'
 import type { QueryCtx } from './_generated/server'
 import { internal } from './_generated/api'
 import { internalMutation, internalQuery, mutation, query } from './_generated/server'
+
 const RE_CONTROL_ASCII = /[\u0000-\u0009\u000B\u000C\u000E-\u001F\u007F]/gu
 const RE_NEWLINES = /[\n\r\u0085\u2028\u2029]/gu
 const RE_HTML_TAGS = /<[^>]*>/gu

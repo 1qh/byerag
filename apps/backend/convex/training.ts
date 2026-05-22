@@ -1,11 +1,13 @@
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops by design */
 /** biome-ignore-all lint/nursery/noContinue: control flow shape */
 /** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
-/* oxlint-disable eslint(no-await-in-loop), eslint(complexity), eslint(no-shadow), unicorn(no-array-reduce), unicorn(prefer-ternary) */
+/* oxlint-disable eslint(no-shadow) */
 /* eslint-disable no-await-in-loop, complexity, no-continue -- sequential Convex DB ops by design; control flow shape; widened types from generated API */
 import { v } from 'convex/values'
+import type { Id } from './_generated/dataModel'
 import { internal } from './_generated/api'
 import { action, internalAction, internalMutation, internalQuery, mutation, query } from './_generated/server'
+
 const AGENT_OWNER = 'agent'
 const POOL_MIN = 5
 const insertAuto = internalMutation({
@@ -280,9 +282,9 @@ const persistSuggestionsWithEmbedding = internalMutation({
         .take(500)
     ).map(t => ({ centroid: t.centroid ?? null, count: 0, id: t._id, name: t.name }))
     for (const q of questions) {
-      let topicId: string | undefined
+      let topicId: Id<'topics'> | undefined
       if (q.promptEmbedding.length > 0) {
-        let best: null | { id: string; sim: number } = null
+        let best: null | { id: Id<'topics'>; sim: number } = null
         for (const t of liveTopics) {
           if (!t.centroid || t.centroid.length === 0) continue
           const sim = cosine(t.centroid, q.promptEmbedding)
@@ -357,7 +359,7 @@ const persistSuggestionsWithEmbedding = internalMutation({
         promptEmbedding: q.promptEmbedding.length > 0 ? q.promptEmbedding : undefined,
         sourceDocIds: [docId],
         status: 'pending',
-        topicId: topicId as never
+        topicId
       })
       if (q.promptEmbedding.length > 0) {
         const peers = await ctx.db
@@ -907,7 +909,7 @@ const assignComposer = mutation({
     const identity = await ctx.auth.getUserIdentity()
     const email = identity?.email?.toLowerCase()
     if (!email) throw new Error('not authenticated')
-    const profile = await ctx.db
+    const profile = ctx.db
       .query('userProfiles')
       .withIndex('by_userId', q => q.eq('userId', email))
       .first()

@@ -1,11 +1,4 @@
 /* eslint-disable @typescript-eslint/no-deprecated */
-/** biome-ignore-all lint/nursery/noContinue: control flow shape */
-/** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
-/** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
-/** biome-ignore-all lint/performance/useTopLevelRegex: scoped regex ok */
-/** biome-ignore-all lint/style/useExplicitLengthCheck: idiomatic */
-/** biome-ignore-all lint/correctness/noUnusedVariables: pending feature */
-/** biome-ignore-all lint/suspicious/useAwait: sandbox lifecycle wraps callbacks */
 'use node'
 import { v } from 'convex/values'
 import { Buffer } from 'node:buffer'
@@ -13,6 +6,7 @@ import { internal } from './_generated/api'
 import { internalAction } from './_generated/server'
 import { EXTRACT_INLINE_MAX_CHARS } from './constants'
 import { createSandbox } from './sandboxClient'
+
 const OCR_TRIGGER_THRESHOLD = 100
 const PDF_TIMEOUT_MS = 60_000
 const OCR_TIMEOUT_MS = 300_000

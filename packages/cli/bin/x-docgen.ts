@@ -1,6 +1,5 @@
 #!/usr/bin/env bun
 /* eslint-disable no-console, no-continue */
-/* oxlint-disable eslint-plugin-unicorn(no-process-exit) */
 /** biome-ignore-all lint/nursery/noContinue: classify-or-skip loop */
 /** biome-ignore-all lint/performance/noAwaitInLoops: small N (apps), fs IO ordered */
 /* eslint-disable no-await-in-loop */
@@ -9,6 +8,7 @@ import { dirname, resolve } from 'node:path'
 import type { ExtractedMeta } from '../src/codegen/extract-meta'
 import { extractMeta } from '../src/codegen/extract-meta'
 import { collect } from '../src/codegen/scan'
+
 const APPS_DIR = resolve(process.cwd(), '../')
 const PROVIDER_PREFIX_RE = /^_/u
 const mdRow = (cells: string[]): string => `| ${cells.join(' | ')} |`

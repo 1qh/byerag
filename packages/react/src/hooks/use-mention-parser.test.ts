@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { activeMentionAt, parseMentions } from './use-mention-parser'
+
 describe('parseMentions', () => {
   test('extracts kind:name tokens', () => {
     expect.hasAssertions()

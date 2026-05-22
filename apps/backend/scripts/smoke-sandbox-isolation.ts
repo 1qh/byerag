@@ -1,8 +1,7 @@
 #!/usr/bin/env bun
 /* eslint-disable no-console, @typescript-eslint/max-params */
-/** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
-/** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
 import { $ } from 'bun'
+
 const SANDBOX_CONTAINER = (await $`docker ps --filter ancestor=byerag-sandbox --format '{{.Names}}'`.text())
   .trim()
   .split('\n')[0]

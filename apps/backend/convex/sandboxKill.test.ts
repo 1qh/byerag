@@ -1,7 +1,7 @@
-/* oxlint-disable eslint(no-await-in-loop) */
 import { describe, expect, test } from 'bun:test'
 import { makeTest } from '../test-utils/convex'
 import { internal } from './_generated/api'
+
 const seedSandbox = async (t: ReturnType<typeof makeTest>, owner: string, sandboxId: string): Promise<void> => {
   await t.run(async ctx => {
     await ctx.db.insert('sandboxes', { lastUsedAt: Date.now(), owner, sandboxId })

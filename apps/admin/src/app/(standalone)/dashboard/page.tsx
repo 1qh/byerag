@@ -5,6 +5,7 @@ import { api } from 'backend/convex/_generated/api'
 import { useQuery } from 'convex/react'
 import Link from 'next/link'
 import { useState } from 'react'
+
 const fmtCents = (cents: number): string => `$${(cents / 100).toFixed(2)}`
 const fmtDelta = (delta: number): string => `${delta >= 0 ? '+' : '−'}${fmtCents(Math.abs(delta))}`
 const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']

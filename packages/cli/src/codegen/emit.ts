@@ -1,10 +1,10 @@
 /** biome-ignore-all lint/nursery/noContinue: control flow */
 /** biome-ignore-all lint/performance/useTopLevelRegex: codegen helpers */
 /* eslint-disable no-continue */
-/* oxlint-disable eslint(max-params) */
 import { relative, resolve } from 'node:path'
 import type { ToolFile } from './scan'
 import type { Extracted, SchemaNode } from './schema'
+
 const relImport = (from: string, to: string): string => {
   const r = relative(from, to).replaceAll('\\', '/')
   return r.startsWith('.') ? r : `./${r}`

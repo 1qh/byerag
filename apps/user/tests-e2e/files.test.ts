@@ -1,6 +1,6 @@
-/** biome-ignore-all lint/nursery/useExpect: setup helper uses throw */
 import { beforeAll, describe, expect, setDefaultTimeout, test } from 'bun:test'
 import { downloadZip, fresh, killAllSandboxes, listFiles, readFile, sendMessage, uploadFile, waitFor } from './helpers'
+
 setDefaultTimeout(5 * 60 * 1000)
 const email = fresh('files')
 let sandboxReady = false
@@ -19,7 +19,7 @@ const toBase64 = (bytes: Uint8Array): string => {
 const fromBase64 = (b64: string): Uint8Array => {
   const binary = atob(b64)
   const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.codePointAt(i)
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.codePointAt(i) ?? 0
   return bytes
 }
 beforeAll(async () => {
@@ -69,7 +69,7 @@ describe('files', () => {
       ['py', 'x = 42'],
       ['go', 'package main'],
       ['rs', 'fn main() {}']
-    ]) {
+    ] as [string, string][]) {
       await uploadFile(email, `/home/user/workspace/file.${ext}`, code)
       const result = await readFile(email, `/home/user/workspace/file.${ext}`)
       expect(result.content.trim()).toBe(code)

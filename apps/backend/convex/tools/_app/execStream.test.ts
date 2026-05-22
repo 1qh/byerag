@@ -1,8 +1,8 @@
-/** biome-ignore-all lint/style/noProcessEnv: test setup */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: test env */
 import { setHermeticAdapter } from '@a/cli'
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import { makeTest } from '../../../test-utils/convex'
+
 beforeEach(() => {
   process.env.ALLOW_DEV_TOKENS = '1'
 })

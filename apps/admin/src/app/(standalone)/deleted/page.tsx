@@ -8,6 +8,7 @@ import { useMutation, useQuery } from 'convex/react'
 import { Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
+
 const clampW = (n: number): number => Math.min(640, Math.max(240, n))
 const fmtVN = (ms: number): string => {
   const v = new Date(ms + 7 * 3_600_000)
@@ -55,8 +56,8 @@ const DeletedDocsPage = (): React.ReactElement => {
           <h1 className='font-semibold text-lg'>Trash</h1>
         </div>
         <p className='border-b p-4 text-muted-foreground text-xs'>
-          Excluded from agent retrieval. Blobs hard-purge 30 days after deletion; restore before then to bring a doc
-          back into the corpus.
+          Excluded from agent retrieval. Blobs hard-purge 30 days after deletion; restore before then to bring a doc back
+          into the corpus.
         </p>
         {rows === undefined ? (
           <div className='p-4 text-muted-foreground text-sm'>Loading…</div>
@@ -71,10 +72,7 @@ const DeletedDocsPage = (): React.ReactElement => {
                   selected === r._id && 'bg-muted'
                 )}
                 key={r._id}>
-                <button
-                  className='min-w-0 flex-1 text-left'
-                  onClick={() => setSelected(r._id)}
-                  type='button'>
+                <button className='min-w-0 flex-1 text-left' onClick={() => setSelected(r._id)} type='button'>
                   <span className='block truncate font-mono'>
                     {r.filename} <span className='text-muted-foreground'>v{r.version}</span>
                   </span>

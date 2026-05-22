@@ -1,13 +1,6 @@
-/* oxlint-disable eslint(no-unused-vars) */
-/** biome-ignore-all lint/nursery/noContinue: control flow shape */
-/** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
-/** biome-ignore-all lint/performance/useTopLevelRegex: scoped regex ok */
-/** biome-ignore-all lint/style/useExplicitLengthCheck: idiomatic */
-/** biome-ignore-all lint/correctness/noUnusedVariables: pending feature */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops */
 /* eslint-disable no-await-in-loop */
-/* oxlint-disable eslint(complexity), eslint(no-await-in-loop) */
 import { z } from 'zod/v4'
 import type { Id } from '../_generated/dataModel'
 import type { MutationCtx } from '../_generated/server'
@@ -18,6 +11,7 @@ import { MAX_CONCURRENT_AGENTS, MAX_CONTENT_LENGTH, STREAMING_TIMEOUT_MS } from 
 import { sanitizeExternal } from '../lib'
 import { generateSecret, hashSecret } from '../secretHash'
 import { constantTimeEqual } from '../utils'
+
 const VALID_SESSION_ID = /^[a-f0-9-]{36}$/u
 const WHITESPACE_RE = /\s+/gu
 const SENTENCE_SPLIT_RE = /[.!?]\s+/u

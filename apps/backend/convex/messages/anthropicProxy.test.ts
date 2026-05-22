@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import { makeTest } from '../../test-utils/convex'
 import { clearStreaming, getSecret, send } from '../../test-utils/messages-helpers'
+
 const originalFetch = globalThis.fetch
 const stubFetch = (fn: typeof globalThis.fetch): void => {
   globalThis.fetch = fn

@@ -4,6 +4,7 @@
 import { $ } from 'bun'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+
 const SCHEMA_PATH = join(import.meta.dir, '..', 'convex', 'schema.ts')
 const head = await $`git show HEAD:apps/backend/convex/schema.ts`
   .cwd(join(import.meta.dir, '..', '..', '..'))

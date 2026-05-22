@@ -1,6 +1,7 @@
 'use client'
 import type { ReactNode } from 'react'
 import { createContext, use, useCallback, useEffect, useMemo, useState } from 'react'
+
 interface Ctx {
   mode: Mode
   toggle: () => void

@@ -1,7 +1,7 @@
-/* oxlint-disable react/no-unstable-nested-components */
 import type { ReactNode } from 'react'
 import { renderHook as renderHookRaw, render as renderRaw } from '@testing-library/react'
 import { AppProvider } from '../app-context'
+
 const Wrapper = ({ children }: { children: ReactNode }) => <AppProvider appId='test'>{children}</AppProvider>
 const render = (
   ui: Parameters<typeof renderRaw>[0],

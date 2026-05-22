@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { describe, expect, mock, test } from 'bun:test'
 import { PaneProvider, usePane } from './pane-context'
+
 describe('PaneProvider + usePane', () => {
   test('throws outside provider', () => {
     expect(() => renderHook(() => usePane())).toThrow('usePane must be used inside <PaneProvider>')

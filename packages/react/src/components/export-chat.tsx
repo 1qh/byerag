@@ -3,6 +3,7 @@ import type { ContentBlock } from 'backend/convex/streamProtocol'
 import { sourceToChunks } from '@a/react/parsers'
 import { Button } from '@a/ui/components/button'
 import { DownloadIcon } from 'lucide-react'
+
 const fenceFor = (s: string): string => {
   const m = s.match(/`{3,}/gu)
   const maxRun = m ? Math.max(...m.map(x => x.length)) : 0

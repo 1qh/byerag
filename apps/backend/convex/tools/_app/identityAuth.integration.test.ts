@@ -1,6 +1,7 @@
 import { setHermeticAdapter } from '@a/cli'
 import { describe, expect, it } from 'bun:test'
 import { makeTest } from '../../../test-utils/convex'
+
 describe('identity-based auth', () => {
   it('issuer=x-cli → admin tier (can call admin tools)', async () => {
     const t = makeTest().withIdentity({ issuer: 'x-cli', subject: 'dev' })

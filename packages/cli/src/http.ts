@@ -1,5 +1,6 @@
 import type { KnownErrorCode } from './error'
 import { makeError } from './error'
+
 const KEBAB_RE = /^[a-z][a-z0-9-]*$/u
 const kebabToSnake = (s: string): string => s.replaceAll('-', '_')
 const jsonRes = (status: number, body: unknown): Response =>

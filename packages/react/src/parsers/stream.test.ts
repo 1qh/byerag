@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { parseMessage, parseStreamEvent } from './stream'
+
 describe('parseMessage', () => {
   test('returns single text block for garbage string', () => {
     expect(parseMessage('not json')).toEqual({ blocks: [{ text: 'not json', type: 'text' }], type: 'unknown' })

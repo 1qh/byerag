@@ -5,12 +5,9 @@
 /* eslint-disable no-continue */
 /* eslint-disable no-await-in-loop, no-console, @typescript-eslint/max-params, @typescript-eslint/prefer-destructuring, @typescript-eslint/prefer-nullish-coalescing */
 import { api } from 'backend/convex/_generated/api'
-/* oxlint-disable eslint(no-await-in-loop) */
-/* oxlint-disable eslint(max-params) */
-/* oxlint-disable eslint-plugin-promise(param-names) */
-/* oxlint-disable unicorn/no-process-exit, eslint-plugin-promise(param-names) */
-/* oxlint-disable eslint(dot-notation) */
+/* oxlint-disable unicorn/no-process-exit */
 import { ConvexHttpClient } from 'convex/browser'
+
 const ENV = process.env as { CONVEX_SELF_HOSTED_URL?: string; TEST_SECRET?: string }
 const URL = ENV.CONVEX_SELF_HOSTED_URL
 if (!URL) {

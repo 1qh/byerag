@@ -1,6 +1,5 @@
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB deletes */
 /* eslint-disable no-await-in-loop */
-/* oxlint-disable eslint(no-await-in-loop) */
 import { v } from 'convex/values'
 import type { Doc } from './_generated/dataModel'
 import { internal } from './_generated/api'
@@ -10,6 +9,7 @@ import { deleteRuntime, resetEventCount } from './chatRuntime'
 import { SEQ_SERVER_ERROR, STREAMING_TIMEOUT_MS } from './constants'
 import { generateSecret, hashSecret } from './secretHash'
 import { errorEventEnvelope } from './streamProtocol'
+
 const stripSecret = (chat: Doc<'chats'>): Omit<Doc<'chats'>, 'secretHash' | 'sessionId' | 'timeoutFunctionId'> => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { secretHash, sessionId, timeoutFunctionId, ...rest } = chat

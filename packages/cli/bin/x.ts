@@ -2,12 +2,11 @@
 /** biome-ignore-all lint/style/noProcessEnv: CLI binary reads env directly */
 /** biome-ignore-all lint/suspicious/noControlCharactersInRegex: sanitize strips control chars */
 /** biome-ignore-all lint/nursery/noContinue: parser skip-lines */
-/** biome-ignore-all lint/nursery/useImportsFirst: grouped by concern */
 /* eslint-disable no-console, no-continue, no-control-regex, @typescript-eslint/no-unnecessary-condition */
-/* oxlint-disable eslint(no-control-regex), eslint(complexity), eslint-plugin-promise(prefer-await-to-callbacks), eslint-plugin-promise(prefer-await-to-then), eslint-plugin-unicorn(prefer-top-level-await), eslint-plugin-import(first) */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { didYouMean, parseFlags } from '../src/parser'
+
 const STRIP_RE = /[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2060-\u2069\uFEFF]/gu
 const KEBAB_RE = /^[a-z][a-z0-9-]*$/u
 const strip = (s: string): string => s.replaceAll(STRIP_RE, '')

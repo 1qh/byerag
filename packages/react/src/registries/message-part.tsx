@@ -2,6 +2,7 @@
 import type { ReactNode } from 'react'
 import { createContext, use } from 'react'
 import type { UIMessage, UIPart } from '../lib'
+
 interface MessagePartCtx {
   isLoading: boolean
   message: UIMessage

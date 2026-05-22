@@ -8,6 +8,7 @@ import { Copy, ThumbsDown, ThumbsUp } from 'lucide-react'
 import { memo, useState } from 'react'
 import { toast } from 'sonner'
 import { useFeedbackCtx } from './feedback-context'
+
 interface ActionsProps {
   chatId?: Id<'chats'> | null
   isLoading: boolean

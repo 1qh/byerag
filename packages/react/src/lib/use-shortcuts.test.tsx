@@ -1,6 +1,7 @@
 import { fireEvent, render } from '@testing-library/react'
 import { describe, expect, test } from 'bun:test'
 import { useShortcuts } from './use-shortcuts'
+
 const Probe = ({ onNewChat, onNext, onPrev }: { onNewChat: () => void; onNext: () => void; onPrev: () => void }) => {
   useShortcuts({ newChat: onNewChat, nextChat: onNext, prevChat: onPrev })
   return null

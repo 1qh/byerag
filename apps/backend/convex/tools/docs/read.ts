@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/only-throw-error -- fail() returns never (throws ToolError internally); rule misclassifies */
 import { arg, defineQuery, makeFail } from '../_api'
+
 const PREVIEW_CHARS = 800
 const action = defineQuery({
   args: {
@@ -28,8 +29,7 @@ const action = defineQuery({
     const row = (await ctx.db.get(args.id as never)) as DocRow | null
     if (!row) throw fail('NOT_FOUND', `doc ${args.id} not found`)
     if (row.deletedAt !== undefined) throw fail('NOT_FOUND', `doc ${args.id} not found`)
-    if (row.scanStatus !== 'clean' || row.policyStatus !== 'approved')
-      throw fail('NOT_FOUND', `doc ${args.id} not found`)
+    if (row.scanStatus !== 'clean' || row.policyStatus !== 'approved') throw fail('NOT_FOUND', `doc ${args.id} not found`)
     if (row.scope === 'mine' && row.owner !== ctx.auth.owner) throw fail('FORBIDDEN', 'doc not in caller scope')
     const text = row.extractedText ?? ''
     return {

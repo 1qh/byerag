@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { toDispatchError, ToolError } from './error'
+
 describe('toDispatchError fallback', () => {
   it('plain Error → INTERNAL_ERROR permanent', () => {
     const d = toDispatchError(new Error('boom'))

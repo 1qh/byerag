@@ -1,6 +1,7 @@
 'use client'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@a/ui/components/dialog'
 import { Fragment, useEffect, useState } from 'react'
+
 const SHORTCUTS: [string, string][] = [
   ['⌘ N', 'New chat'],
   ['⌘ K', 'Open command palette'],

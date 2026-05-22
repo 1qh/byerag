@@ -5,6 +5,7 @@ import type { Id } from 'backend/convex/_generated/dataModel'
 import { Conversation, ConversationContent, ConversationScrollButton } from '@a/ui/components/ai-elements/conversation'
 import { Shimmer } from '@a/ui/components/ai-elements/shimmer'
 import { PreviewMessage } from './message'
+
 interface MessagesProps {
   awaitingAssistant: boolean
   chatId?: Id<'chats'> | null

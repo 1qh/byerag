@@ -3,6 +3,7 @@ import type { Id } from 'backend/convex/_generated/dataModel'
 import { MessageResponse } from '@a/ui/components/ai-elements/message'
 import { api } from 'backend/convex/_generated/api'
 import { useQuery } from 'convex/react'
+
 interface DocViewerProps {
   docId: Id<'docs'>
 }

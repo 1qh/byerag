@@ -1,4 +1,5 @@
 import { arg, defineQuery } from '../_api'
+
 const action = defineQuery({
   args: { limit: arg.number({ default: 50, description: 'Max rows (cap 200)' }) },
   cost: 'low',

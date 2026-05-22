@@ -2,6 +2,7 @@ import { renderHook } from '@testing-library/react'
 import { describe, expect, test } from 'bun:test'
 import { PaneProvider, usePane } from '../components/pane/pane-context'
 import { usePaneSubject } from './use-pane-subject'
+
 const usePaneHarness = (kind: null | string, breadcrumb: string, payload: unknown) => {
   const { subject } = usePane()
   usePaneSubject(kind, breadcrumb, payload)

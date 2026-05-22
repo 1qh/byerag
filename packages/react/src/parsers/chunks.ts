@@ -1,8 +1,8 @@
 /* eslint-disable complexity */
-/* oxlint-disable eslint(complexity) */
 import type { ContentBlock, StreamEvent } from 'backend/convex/streamProtocol'
 import { assemblePartials } from './partials'
 import { parseMessageFromObject, parseStreamEvent } from './stream'
+
 const parseCache = new WeakMap<object, null | StreamEvent>()
 const parseWithCache = (event: { content: string }): null | StreamEvent => {
   const hit = parseCache.get(event)

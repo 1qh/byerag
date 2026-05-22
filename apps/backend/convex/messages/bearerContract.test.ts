@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { parseProxyToken } from './proxyHelpers'
+
 const VALID_CHATID = 'abcdefghijklmnopqrstuvwx'
 const VALID_SECRET = '01234567-89ab-cdef-0123-456789abcdef'
 const buildRunOauthBearer = (chatId: string, secret: string): string =>

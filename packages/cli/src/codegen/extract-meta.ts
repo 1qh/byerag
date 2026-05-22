@@ -1,6 +1,7 @@
 /** biome-ignore-all lint/nursery/noContinue: walker */
 /* eslint-disable no-continue */
 import ts from 'typescript'
+
 const DEFINE_RE = /^define(?<kind>Tool|Query|Mutation)$/u
 interface ExtractedMeta {
   argDescriptions: Record<string, string>

@@ -1,4 +1,3 @@
-/* oxlint-disable eslint-plugin-unicorn(consistent-function-scoping), eslint(complexity) */
 /** biome-ignore-all lint/nursery/noContinue: classify-or-skip loop */
 /* eslint-disable no-continue */
 'use client'
@@ -20,6 +19,7 @@ import {
 import { errorMessage } from '../lib/error-message'
 import { chunksToMessages } from '../lib/ui-messages'
 import { parseWithCache, sourceToChunks } from '../parsers/chunks'
+
 type Status = 'error' | 'ready' | 'streaming' | 'submitted'
 interface StreamMsg {
   _creationTime: number

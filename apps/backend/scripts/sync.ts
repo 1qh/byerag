@@ -1,14 +1,12 @@
 #!/usr/bin/env bun
 /* eslint-disable no-console, no-await-in-loop, no-continue, max-depth */
-/* oxlint-disable eslint(no-await-in-loop), eslint(max-depth), eslint-plugin-promise(param-names) */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential env push by design */
-/** biome-ignore-all lint/style/noProcessEnv: TLS config */
-/** biome-ignore-all lint/nursery/noUndeclaredEnvVars: process.argv only */
 /** biome-ignore-all lint/nursery/noContinue: env parser */
 import { $, file } from 'bun'
 import { createPrivateKey, createPublicKey, generateKeyPairSync } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { APPS } from '../convex/apps/manifest'
+
 const APP_TARGET_VARS = Object.values(APPS).flatMap(a => a.syncTargetKeys)
 const REQUIRED = [
   'AUTH_GOOGLE_ID',

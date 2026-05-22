@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { assert, integer, property, string, stringMatching, uuid } from 'fast-check'
 import { parseProxyToken } from './proxyHelpers'
+
 const validChatId = stringMatching(/^[a-z0-9]{24,64}$/u)
 const validUuid = uuid()
 describe('parseProxyToken — fuzz', () => {

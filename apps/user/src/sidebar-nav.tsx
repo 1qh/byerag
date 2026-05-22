@@ -4,6 +4,7 @@ import { api } from 'backend/convex/_generated/api'
 import { useQuery } from 'convex/react'
 import { FileText, GraduationCap, MessageSquare } from 'lucide-react'
 import Link from 'next/link'
+
 const UserSidebarNav = (): React.ReactElement => {
   const assignments = useQuery(api.trainingAssignments.myActiveAssignments)
   const topics = useQuery(api.training.listMyTopics)

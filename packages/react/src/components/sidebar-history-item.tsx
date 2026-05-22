@@ -16,6 +16,7 @@ import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } 
 import { Input } from '@a/ui/components/input'
 import { Loader2, Pencil, Star, StarOff, Trash } from 'lucide-react'
 import { memo, useEffect, useRef, useState } from 'react'
+
 interface Chat {
   _id: Id<'chats'>
   isBookmarked?: boolean

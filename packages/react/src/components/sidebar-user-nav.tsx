@@ -16,6 +16,7 @@ import { useAuthActions } from '@convex-dev/auth/react'
 import { Check, LogOut, Moon, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useState } from 'react'
+
 interface SidebarUserNavProps {
   user: User
 }

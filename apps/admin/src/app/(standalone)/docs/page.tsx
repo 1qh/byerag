@@ -19,6 +19,7 @@ import { useMutation, useQuery } from 'convex/react'
 import { FileText } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
+
 const clampW = (n: number): number => Math.min(640, Math.max(240, n))
 const DocsPage = (): React.ReactElement => {
   const shared = useQuery(api.docs.listShared, {})

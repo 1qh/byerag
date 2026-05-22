@@ -1,7 +1,8 @@
-/* oxlint-disable eslint-plugin-react-perf(jsx-no-new-object-as-prop), react-perf/jsx-no-new-array-as-prop, react-perf/jsx-no-new-object-as-prop */
+/* oxlint-disable eslint-plugin-react-perf(jsx-no-new-object-as-prop), react-perf/jsx-no-new-object-as-prop */
 import { render } from '@testing-library/react'
 import { describe, expect, test } from 'bun:test'
 import { SidebarUserNav } from './sidebar-user-nav'
+
 describe('SidebarUserNav', () => {
   test('renders display name from name', () => {
     const { container } = render(<SidebarUserNav user={{ email: 'a@b.com', name: 'Alice Smith' }} />)

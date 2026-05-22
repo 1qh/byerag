@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/strict-void-return */
 /** biome-ignore-all lint/style/noProcessEnv: NEXT_PUBLIC_* read at client boundary */
-/** biome-ignore-all lint/nursery/noUndeclaredEnvVars: NEXT_PUBLIC_ALLOW_DEV_TOKENS */
 'use client'
 import { Button } from '@a/ui/components/button'
 import { Input } from '@a/ui/components/input'
 import { useAuthActions } from '@convex-dev/auth/react'
 import { useState } from 'react'
 import { toast } from 'sonner'
+
 const DEV_ENABLED = process.env.NEXT_PUBLIC_ALLOW_DEV_TOKENS === '1'
 const DEFAULT_EMAIL = process.env.NEXT_PUBLIC_DEV_SIGN_IN_EMAIL ?? ''
 const DevSignIn = (): null | React.ReactElement => {

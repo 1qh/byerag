@@ -2,6 +2,7 @@
 import type { Id } from 'backend/convex/_generated/dataModel'
 import type { ReactNode } from 'react'
 import { createContext, use, useMemo } from 'react'
+
 interface AppCallbacks {
   onChatCreate?: (chatId: Id<'chats'>) => void
   onError?: (error: Error) => void

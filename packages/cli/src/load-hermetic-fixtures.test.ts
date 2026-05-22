@@ -3,6 +3,7 @@ import { unlinkSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { hermeticTry, setHermeticAdapter } from './hermetic'
 import { loadHermeticFixtures } from './load-hermetic-fixtures'
+
 afterEach(() => {
   setHermeticAdapter(null)
 })

@@ -5,6 +5,7 @@ import { api } from 'backend/convex/_generated/api'
 import { useMutation, useQuery } from 'convex/react'
 import { useState } from 'react'
 import { toast } from 'sonner'
+
 const QuarantinePage = (): React.ReactElement => {
   const rows = useQuery(api.docs.listForQuarantine, {})
   const approve = useMutation(api.docs.adminApproveReview)

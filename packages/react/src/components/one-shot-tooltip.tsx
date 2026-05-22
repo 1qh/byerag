@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { Button } from '@a/ui/components/button'
 import { useState } from 'react'
 import { useTooltipDismissalsCtx } from './tooltip-dismissals-context'
+
 const initialOpenLocal = (storageKey: string): boolean => {
   try {
     return globalThis.localStorage.getItem(storageKey) !== 'shown'

@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/style/noProcessEnv: smoke env access */
-/** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env access */
 /** biome-ignore-all lint/nursery/noContinue: env parser */
 /** biome-ignore-all lint/performance/noAwaitInLoops: polling */
 /* eslint-disable no-console, no-await-in-loop, no-continue */
@@ -9,6 +7,7 @@ import { api } from 'backend/convex/_generated/api'
 import { ConvexHttpClient } from 'convex/browser'
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+
 const ENV_LINE_RE = /^\s*(?<key>[A-Z_][A-Z0-9_]*)\s*=(?<rest>.*)$/u
 const parseEnv = (text: string): Record<string, string> => {
   const out: Record<string, string> = {}

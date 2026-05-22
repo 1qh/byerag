@@ -1,12 +1,8 @@
 /* eslint-disable no-continue */
 /** biome-ignore-all lint/nursery/noContinue: control flow shape */
-/** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
-/** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
-/** biome-ignore-all lint/performance/useTopLevelRegex: scoped regex ok */
-/** biome-ignore-all lint/style/useExplicitLengthCheck: idiomatic */
-/** biome-ignore-all lint/correctness/noUnusedVariables: pending feature */
 /* eslint-disable @typescript-eslint/only-throw-error -- fail() returns never (throws ToolError internally); rule misclassifies */
 import { arg, defineQuery, makeFail } from '../_api'
+
 const CONTEXT_LINES = 3
 const aclCheck = (row: { owner?: string; scope: 'mine' | 'shared' }, caller: string): boolean =>
   row.scope === 'shared' || row.owner === caller
@@ -62,10 +58,10 @@ const action = defineQuery({
     const visible = (r: DocRow): boolean =>
       r.deletedAt === undefined && r.scanStatus === 'clean' && r.policyStatus === 'approved'
     const rowA = (await ctx.db.get(args.a as never)) as DocRow | null
-    if (!rowA || !visible(rowA)) throw fail('NOT_FOUND', `doc ${args.a} not found`)
+    if (!(rowA && visible(rowA))) throw fail('NOT_FOUND', `doc ${args.a} not found`)
     if (!aclCheck(rowA, ctx.auth.owner)) throw fail('FORBIDDEN', 'doc A not in caller scope')
     const rowB = (await ctx.db.get(args.b as never)) as DocRow | null
-    if (!rowB || !visible(rowB)) throw fail('NOT_FOUND', `doc ${args.b} not found`)
+    if (!(rowB && visible(rowB))) throw fail('NOT_FOUND', `doc ${args.b} not found`)
     if (!aclCheck(rowB, ctx.auth.owner)) throw fail('FORBIDDEN', 'doc B not in caller scope')
     const linesA = (rowA.extractedText ?? '').split('\n')
     const linesB = (rowB.extractedText ?? '').split('\n')

@@ -7,6 +7,7 @@ import { CitationAnchor } from './citation-anchor'
 import { MentionChip } from './mention-chip'
 import { useMentionItemsCtx } from './mention-items-context'
 import { usePane } from './pane'
+
 const PERSISTENT_USER_KINDS = new Set([
   'bookmark',
   'collection',

@@ -1,5 +1,6 @@
 'use client'
 import { useEffect } from 'react'
+
 interface Handlers {
   newChat?: () => void
   nextChat?: () => void

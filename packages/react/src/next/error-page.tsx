@@ -3,6 +3,7 @@ import { Button } from '@a/ui/components/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@a/ui/components/card'
 import { AlertTriangleIcon } from 'lucide-react'
 import { useEffect } from 'react'
+
 const ErrorPage = ({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) => {
   useEffect(() => {
     // eslint-disable-next-line no-console

@@ -1,4 +1,3 @@
-/* oxlint-disable react/no-unstable-nested-components */
 import type { ReactNode } from 'react'
 import { act, renderHook as renderHookRaw, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
@@ -6,6 +5,7 @@ import { AppProvider } from '../app-context'
 import { resetFakeConvex, setFakeSend, setFakeStore } from '../test-utils/fake-convex'
 import { resetFakeRouter, setFakeRouter } from '../test-utils/fake-router'
 import { useChatConvex } from './use-chat-convex'
+
 const wrapper = ({ children }: { children: ReactNode }) => <AppProvider appId='test'>{children}</AppProvider>
 const renderHook = ((cb: Parameters<typeof renderHookRaw>[0], opts?: Parameters<typeof renderHookRaw>[1]) =>
   renderHookRaw(cb, { wrapper, ...opts })) as typeof renderHookRaw

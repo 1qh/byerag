@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 /* eslint-disable no-console */
 import { spawn } from 'bun'
+
 const argv = process.argv.slice(2)
 if (argv.length === 0) {
   console.error('q: usage: bun scripts/q.ts <cmd> [args...]')

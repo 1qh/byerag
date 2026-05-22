@@ -6,6 +6,7 @@ import { SidebarProvider } from '@a/ui/components/sidebar'
 import { fireEvent } from '@testing-library/react'
 import { beforeEach, describe, expect, test } from 'bun:test'
 import { AppSidebar } from './app-sidebar'
+
 const noop = (): void => {
   /* Empty */
 }

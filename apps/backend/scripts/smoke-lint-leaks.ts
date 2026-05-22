@@ -1,8 +1,7 @@
 #!/usr/bin/env bun
 /* eslint-disable no-console */
-/** biome-ignore-all lint/style/noProcessEnv: smoke reads .env directly */
-/** biome-ignore-all lint/nursery/noUndeclaredEnvVars: smoke env */
 import { $ } from 'bun'
+
 const ROOT = `${import.meta.dir}/../../..`
 let pass = 0
 let fail = 0

@@ -3,6 +3,7 @@ import { describe, expect, test } from 'bun:test'
 import type { DeriveInput } from './chat-state'
 import type { UIMessage } from './ui-messages'
 import { deriveChatState } from './chat-state'
+
 const CHAT_A = 'chat-a' as Id<'chats'>
 const CHAT_B = 'chat-b' as Id<'chats'>
 const user = (text: string): UIMessage => ({ id: `u-${text}`, parts: [{ text, type: 'text' }], role: 'user' })

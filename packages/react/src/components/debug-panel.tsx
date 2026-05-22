@@ -1,10 +1,10 @@
-/* oxlint-disable eslint(complexity) */
 /* eslint-disable complexity, @typescript-eslint/no-unnecessary-condition */
 'use client'
 import type { StreamEvent } from 'backend/convex/streamProtocol'
 import { parseWithCache } from '@a/react/parsers'
 import { Button } from '@a/ui/components/button'
 import { useMemo, useState } from 'react'
+
 const DebugPanel = ({
   events,
   sendTime

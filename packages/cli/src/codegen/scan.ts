@@ -3,10 +3,10 @@
 /** biome-ignore-all lint/performance/useTopLevelRegex: codegen script */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential per-root scan */
 /* eslint-disable no-continue, no-await-in-loop */
-/* oxlint-disable eslint-plugin-unicorn(prefer-spread) */
 import { Glob } from 'bun'
 import { readFile } from 'node:fs/promises'
 import { relative, resolve } from 'node:path'
+
 const TIER_ADMIN_PREFIX = '_admin'
 const SKIP_DIRS = new Set(['_app', '_lib', 'generated'])
 const CAMEL_RE = /[A-Z]/gu

@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 import { useCountdown } from './use-countdown'
+
 describe('useCountdown', () => {
   let originalSetTimeout: typeof setTimeout
   let pending: { cb: () => void; ms: number }[]

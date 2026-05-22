@@ -1,8 +1,9 @@
 import type { UIMessage } from '@a/react/lib'
-/* oxlint-disable eslint-plugin-react-perf(jsx-no-new-object-as-prop), react-perf/jsx-no-new-array-as-prop, react-perf/jsx-no-new-object-as-prop */
+/* oxlint-disable eslint-plugin-react-perf(jsx-no-new-object-as-prop), react-perf/jsx-no-new-object-as-prop */
 import { render } from '@testing-library/react'
 import { describe, expect, test } from 'bun:test'
 import { PreviewMessage } from './message'
+
 describe('PreviewMessage', () => {
   test('renders text part', () => {
     const m: UIMessage = { id: 'm1', parts: [{ text: 'hello', type: 'text' }], role: 'assistant' }
