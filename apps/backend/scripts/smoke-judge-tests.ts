@@ -157,7 +157,7 @@ try {
   record('G.suggestions', 'testQuestionSuggestions has rows', false, String(error).slice(0, 200))
 }
 console.log('\n[judge] J — Test corpus + Kimi probe')
-const probeLogPath = join(import.meta.dir, '..', 'test-fixtures', 'probe-log.jsonl')
+const probeLogPath = join(import.meta.dir, '..', 'test-results', 'probe-log.jsonl')
 let probeAccepted = 0
 try {
   const probeLog = readFileSync(probeLogPath, 'utf8').split('\n').filter(Boolean)
@@ -180,7 +180,7 @@ try {
 }
 record('K.promise', 'ledger last row contains BYERAG SHIPPED promise', promiseFound, `found=${promiseFound}`)
 console.log('\n[judge] supportiveness evidence')
-const evidenceDir = join(import.meta.dir, '..', 'test-fixtures', 'supportiveness-evidence')
+const evidenceDir = join(import.meta.dir, '..', 'test-results', 'supportiveness-evidence')
 const scenarios = [
   'cross-reference',
   'risk-spotting',
@@ -207,9 +207,9 @@ record(
 const passCount = checks.filter(c => c.pass).length
 const failCount = checks.length - passCount
 console.log(`\n[judge] SUMMARY pass=${passCount} fail=${failCount} total=${checks.length}`)
-mkdirSync(join(import.meta.dir, '..', 'test-fixtures'), { recursive: true })
+mkdirSync(join(import.meta.dir, '..', 'test-results'), { recursive: true })
 writeFileSync(
-  join(import.meta.dir, '..', 'test-fixtures', 'judge-results.json'),
+  join(import.meta.dir, '..', 'test-results', 'judge-results.json'),
   `${JSON.stringify({ at: new Date().toISOString(), checks, failCount, passCount, total: checks.length }, null, 2)}\n`
 )
 if (failCount > 0) process.exit(1)

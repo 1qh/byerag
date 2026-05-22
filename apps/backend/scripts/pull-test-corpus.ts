@@ -56,9 +56,10 @@ if (!KIMI_KEY) {
   process.exit(2)
 }
 const FIXTURES_DIR = join(import.meta.dir, '..', 'test-fixtures')
+const RESULTS_DIR = join(import.meta.dir, '..', 'test-results')
 const CANDIDATES_PATH = join(FIXTURES_DIR, 'probe-candidates.jsonl')
-const REAL_DOCS_DIR = join(FIXTURES_DIR, 'docs', 'real')
-const PROBE_LOG = join(FIXTURES_DIR, 'probe-log.jsonl')
+const REAL_DOCS_DIR = join(RESULTS_DIR, 'docs', 'real')
+const PROBE_LOG = join(RESULTS_DIR, 'probe-log.jsonl')
 const COSINE_THRESHOLD = 0.85
 const EMBED_MODEL = 'nomic-embed-text-v2-moe'
 const callKimi = async (prompt: string): Promise<string> => {

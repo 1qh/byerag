@@ -1,0 +1,131 @@
+{
+  "scenarios": [
+    {
+      "name": "cross-reference",
+      "corpus": [
+        {
+          "filename": "pto-policy.txt",
+          "body": "PTO Policy v3 (2026)\n\nSection 1: All staff receive 20 days PTO base entitlement per year, accrued monthly.\n\nSection 2: Senior staff (L5+) receive an additional 5 days, total 25 days.\n"
+        },
+        {
+          "filename": "offer-letter-junior.txt",
+          "body": "Offer Letter — Junior Engineer (L3)\n\nSection 3.4 PTO: 15 days per year.\n\nSection 4.1 Start Date: 2026-03-01.\n"
+        }
+      ],
+      "prompt": "Using docs tools, compare the PTO entitlement in pto-policy.txt and offer-letter-junior.txt. Cite specific sections.",
+      "expectedToolsAny": ["read", "grep", "conflict", "list"],
+      "minToolCalls": 2,
+      "judge": {
+        "mustContainKeywords": ["15", "20", "PTO"],
+        "minCitations": 1,
+        "citationRegex": "(pto-policy|offer-letter|kx7|§)"
+      }
+    },
+    {
+      "name": "risk-spotting",
+      "corpus": [
+        {
+          "filename": "data-retention.txt",
+          "body": "Data Retention Policy\n\nUser data: stored 7 years.\nLogs: 30 days.\nBackups: encrypted, off-site, daily.\n\nException: PII may be purged on user request per GDPR Article 17.\n"
+        }
+      ],
+      "prompt": "What does docs say about our data retention? Use the docs tools and flag anything that looks risky.",
+      "expectedToolsAny": ["read", "list", "grep", "similar"],
+      "minToolCalls": 1,
+      "judge": {
+        "mustContainKeywords": ["7 year", "GDPR", "PII"],
+        "minCitations": 1,
+        "citationRegex": "(data-retention|kx7|§)"
+      }
+    },
+    {
+      "name": "dot-connecting",
+      "corpus": [
+        {
+          "filename": "vendor-list.txt",
+          "body": "Approved Vendors 2026:\n- Acme Cloud (compute)\n- Boreal DB (database)\n- Cresta Search (vector index)\n"
+        },
+        {
+          "filename": "incident-2026-03.txt",
+          "body": "Incident 2026-03-15: Boreal DB outage 4h. Root cause: vendor-side region failure. Customer data unaffected.\n"
+        }
+      ],
+      "prompt": "Use docs tools to read the vendor list and the latest incident report, then tell me which vendor had an issue.",
+      "expectedToolsAny": ["read", "list"],
+      "minToolCalls": 2,
+      "judge": {
+        "mustContainKeywords": ["Boreal", "outage"],
+        "minCitations": 2,
+        "citationRegex": "(vendor-list|incident|kx7|§)"
+      }
+    },
+    {
+      "name": "follow-up-preemption",
+      "corpus": [
+        {
+          "filename": "onboarding-checklist.txt",
+          "body": "Engineer Onboarding (Week 1):\n1. Laptop pickup from IT desk\n2. SSO enrollment via Okta\n3. Read CONTRIBUTING.md in monorepo\n4. Pair with mentor for first PR\n"
+        }
+      ],
+      "prompt": "I'm a new engineer joining next Monday. Use docs to tell me what to do in week 1.",
+      "expectedToolsAny": ["read", "list", "grep"],
+      "minToolCalls": 1,
+      "judge": {
+        "mustContainKeywords": ["laptop", "Okta", "mentor"],
+        "minCitations": 1,
+        "citationRegex": "(onboarding|kx7|§)"
+      }
+    },
+    {
+      "name": "gap-flagging",
+      "corpus": [
+        {
+          "filename": "engineering-handbook.txt",
+          "body": "Engineering Handbook:\n- Code review required for all PRs.\n- CI must pass before merge.\n- Production deploys via Dokploy on main push.\n"
+        }
+      ],
+      "prompt": "Use docs tools to find our policy on mandatory parental leave duration.",
+      "expectedToolsAny": ["grep", "similar", "list", "read"],
+      "minToolCalls": 1,
+      "judge": {
+        "mustContainKeywords": ["no", "corpus"],
+        "minCitations": 0,
+        "citationRegex": "."
+      }
+    },
+    {
+      "name": "uncertainty-surfacing",
+      "corpus": [
+        {
+          "filename": "deploy-policy.txt",
+          "body": "Deploy Policy:\n- Friday deploys discouraged for non-critical changes.\n- Critical security patches: any day, any time.\n"
+        }
+      ],
+      "prompt": "Using docs, can I deploy a small UI tweak on Friday afternoon?",
+      "expectedToolsAny": ["read", "grep", "list"],
+      "minToolCalls": 1,
+      "judge": {
+        "mustContainKeywords": ["discouraged", "Friday"],
+        "minCitations": 1,
+        "citationRegex": "(deploy-policy|kx7|§)"
+      }
+    },
+    {
+      "name": "citation-discipline",
+      "corpus": [
+        {
+          "filename": "security-policy.txt",
+          "body": "Security Policy:\n- All employee laptops must be encrypted (FileVault on macOS).\n- Password manager required (1Password company plan).\n- MFA mandatory for all SaaS access.\n"
+        }
+      ],
+      "prompt": "Use docs tools to list our security requirements for employee laptops. Cite each requirement.",
+      "expectedToolsAny": ["read", "grep", "list"],
+      "minToolCalls": 1,
+      "judge": {
+        "mustContainKeywords": ["FileVault", "1Password", "MFA"],
+        "minCitations": 2,
+        "citationRegex": "(security-policy|kx7|§)"
+      }
+    }
+  ]
+}

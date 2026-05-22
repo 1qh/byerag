@@ -2,7 +2,7 @@
 /* eslint-disable no-console, no-await-in-loop */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
 import { ConvexHttpClient } from 'convex/browser'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { api } from '../convex/_generated/api'
 
@@ -67,7 +67,7 @@ const sleep = async (ms: number): Promise<void> =>
   })
 const RUN_DEADLINE_MS = 420_000
 const POLL_MS = 4000
-const EVIDENCE_DIR = join(import.meta.dir, '..', 'test-fixtures', 'supportiveness-evidence')
+const EVIDENCE_DIR = join(import.meta.dir, '..', 'test-results', 'supportiveness-evidence')
 const SCENARIOS_PATH = join(import.meta.dir, '..', 'test-fixtures', 'supportiveness-scenarios.json')
 const allScenarios = (JSON.parse(readFileSync(SCENARIOS_PATH, 'utf8')) as { scenarios: Scenario[] }).scenarios
 const filter = process.argv[2] ?? ''
@@ -183,6 +183,7 @@ const runScenario = async (s: Scenario): Promise<Verdict> => {
     await sleep(POLL_MS)
   }
   const v = judge(s, messages)
+  mkdirSync(EVIDENCE_DIR, { recursive: true })
   writeFileSync(
     join(EVIDENCE_DIR, `${s.name}.json`),
     `${JSON.stringify({ ...v, chatId, docIds, messageCount: messages.length, prompt: s.prompt }, null, 2)}\n`
