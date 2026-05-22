@@ -2,7 +2,7 @@
 /** biome-ignore-all lint/style/noProcessEnv: scaffold reads env */
 /** biome-ignore-all lint/nursery/noContinue: classify-or-skip loops */
 /** biome-ignore-all lint/performance/noAwaitInLoops: small N (apps), fs IO ordered */
-/* eslint-disable no-console, no-await-in-loop, no-continue, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable no-console, no-await-in-loop, no-continue */
 import { Vercel } from '@vercel/sdk'
 /* oxlint-disable unicorn/prefer-ternary */
 import { $ } from 'bun'
@@ -102,7 +102,28 @@ const findSourceLink = async (): Promise<{ orgId: string; projectId: string }> =
 const sourceLink = await findSourceLink()
 const TEAM = sourceLink.orgId
 const sourcePid = sourceLink.projectId
-const vercel = new Vercel({ bearerToken: auth.token })
+interface VercelApi {
+  projects: {
+    createProject: (args: {
+      requestBody: {
+        framework: string
+        gitRepository: { repo: string; type: string }
+        name: string
+        rootDirectory: string
+      }
+      teamId: string
+    }) => Promise<{ id: string }>
+    createProjectEnv: (args: {
+      idOrName: string
+      requestBody: { key: string; target: string[]; type: string; value: string }
+      teamId: string
+      upsert: string
+    }) => Promise<unknown>
+    getProjects: (args: { search: string; teamId: string }) => Promise<{ projects: { id: string; name: string }[] }>
+  }
+}
+const VercelCtor = Vercel as unknown as new (opts: { bearerToken: string }) => VercelApi
+const vercel = new VercelCtor({ bearerToken: auth.token })
 const projectName = `byerag-${appName}`
 console.log(`→ vercel: check name '${projectName}'`)
 const existing = (await vercel.projects.getProjects({ search: projectName, teamId: TEAM })).projects.find(

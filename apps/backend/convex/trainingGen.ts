@@ -1,4 +1,4 @@
-/* eslint-disable no-await-in-loop, @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable no-await-in-loop */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops */
 'use node'
 import { v } from 'convex/values'
@@ -61,7 +61,7 @@ const callKimi = async (user: string): Promise<KimiResult> => {
     signal: AbortSignal.timeout(KIMI_TIMEOUT_MS)
   })
   if (!res.ok) throw new Error(`kimi ${res.status}: ${(await res.text()).slice(0, 200)}`)
-  const json: KimiResponse = await res.json()
+  const json = (await res.json()) as KimiResponse
   const text = json.content?.find(c => c.type === 'text')?.text ?? ''
   if (!text) throw new Error('kimi empty response')
   return { text, usage: json.usage ?? {} }
@@ -84,7 +84,7 @@ const parseQuestions = (raw: string): ParsedQuestion[] => {
   try {
     const parsed = JSON.parse(candidate) as unknown
     if (!Array.isArray(parsed)) return []
-    return parsed
+    return (parsed as unknown[])
       .filter((x): x is RawQuestion => typeof x === 'object' && x !== null)
       .map(x => {
         const choices =

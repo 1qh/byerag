@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @eslint-react/no-unnecessary-use-prefix, @typescript-eslint/no-unused-vars, @typescript-eslint/require-await, @typescript-eslint/prefer-nullish-coalescing */
-/** biome-ignore-all lint/suspicious/noExplicitAny: test fake — mirrors convex/react surface */
+/* eslint-disable @eslint-react/no-unnecessary-use-prefix, @typescript-eslint/no-unused-vars, @typescript-eslint/require-await */
 /** biome-ignore-all lint/style/noProcessEnv: debug toggle */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: debug toggle */
 interface FakeChat {
@@ -7,6 +6,11 @@ interface FakeChat {
   streaming?: boolean
   title: string
   updatedAt: number
+}
+interface FakePaginated {
+  loadMore: () => void
+  results: unknown[]
+  status: string
 }
 interface FakeStore {
   chatList: FakeChat[]
@@ -39,30 +43,30 @@ const setFakeSend = (impl: typeof sendImpl): void => {
   sendImpl = impl
 }
 const FN_NAME = Symbol.for('functionName')
-const apiRef = (ref: any): string => {
-  try {
-    if (typeof ref === 'string') return ref
-    if (ref?.[FN_NAME]) return String(ref[FN_NAME])
-    if (ref?._name) return String(ref._name)
-    if (typeof ref === 'function') return String(ref.name || '')
-    return ''
-  } catch {
-    return ''
+const apiRef = (ref: unknown): string => {
+  if (typeof ref === 'string') return ref
+  if (typeof ref === 'function') return ref.name
+  if (ref !== null && typeof ref === 'object') {
+    const obj = ref as Record<PropertyKey, unknown>
+    const named = obj[FN_NAME] ?? obj._name
+    if (typeof named === 'string') return named
   }
+  return ''
 }
-const useQuery = (fnRef: any, args: any): any => {
+const chatIdOf = (args: unknown): string => (args as null | { chatId?: string })?.chatId ?? ''
+const useQuery = (fnRef: unknown, args: unknown): unknown => {
   if (args === 'skip') return
   const key = apiRef(fnRef)
   // eslint-disable-next-line no-console
   if (process.env.FAKE_CONVEX_DEBUG) console.log('useQuery key:', JSON.stringify(key))
   const has = (s: string): boolean => key.includes(s.replace('.', ':')) || key.includes(s)
-  if (has('chats.status')) return store.chatStatus.get(args?.chatId ?? '') ?? null
+  if (has('chats.status')) return store.chatStatus.get(chatIdOf(args)) ?? null
   if (has('chats.list')) return store.chatList
-  if (has('messages.streamEvents')) return store.streamEvents.get(args?.chatId ?? '') ?? []
+  if (has('messages.streamEvents')) return store.streamEvents.get(chatIdOf(args)) ?? []
   if (has('chats.currentUser')) return store.currentUser
   return null
 }
-const usePaginatedQuery = (_fnRef: any, args: any, _opts: any): any => {
+const usePaginatedQuery = (_fnRef: unknown, args: unknown, _opts: unknown): FakePaginated => {
   if (args === 'skip')
     return {
       loadMore: () => {
@@ -71,27 +75,26 @@ const usePaginatedQuery = (_fnRef: any, args: any, _opts: any): any => {
       results: [],
       status: 'Exhausted'
     }
-  const chatId = args?.chatId ?? ''
   return {
     loadMore: () => {
       /* Empty */
     },
-    results: store.messages.get(chatId) ?? [],
+    results: store.messages.get(chatIdOf(args)) ?? [],
     status: 'Exhausted'
   }
 }
-const useMutation = (_fnRef: any): any => sendImpl
-const useAction = (fnRef: any): any => {
+const useMutation = (_fnRef: unknown): typeof sendImpl => sendImpl
+const useAction = (fnRef: unknown): (() => Promise<unknown>) => {
   const key = apiRef(fnRef)
   const has = (s: string): boolean => key.includes(s.replace('.', ':')) || key.includes(s)
   if (has('fileActions.list')) return async () => []
   if (has('fileActions.read')) return async () => ({ binary: false, content: '' })
   return async () => undefined
 }
-const useConvexAuth = (): any => ({ isAuthenticated: true, isLoading: false })
-const ConvexProviderWithAuth = ({ children }: any): any => children
-const ConvexReactClient: any = (): any => ({})
-const useConvex = (): any => ({})
+const useConvexAuth = (): { isAuthenticated: boolean; isLoading: boolean } => ({ isAuthenticated: true, isLoading: false })
+const ConvexProviderWithAuth = ({ children }: { children?: unknown }): unknown => children
+const ConvexReactClient = (): Record<string, unknown> => ({})
+const useConvex = (): Record<string, unknown> => ({})
 const fakeConvex = {
   ConvexProviderWithAuth,
   ConvexReactClient,
