@@ -1,11 +1,14 @@
 import type { NextRequest } from 'next/server'
 import { describe, expect, test } from 'bun:test'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { proxy } from './proxy'
 
 const makeReq = (url = 'https://example.com/'): NextRequest => {
   const init = new Request(url, { headers: { 'x-existing': 'preserved' } })
   return init as unknown as NextRequest
 }
+const proxySrc = readFileSync(join(import.meta.dir, 'proxy.ts'), 'utf8')
 describe('CSP proxy', () => {
   test('sets Content-Security-Policy header', () => {
     const res = proxy(makeReq())
@@ -51,26 +54,17 @@ describe('CSP proxy', () => {
     const csp = proxy(makeReq()).headers.get('Content-Security-Policy') ?? ''
     expect(csp).not.toMatch(/'nonce-[A-Za-z0-9+/=]+'/u)
   })
-  test('CSP source does not depend on per-request nonce generation', async () => {
-    const { readFileSync } = await import('node:fs')
-    const { join } = await import('node:path')
-    const src = readFileSync(join(import.meta.dir, 'proxy.ts'), 'utf8')
-    expect(src).not.toContain('crypto.randomUUID')
-    expect(src).not.toContain('randomBytes')
-    expect(src).not.toMatch(/nonce/u)
+  test('CSP source does not depend on per-request nonce generation', () => {
+    expect(proxySrc).not.toContain('crypto.randomUUID')
+    expect(proxySrc).not.toContain('randomBytes')
+    expect(proxySrc).not.toMatch(/nonce/u)
   })
-  test('matcher source includes _next/static + _next/image + favicon exclusions', async () => {
-    const { readFileSync } = await import('node:fs')
-    const { join } = await import('node:path')
-    const src = readFileSync(join(import.meta.dir, 'proxy.ts'), 'utf8')
-    expect(src).toContain('_next/static|_next/image|favicon.ico')
+  test('matcher source includes _next/static + _next/image + favicon exclusions', () => {
+    expect(proxySrc).toContain('_next/static|_next/image|favicon.ico')
   })
-  test('matcher does NOT exclude api/ (auth callbacks need CSP)', async () => {
-    const { readFileSync } = await import('node:fs')
-    const { join } = await import('node:path')
-    const src = readFileSync(join(import.meta.dir, 'proxy.ts'), 'utf8')
-    const matcherIdx = src.indexOf('matcher:')
-    const matcherSrc = src.slice(matcherIdx, matcherIdx + 500)
+  test('matcher does NOT exclude api/ (auth callbacks need CSP)', () => {
+    const matcherIdx = proxySrc.indexOf('matcher:')
+    const matcherSrc = proxySrc.slice(matcherIdx, matcherIdx + 500)
     expect(matcherSrc).not.toMatch(/\|api\//u)
   })
 })

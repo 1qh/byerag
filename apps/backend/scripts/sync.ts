@@ -195,8 +195,12 @@ const ensureAuthKeys = async (
     return
   }
   console.log('Generating JWT keys for Convex Auth (fresh) and persisting to .env...')
-  const pair = generateKeyPairSync('rsa', { modulusLength: 2048 })
-  const privPem = pair.privateKey.export({ format: 'pem', type: 'pkcs8' }).trim()
+  const pair = generateKeyPairSync('rsa', {
+    modulusLength: 2048,
+    privateKeyEncoding: { format: 'pem', type: 'pkcs8' },
+    publicKeyEncoding: { format: 'pem', type: 'spki' }
+  })
+  const privPem = pair.privateKey.trim()
   const jwks = jwksFromPrivateKey(privPem)
   await setVar('JWT_PRIVATE_KEY', privPem)
   await setVar('JWKS', jwks)
