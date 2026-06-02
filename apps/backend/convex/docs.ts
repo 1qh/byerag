@@ -415,6 +415,7 @@ interface DocListItem {
   scanStatus: 'clean' | 'pending' | 'quarantined'
   scope: 'mine' | 'shared'
   uploadedAt: number
+  uploadedBy: string
   version: number
 }
 const listMine = query({
@@ -439,6 +440,7 @@ const listMine = query({
       scanStatus: r.scanStatus,
       scope: r.scope,
       uploadedAt: r.uploadedAt,
+      uploadedBy: r.uploadedBy,
       version: r.version
     }))
   }
@@ -915,6 +917,7 @@ const listShared = query({
       scanStatus: r.scanStatus,
       scope: r.scope,
       uploadedAt: r.uploadedAt,
+      uploadedBy: r.uploadedBy,
       version: r.version
     }))
   }
