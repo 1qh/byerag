@@ -2,8 +2,7 @@
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential deletes */
 'use client'
 import type { Id } from 'backend/convex/_generated/dataModel'
-import { DocUpload, DocViewer } from '@a/react/components'
-import { cn } from '@a/ui'
+import { DocUpload, useDocSheet } from '@a/react/components'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,31 +17,16 @@ import { Button } from '@a/ui/components/button'
 import { Checkbox } from '@a/ui/components/checkbox'
 import { api } from 'backend/convex/_generated/api'
 import { useMutation, useQuery } from 'convex/react'
-import { FileText } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
-const clampW = (n: number): number => Math.min(640, Math.max(240, n))
 const DocsPage = (): React.ReactElement => {
   const shared = useQuery(api.docs.listShared, {})
   const remove = useMutation(api.docs.adminDeleteDoc)
-  const [selected, setSelected] = useState<Id<'docs'> | null>(null)
+  const { openDoc } = useDocSheet()
   const [checked, setChecked] = useState<Set<string>>(() => new Set())
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const [listW, setListW] = useState(320)
-  const startResize = (e: React.PointerEvent): void => {
-    e.preventDefault()
-    const startX = e.clientX
-    const startW = listW
-    const move = (ev: PointerEvent): void => setListW(clampW(startW + ev.clientX - startX))
-    const up = (): void => {
-      globalThis.removeEventListener('pointermove', move)
-      globalThis.removeEventListener('pointerup', up)
-    }
-    globalThis.addEventListener('pointermove', move)
-    globalThis.addEventListener('pointerup', up)
-  }
   const toggle = (id: string): void =>
     setChecked(prev => {
       const next = new Set(prev)
@@ -67,74 +51,45 @@ const DocsPage = (): React.ReactElement => {
         toast.error(`${id.slice(-6)}: ${String(error).slice(0, 80)}`)
       }
     toast.success(`Deleted ${ok}/${ids.length}${fail > 0 ? ` (${fail} failed)` : ''}`)
-    if (selected && checked.has(selected)) setSelected(null)
     setChecked(new Set())
     setConfirmOpen(false)
     setDeleting(false)
   }
   return (
-    <div className='flex h-dvh'>
-      <aside
-        className='flex shrink-0 flex-col gap-4 overflow-hidden border-r'
-        // oxlint-disable-next-line react-perf/jsx-no-new-object-as-prop -- width is stateful
-        style={{ width: `${listW}px` }}>
-        <div className='space-y-2 border-b p-4'>
-          <h2 className='font-semibold text-lg'>Shared corpus</h2>
-          <DocUpload isAdmin scope='shared' />
+    <div className='mx-auto flex h-dvh w-full max-w-3xl flex-col'>
+      <div className='space-y-2 border-b p-4'>
+        <h2 className='font-semibold text-lg'>Shared corpus</h2>
+        <DocUpload isAdmin scope='shared' />
+      </div>
+      {checked.size > 0 ? (
+        <div className='sticky top-0 z-10 flex items-center gap-2 border-b bg-background px-4 py-2 text-sm'>
+          <span className='flex-1 text-muted-foreground'>{checked.size} selected</span>
+          <Button onClick={() => setConfirmOpen(true)} size='sm' variant='destructive'>
+            Delete
+          </Button>
+          <Button onClick={() => setChecked(new Set())} size='sm' variant='ghost'>
+            Clear
+          </Button>
         </div>
-        {checked.size > 0 ? (
-          <div className='sticky top-0 z-10 flex items-center gap-2 border-b bg-background px-4 py-2 text-sm'>
-            <span className='flex-1 text-muted-foreground'>{checked.size} selected</span>
-            <Button onClick={() => setConfirmOpen(true)} size='sm' variant='destructive'>
-              Delete
-            </Button>
-            <Button onClick={() => setChecked(new Set())} size='sm' variant='ghost'>
-              Clear
-            </Button>
-          </div>
-        ) : null}
-        <div className='flex items-center gap-2 px-4 text-muted-foreground text-xs'>
-          <Checkbox aria-label='Select all' checked={allOn} disabled={allIds.length === 0} onCheckedChange={toggleAll} />
-          <span>{allIds.length} docs</span>
-        </div>
-        <ul className='flex-1 space-y-1 overflow-auto px-2 pb-4 text-sm'>
-          {shared?.map(d => {
-            const id = d._id as string
-            const isChecked = checked.has(id)
-            return (
-              <li className='flex items-center gap-2 rounded px-2 py-1 hover:bg-muted' key={d._id}>
-                <Checkbox aria-label={`Select ${d.filename}`} checked={isChecked} onCheckedChange={() => toggle(id)} />
-                <button
-                  className={cn(
-                    'flex-1 truncate text-left font-mono',
-                    selected === d._id && 'font-semibold text-foreground'
-                  )}
-                  onClick={() => setSelected(d._id)}
-                  type='button'>
-                  {d.filename} <span className='text-muted-foreground'>v{d.version}</span>
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-      </aside>
-      <button
-        aria-label='Resize document list'
-        className='w-1 shrink-0 cursor-col-resize bg-border hover:bg-primary/40'
-        onPointerDown={startResize}
-        type='button'
-      />
-      <main className='flex-1 overflow-auto'>
-        {selected ? (
-          <DocViewer docId={selected} />
-        ) : (
-          <div className='flex h-full flex-col items-center justify-center gap-3 text-muted-foreground'>
-            <FileText aria-hidden className='size-10 opacity-40' />
-            <p className='font-medium'>Select a document to preview</p>
-            <p className='text-sm'>Pick a file on the left, or upload one to the shared corpus.</p>
-          </div>
-        )}
-      </main>
+      ) : null}
+      <div className='flex items-center gap-2 border-b px-4 py-2 text-muted-foreground text-xs'>
+        <Checkbox aria-label='Select all' checked={allOn} disabled={allIds.length === 0} onCheckedChange={toggleAll} />
+        <span>{allIds.length} docs</span>
+      </div>
+      <ul className='flex-1 space-y-1 overflow-auto p-2 text-sm'>
+        {shared?.map(d => {
+          const id = d._id as string
+          const isChecked = checked.has(id)
+          return (
+            <li className='flex items-center gap-2 rounded px-2 py-1 hover:bg-muted' key={d._id}>
+              <Checkbox aria-label={`Select ${d.filename}`} checked={isChecked} onCheckedChange={() => toggle(id)} />
+              <button className='flex-1 truncate text-left font-mono' onClick={() => openDoc(d._id)} type='button'>
+                {d.filename} <span className='text-muted-foreground'>v{d.version}</span>
+              </button>
+            </li>
+          )
+        })}
+      </ul>
       <AlertDialog onOpenChange={setConfirmOpen} open={confirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

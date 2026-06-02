@@ -1,15 +1,13 @@
 'use client'
 import type { Id } from 'backend/convex/_generated/dataModel'
-import { DocUpload, DocViewer } from '@a/react/components'
+import { DocUpload, useDocSheet } from '@a/react/components'
 import { cn } from '@a/ui'
 import { Button } from '@a/ui/components/button'
 import { api } from 'backend/convex/_generated/api'
 import { useMutation, useQuery } from 'convex/react'
-import { AlertCircle, FileText, RotateCw, ShieldAlert } from 'lucide-react'
-import { useState } from 'react'
+import { AlertCircle, RotateCw, ShieldAlert } from 'lucide-react'
 import { toast } from 'sonner'
 
-const clampW = (n: number): number => Math.min(640, Math.max(240, n))
 interface DocRow {
   _id: Id<'docs'>
   filename: string
@@ -19,24 +17,13 @@ interface DocRow {
   policyStatus: 'approved' | 'pending' | 'rejected'
   version: number
 }
-const DocList = ({
-  docs,
-  onSelect,
-  selected
-}: {
-  docs?: DocRow[]
-  onSelect: (id: Id<'docs'>) => void
-  selected: Id<'docs'> | null
-}): React.ReactElement => (
+const DocList = ({ docs, onOpen }: { docs?: DocRow[]; onOpen: (id: Id<'docs'>) => void }): React.ReactElement => (
   <ul className='space-y-1 text-sm'>
     {docs?.map(d => (
       <li className='flex items-center gap-1' key={d._id}>
         <button
-          className={cn(
-            'min-w-0 flex-1 truncate rounded px-2 py-1 text-left font-mono hover:bg-muted',
-            selected === d._id && 'bg-muted font-semibold text-foreground'
-          )}
-          onClick={() => onSelect(d._id)}
+          className={cn('min-w-0 flex-1 truncate rounded px-2 py-1 text-left font-mono hover:bg-muted')}
+          onClick={() => onOpen(d._id)}
           type='button'>
           {d.filename} <span className='text-muted-foreground'>v{d.version}</span>
         </button>
@@ -53,13 +40,11 @@ const DocList = ({
 const RejectedList = ({
   docs,
   onAskReview,
-  onSelect,
-  selected
+  onOpen
 }: {
   docs?: DocRow[]
   onAskReview: (id: Id<'docs'>) => Promise<void>
-  onSelect: (id: Id<'docs'>) => void
-  selected: Id<'docs'> | null
+  onOpen: (id: Id<'docs'>) => void
 }): null | React.ReactElement => {
   if (!docs || docs.length === 0) return null
   return (
@@ -78,8 +63,8 @@ const RejectedList = ({
             <li className='space-y-1 rounded border bg-background p-2 text-xs' key={d._id}>
               <div className='flex items-center gap-2'>
                 <button
-                  className={cn('min-w-0 flex-1 truncate text-left font-mono', selected === d._id && 'font-semibold')}
-                  onClick={() => onSelect(d._id)}
+                  className='min-w-0 flex-1 truncate text-left font-mono'
+                  onClick={() => onOpen(d._id)}
                   type='button'>
                   {d.filename} <span className='text-muted-foreground'>v{d.version}</span>
                 </button>
@@ -112,19 +97,9 @@ const DocsPage = (): React.ReactElement => {
   const mine = useQuery(api.docs.listMine, {})
   const shared = useQuery(api.docs.listShared, {})
   const requestReview = useMutation(api.docs.requestReview)
-  const [selected, setSelected] = useState<Id<'docs'> | null>(null)
-  const [listW, setListW] = useState(320)
-  const startResize = (e: React.PointerEvent): void => {
-    e.preventDefault()
-    const startX = e.clientX
-    const startW = listW
-    const move = (ev: PointerEvent): void => setListW(clampW(startW + ev.clientX - startX))
-    const up = (): void => {
-      globalThis.removeEventListener('pointermove', move)
-      globalThis.removeEventListener('pointerup', up)
-    }
-    globalThis.addEventListener('pointermove', move)
-    globalThis.addEventListener('pointerup', up)
+  const { openDoc } = useDocSheet()
+  const onOpen = (id: Id<'docs'>): void => {
+    openDoc(id)
   }
   const onAskReview = async (id: Id<'docs'>): Promise<void> => {
     try {
@@ -137,39 +112,17 @@ const DocsPage = (): React.ReactElement => {
   const mineActive = mine?.filter(d => d.policyStatus !== 'rejected')
   const mineRejected = mine?.filter(d => d.policyStatus === 'rejected')
   return (
-    <div className='flex h-dvh'>
-      <aside
-        className='flex shrink-0 flex-col gap-4 overflow-y-auto border-r p-4'
-        // oxlint-disable-next-line react-perf/jsx-no-new-object-as-prop -- width is stateful
-        style={{ width: `${listW}px` }}>
-        <section className='space-y-2'>
-          <h2 className='font-semibold text-lg'>My docs</h2>
-          <DocUpload scope='mine' />
-          <DocList docs={mineActive} onSelect={setSelected} selected={selected} />
-        </section>
-        <RejectedList docs={mineRejected} onAskReview={onAskReview} onSelect={setSelected} selected={selected} />
-        <section className='space-y-2'>
-          <h2 className='font-semibold text-lg'>Shared corpus (read-only)</h2>
-          <DocList docs={shared} onSelect={setSelected} selected={selected} />
-        </section>
-      </aside>
-      <button
-        aria-label='Resize document list'
-        className='w-1 shrink-0 cursor-col-resize bg-border hover:bg-primary/40'
-        onPointerDown={startResize}
-        type='button'
-      />
-      <main className='flex-1 overflow-auto'>
-        {selected ? (
-          <DocViewer docId={selected} />
-        ) : (
-          <div className='flex h-full flex-col items-center justify-center gap-3 text-muted-foreground'>
-            <FileText aria-hidden className='size-10 opacity-40' />
-            <p className='font-medium'>Select a document to preview</p>
-            <p className='text-sm'>Pick one of your files or a shared doc on the left.</p>
-          </div>
-        )}
-      </main>
+    <div className='mx-auto flex h-dvh w-full max-w-3xl flex-col gap-4 overflow-y-auto p-6'>
+      <section className='space-y-2'>
+        <h2 className='font-semibold text-lg'>My docs</h2>
+        <DocUpload scope='mine' />
+        <DocList docs={mineActive} onOpen={onOpen} />
+      </section>
+      <RejectedList docs={mineRejected} onAskReview={onAskReview} onOpen={onOpen} />
+      <section className='space-y-2'>
+        <h2 className='font-semibold text-lg'>Shared corpus (read-only)</h2>
+        <DocList docs={shared} onOpen={onOpen} />
+      </section>
     </div>
   )
 }
