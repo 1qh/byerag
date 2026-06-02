@@ -272,7 +272,7 @@ const computeTrain = async (ctx: QueryCtx): Promise<{ now: number; topics: Topic
         t.overdue += 1
         u.details.push({
           name: t.name,
-          overdueDays: Math.floor((now - effectiveDue) / DAY_MS),
+          overdueDays: Math.max(1, Math.ceil((now - effectiveDue) / DAY_MS)),
           status: 'overdue'
         })
       } else u.details.push({ name: t.name, overdueDays: 0, status: 'open' })
@@ -362,7 +362,7 @@ const assignmentsTable = query({
       .query('userProfiles')
       .withIndex('by_role', q => q.eq('role', 'user'))
       .take(5000)
-    const deptOf = new Map(profiles.map(p => [p.userId, p.department ?? 'Unassigned']))
+    const deptOf = new Map(profiles.map(p => [p.userId, p.department ?? '—']))
     const live = await ctx.db
       .query('testAssignments')
       .order('desc')
@@ -388,13 +388,13 @@ const assignmentsTable = query({
       if (passed[0]) st = 'passed'
       else if (now > dueAt) {
         st = 'overdue'
-        overdueDays = Math.floor((now - dueAt) / DAY_MS)
+        overdueDays = Math.max(1, Math.ceil((now - dueAt) / DAY_MS))
       }
       all.push({
         assigned: vnDate(a.createdAt),
         at: a.createdAt,
         deadline: vnDate(dueAt),
-        department: deptOf.get(a.userId) ?? 'Unassigned',
+        department: deptOf.get(a.userId) ?? '—',
         overdueDays,
         source: a.createdBy === 'agent' ? 'agent' : 'admin',
         status: st,
@@ -448,7 +448,7 @@ const userSummary = query({
     const term = (search ?? '').trim().toLowerCase()
     const filtered = (term ? users.filter(u => u.userId.toLowerCase().includes(term)) : users).map(u => ({
       assigned: u.assigned,
-      department: u.department ?? 'Unassigned',
+      department: u.department ?? '—',
       overdue: u.overdue,
       passed: u.passed,
       userId: u.userId

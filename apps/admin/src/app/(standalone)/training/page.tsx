@@ -123,11 +123,25 @@ const AgentStatusBadge = ({
     </span>
   )
 }
-const Card = ({ children, title }: { children: React.ReactNode; title: string }): React.ReactElement => (
-  <div className='rounded-lg border bg-card p-4'>
+const Card = ({
+  children,
+  disabled,
+  onClick,
+  title
+}: {
+  children: React.ReactNode
+  disabled?: boolean
+  onClick?: () => void
+  title: string
+}): React.ReactElement => (
+  <button
+    className='w-full rounded-lg border bg-card p-4 text-left transition-colors enabled:cursor-pointer enabled:hover:bg-muted disabled:cursor-default'
+    disabled={disabled}
+    onClick={onClick}
+    type='button'>
     <div className='mb-2 font-semibold text-muted-foreground text-xs uppercase tracking-wide'>{title}</div>
     {children}
-  </div>
+  </button>
 )
 const FilterHeader = ({
   label,
@@ -395,46 +409,35 @@ const TrainingPage = (): React.ReactElement => {
         </div>
       </div>
       <section className='grid gap-3 md:grid-cols-3'>
-        <Card title='Overview'>
-          <button
-            className='-m-1 w-full rounded p-1 text-left hover:bg-muted'
-            onClick={() => summaryRef.current?.scrollIntoView({ behavior: 'smooth' })}
-            type='button'>
-            <div className='font-bold text-3xl'>{summary.totalUsers}</div>
-            <div className='mt-1 text-muted-foreground text-sm'>users — view summary</div>
-            <div className='mt-3 space-y-1 text-sm'>
-              <div>
-                <span className='font-semibold'>{summary.usersFullyCompliantPct}%</span> passed all assigned
-              </div>
-              <div>
-                <span className='font-semibold'>{summary.overallPassRate}%</span> overall pass rate
-              </div>
+        <Card onClick={() => summaryRef.current?.scrollIntoView({ behavior: 'smooth' })} title='Overview'>
+          <div className='font-bold text-3xl'>{summary.totalUsers}</div>
+          <div className='mt-1 text-muted-foreground text-sm'>users — view summary</div>
+          <div className='mt-3 space-y-1 text-sm'>
+            <div>
+              <span className='font-semibold'>{summary.usersFullyCompliantPct}%</span> passed all assigned
             </div>
-          </button>
+            <div>
+              <span className='font-semibold'>{summary.overallPassRate}%</span> overall pass rate
+            </div>
+          </div>
         </Card>
-        <Card title='People at risk'>
-          <button
-            className='-m-1 w-full rounded p-1 text-left hover:bg-muted disabled:cursor-default disabled:hover:bg-transparent'
-            disabled={summary.atRiskCount === 0}
-            onClick={goAtRisk}
-            type='button'>
-            <div className={cn('font-bold text-3xl', summary.atRiskCount > 0 && 'text-yellow-700 dark:text-yellow-400')}>
-              {summary.atRiskCount}
-            </div>
-            <div className='mt-1 text-muted-foreground text-sm'>
-              {summary.atRiskCount === 0 ? 'everyone on track' : 'have unfinished or overdue tests — view who'}
-            </div>
-          </button>
+        <Card disabled={summary.atRiskCount === 0} onClick={goAtRisk} title='People at risk'>
+          <div className={cn('font-bold text-3xl', summary.atRiskCount > 0 && 'text-yellow-700 dark:text-yellow-400')}>
+            {summary.atRiskCount}
+          </div>
+          <div className='mt-1 text-muted-foreground text-sm'>
+            {summary.atRiskCount === 0 ? 'everyone on track' : 'have unfinished or overdue tests — view who'}
+          </div>
         </Card>
-        <Card title='Weakest test'>
+        <Card disabled={!summary.weakestTest} onClick={goWeakest} title='Weakest test'>
           {summary.weakestTest ? (
-            <button className='-m-1 w-full rounded p-1 text-left hover:bg-muted' onClick={goWeakest} type='button'>
+            <>
               <div className='truncate font-semibold' title={summary.weakestTest.name}>
                 {summary.weakestTest.name}
               </div>
               <div className='mt-2 font-bold text-3xl'>{summary.weakestTest.passRate}%</div>
               <div className='text-muted-foreground text-sm'>pass rate — view assignments</div>
-            </button>
+            </>
           ) : (
             <div className='text-muted-foreground text-sm'>No assigned tests yet</div>
           )}

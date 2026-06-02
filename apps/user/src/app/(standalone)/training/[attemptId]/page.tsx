@@ -4,6 +4,7 @@ import { CitationAnchor } from '@a/react/components'
 import { cn } from '@a/ui'
 import { Button, buttonVariants } from '@a/ui/components/button'
 import { Label } from '@a/ui/components/label'
+import { Progress } from '@a/ui/components/progress'
 import { RadioGroup, RadioGroupItem } from '@a/ui/components/radio-group'
 import { api } from 'backend/convex/_generated/api'
 import { useMutation, useQuery } from 'convex/react'
@@ -84,9 +85,21 @@ const AttemptPage = ({ params }: { params: Promise<{ attemptId: string }> }): Re
   }
   // oxlint-disable-next-line no-unnecessary-condition
   const allAnswered = answers.length === a.questionSnapshots.length && answers.every(v => v !== undefined)
+  const total = a.questionSnapshots.length
+  const answered = answers.filter(v => v !== undefined).length
   return (
     <div className='mx-auto max-w-2xl space-y-4 p-6'>
-      <h2 className='font-semibold text-lg'>Attempt — {a.questionSnapshots.length} questions</h2>
+      <div className='sticky top-0 z-10 space-y-2 border-b bg-background pt-2 pb-3'>
+        <div className='flex items-center justify-between'>
+          <h2 className='font-semibold text-lg'>
+            Question {Math.min(answered + 1, total)} of {total}
+          </h2>
+          <span className='text-muted-foreground text-sm tabular-nums'>
+            {answered}/{total} answered
+          </span>
+        </div>
+        <Progress value={(answered / total) * 100} />
+      </div>
       {a.questionSnapshots.map((q, i) => (
         <div className='space-y-2 rounded-md border p-4' key={q.questionId}>
           <p className='font-medium'>

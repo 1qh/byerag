@@ -1800,6 +1800,24 @@ const listSandboxIds = internalQuery({
     return rows.map(r => ({ owner: r.owner, sandboxId: r.sandboxId }))
   }
 })
+const CHAT_ATTACH_RE = /\((?:Files I just attached|I just uploaded).*?(?:\)|$)/giu
+const cleanChatTitlesProbe = mutation({
+  args: { testSecret: v.string() },
+  handler: async (ctx, { testSecret }): Promise<{ patched: number }> => {
+    verifyTestSecret(testSecret)
+    const chats = await ctx.db.query('chats').take(2000)
+    let patched = 0
+    for (const c of chats) {
+      const cleaned = c.title.replaceAll(CHAT_ATTACH_RE, '').replaceAll(/\s+/gu, ' ').trim()
+      const next = cleaned || 'Untitled'
+      if (next !== c.title) {
+        await ctx.db.patch(c._id, { title: next })
+        patched += 1
+      }
+    }
+    return { patched }
+  }
+})
 export {
   adminApproveReviewProbe,
   adminConfirmRejectProbe,
@@ -1812,6 +1830,7 @@ export {
   attemptDetailProbe,
   checkRateLimitProbe,
   claimContextProbe,
+  cleanChatTitlesProbe,
   clearStreamingFlagsInternal,
   consumeProxyBudgetProbe,
   costCyclePivotProbe,

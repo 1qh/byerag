@@ -51,7 +51,7 @@ const AssignedMeta = ({
   return (
     <div>
       <p className='font-medium'>{name}</p>
-      <p className='text-muted-foreground text-xs'>Required · {poolSize} questions in pool</p>
+      <p className='text-muted-foreground text-xs'>Required · 5 random questions from {poolSize}</p>
       {meta ? (
         <p className='mt-1 text-xs'>
           <span className='text-muted-foreground'>Assigned {fmtVN(meta.assignedAtMs)}</span>
