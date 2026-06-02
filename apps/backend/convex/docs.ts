@@ -564,7 +564,8 @@ const adminRestoreDoc = mutation({
     return { ok: true }
   }
 })
-const POLICY_RECENT_REJECTED_MS = 30 * 86_400_000
+const POLICY_STUCK_PENDING_MS = 5 * 60_000
+type PolicyInboxKind = 'appeal' | 'errored' | 'stuck'
 const listPolicyPending = query({
   args: {},
   handler: async (
@@ -573,7 +574,7 @@ const listPolicyPending = query({
     {
       _id: Id<'docs'>
       filename: string
-      isLimbo: boolean
+      kind: PolicyInboxKind
       policyCategory?: string
       policyReason?: string
       policyReviewRequestedAt?: number
@@ -592,24 +593,38 @@ const listPolicyPending = query({
       .withIndex('by_userId', q => q.eq('userId', email))
       .first()
     if (profile?.role !== 'admin') return []
-    const cutoff = Date.now() - POLICY_RECENT_REJECTED_MS
+    const stuckCutoff = Date.now() - POLICY_STUCK_PENDING_MS
     const pending = await ctx.db
       .query('docs')
       .withIndex('by_policyStatus', q => q.eq('policyStatus', 'pending'))
       .filter(q => q.eq(q.field('deletedAt'), undefined))
       .take(500)
-    const rejected = await ctx.db
+    const appealed = await ctx.db
       .query('docs')
       .withIndex('by_policyStatus', q => q.eq('policyStatus', 'rejected'))
-      .filter(q => q.and(q.eq(q.field('deletedAt'), undefined), q.gte(q.field('uploadedAt'), cutoff)))
+      .filter(q => q.and(q.eq(q.field('deletedAt'), undefined), q.neq(q.field('policyReviewRequestedAt'), undefined)))
       .take(500)
-    const combined = [...pending, ...rejected]
-    return combined
-      .toSorted((a, b) => b.uploadedAt - a.uploadedAt)
-      .map(r => ({
+    const inbox: {
+      _id: Id<'docs'>
+      filename: string
+      kind: PolicyInboxKind
+      policyCategory?: string
+      policyReason?: string
+      policyReviewRequestedAt?: number
+      policyStatus: 'approved' | 'pending' | 'rejected'
+      scope: 'mine' | 'shared'
+      uploadedAt: number
+      uploadedBy: string
+      version: number
+    }[] = []
+    for (const r of pending) {
+      const errored = r.policyReason?.startsWith('classifier-error:') ?? false
+      const stuck = r.uploadedAt < stuckCutoff
+      if (!(errored || stuck)) continue
+      inbox.push({
         _id: r._id,
         filename: r.filename,
-        isLimbo: r.policyStatus === 'pending' && (r.policyReason?.startsWith('classifier-error:') ?? false),
+        kind: errored ? 'errored' : 'stuck',
         policyCategory: r.policyCategory,
         policyReason: r.policyReason,
         policyReviewRequestedAt: r.policyReviewRequestedAt,
@@ -618,7 +633,57 @@ const listPolicyPending = query({
         uploadedAt: r.uploadedAt,
         uploadedBy: r.uploadedBy,
         version: r.version
-      }))
+      })
+    }
+    for (const r of appealed)
+      inbox.push({
+        _id: r._id,
+        filename: r.filename,
+        kind: 'appeal',
+        policyCategory: r.policyCategory,
+        policyReason: r.policyReason,
+        policyReviewRequestedAt: r.policyReviewRequestedAt,
+        policyStatus: r.policyStatus,
+        scope: r.scope,
+        uploadedAt: r.uploadedAt,
+        uploadedBy: r.uploadedBy,
+        version: r.version
+      })
+    return inbox.toSorted(
+      (a, b) => (b.policyReviewRequestedAt ?? b.uploadedAt) - (a.policyReviewRequestedAt ?? a.uploadedAt)
+    )
+  }
+})
+const policyTodayStats = query({
+  args: {},
+  handler: async (
+    ctx
+  ): Promise<{ accepted: number; appeals: number; errored: number; rejected: number; uploaded: number }> => {
+    const identity = await ctx.auth.getUserIdentity()
+    const email = identity?.email?.toLowerCase()
+    if (!email) return { accepted: 0, appeals: 0, errored: 0, rejected: 0, uploaded: 0 }
+    const profile = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', email))
+      .first()
+    if (profile?.role !== 'admin') return { accepted: 0, appeals: 0, errored: 0, rejected: 0, uploaded: 0 }
+    const since = Date.now() - 86_400_000
+    const rows = await ctx.db
+      .query('docs')
+      .withIndex('by_scope_uploadedAt')
+      .filter(q => q.and(q.eq(q.field('deletedAt'), undefined), q.gte(q.field('uploadedAt'), since)))
+      .take(2000)
+    let accepted = 0
+    let rejected = 0
+    let errored = 0
+    let appeals = 0
+    for (const r of rows) {
+      if (r.policyStatus === 'approved') accepted += 1
+      else if (r.policyStatus === 'rejected') rejected += 1
+      if (r.policyStatus === 'pending' && (r.policyReason?.startsWith('classifier-error:') ?? false)) errored += 1
+      if (r.policyReviewRequestedAt !== undefined && r.policyReviewRequestedAt >= since) appeals += 1
+    }
+    return { accepted, appeals, errored, rejected, uploaded: rows.length }
   }
 })
 const adminReclassifyDoc = mutation({
@@ -966,6 +1031,7 @@ export {
   listSharedForSandbox,
   markClassifierError,
   persistChunks,
+  policyTodayStats,
   purgeQuarantineStaging,
   purgeSoftDeleted,
   read,
