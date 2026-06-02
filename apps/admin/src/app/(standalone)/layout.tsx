@@ -1,6 +1,6 @@
 'use client'
 import type { ReactNode } from 'react'
-import { GoogleSignInButton, SidebarUserNav } from '@a/react/components'
+import { DocSheet, GoogleSignInButton, SidebarUserNav } from '@a/react/components'
 import { cn } from '@a/ui'
 import { api } from 'backend/convex/_generated/api'
 import { Authenticated, AuthLoading, Unauthenticated, useQuery } from 'convex/react'
@@ -32,6 +32,7 @@ const StandaloneLayout = ({ children }: { children: ReactNode }): React.ReactEle
         <SidebarAccount />
       </aside>
       <main className='flex-1 overflow-auto'>{children}</main>
+      <DocSheet />
     </Authenticated>
   </div>
 )

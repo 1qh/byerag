@@ -1,7 +1,6 @@
 'use client'
 import type { Id } from 'backend/convex/_generated/dataModel'
-import { DocViewer } from '@a/react/components'
-import { cn } from '@a/ui'
+import { useDocSheet } from '@a/react/components'
 import { Button } from '@a/ui/components/button'
 import { Textarea } from '@a/ui/components/textarea'
 import { api } from 'backend/convex/_generated/api'
@@ -11,7 +10,6 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
-const clampW = (n: number): number => Math.min(720, Math.max(360, n))
 const pad2 = (n: number): string => String(n).padStart(2, '0')
 const fmtVN = (ms: number): string => {
   const v = new Date(ms + 7 * 3_600_000)
@@ -25,9 +23,10 @@ const CATEGORY_LABEL: Record<string, string> = {
   'prompt-injection': 'it looks like a manipulation attempt',
   spam: 'it looks like spam'
 }
+const ADMIN_REJECTED_PREFIX_RE = /^admin-rejected:?\s*/u
 const plainReason = (category?: string, reason?: string): string => {
   if (reason?.startsWith('admin-rejected'))
-    return reason.replace(/^admin-rejected:?\s*/u, '') || 'You rejected it earlier.'
+    return reason.replace(ADMIN_REJECTED_PREFIX_RE, '') || 'You rejected it earlier.'
   if (reason?.startsWith('classifier-error:')) return 'The auto-check ran into an error and could not decide.'
   const cat = category ? CATEGORY_LABEL[category] : null
   if (cat && reason) return `${cat} — “${reason}”`
@@ -76,29 +75,15 @@ const PolicyInboxPage = (): React.ReactElement => {
   const approve = useMutation(api.docs.adminApproveReview)
   const reject = useMutation(api.docs.adminConfirmReject)
   const reclassify = useMutation(api.docs.adminReclassifyDoc)
-  const [selected, setSelected] = useState<Id<'docs'> | null>(null)
+  const { openDoc } = useDocSheet()
   const [busy, setBusy] = useState<null | string>(null)
   const [comment, setComment] = useState('')
-  const [listW, setListW] = useState(540)
-  const startResize = (e: React.PointerEvent): void => {
-    e.preventDefault()
-    const startX = e.clientX
-    const startW = listW
-    const move = (ev: PointerEvent): void => setListW(clampW(startW + ev.clientX - startX))
-    const up = (): void => {
-      globalThis.removeEventListener('pointermove', move)
-      globalThis.removeEventListener('pointerup', up)
-    }
-    globalThis.addEventListener('pointermove', move)
-    globalThis.addEventListener('pointerup', up)
-  }
   const onApprove = async (id: Id<'docs'>): Promise<void> => {
     setBusy(id)
     try {
       await approve({ comment: comment.trim() || undefined, docId: id })
       toast.success('Added to the corpus')
       setComment('')
-      if (selected === id) setSelected(null)
     } catch (error: unknown) {
       toast.error(String(error))
     } finally {
@@ -111,7 +96,6 @@ const PolicyInboxPage = (): React.ReactElement => {
       await reject({ comment: comment.trim() || undefined, docId: id })
       toast.success('Kept out of the corpus')
       setComment('')
-      if (selected === id) setSelected(null)
     } catch (error: unknown) {
       toast.error(String(error))
     } finally {
@@ -149,109 +133,100 @@ const PolicyInboxPage = (): React.ReactElement => {
           </div>
         ) : null}
       </header>
-      <div className='flex flex-1 overflow-hidden'>
-        <aside
-          className='flex shrink-0 flex-col overflow-hidden border-r bg-muted/20'
-          // oxlint-disable-next-line react-perf/jsx-no-new-object-as-prop -- width is stateful
-          style={{ width: `${listW}px` }}>
-          {rows === undefined ? (
-            <div className='p-6 text-muted-foreground text-sm'>Loading…</div>
-          ) : rows.length === 0 ? (
-            <div className='flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center'>
-              <CheckCircle2 aria-hidden className='size-12 text-green-600' />
-              <p className='font-medium'>All clear</p>
-              <p className='max-w-xs text-muted-foreground text-sm'>
-                The auto-check handled every upload today. Nothing here needs you right now.
+      <div className='mx-auto flex w-full max-w-3xl flex-1 flex-col overflow-hidden'>
+        {rows === undefined ? (
+          <div className='p-6 text-muted-foreground text-sm'>Loading…</div>
+        ) : rows.length === 0 ? (
+          <div className='flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center'>
+            <CheckCircle2 aria-hidden className='size-12 text-green-600' />
+            <p className='font-medium'>All clear</p>
+            <p className='max-w-xs text-muted-foreground text-sm'>
+              The auto-check handled every upload today. Nothing here needs you right now.
+            </p>
+            {stats && stats.uploaded > 0 ? (
+              <p className='text-muted-foreground text-xs'>
+                Today the auto-check accepted {stats.accepted} and rejected {stats.rejected} of {stats.uploaded} uploads.
               </p>
-              {stats && stats.uploaded > 0 ? (
-                <p className='text-muted-foreground text-xs'>
-                  Today the auto-check accepted {stats.accepted} and rejected {stats.rejected} of {stats.uploaded} uploads.
-                </p>
-              ) : null}
-            </div>
-          ) : (
-            <ul className='flex-1 space-y-2 overflow-auto p-3'>
-              {rows.map(r => {
-                const isSel = selected === r._id
-                const isBusy = busy === r._id
-                return (
-                  <li
-                    className={cn(
-                      'rounded-lg border bg-background p-3 shadow-sm transition-colors',
-                      isSel && 'ring-2 ring-primary/40'
-                    )}
-                    key={r._id}>
-                    <KindHeadline row={r} />
-                    <p className='mt-1 text-muted-foreground text-xs'>
-                      {r.scope === 'shared' ? 'For the shared corpus' : 'Personal upload'} ·{' '}
-                      {r.kind === 'appeal' && r.policyReviewRequestedAt
-                        ? `asked ${fmtVN(r.policyReviewRequestedAt)}`
-                        : `uploaded ${fmtVN(r.uploadedAt)}`}
+            ) : null}
+          </div>
+        ) : (
+          <ul className='flex-1 space-y-3 overflow-auto p-4'>
+            {rows.map(r => {
+              const isBusy = busy === r._id
+              return (
+                <li className='rounded-lg border bg-card p-4 shadow-sm' key={r._id}>
+                  <KindHeadline row={r} />
+                  <p className='mt-1 text-muted-foreground text-xs'>
+                    {r.scope === 'shared' ? 'For the shared corpus' : 'Personal upload'} ·{' '}
+                    {r.kind === 'appeal' && r.policyReviewRequestedAt
+                      ? `asked ${fmtVN(r.policyReviewRequestedAt)}`
+                      : `uploaded ${fmtVN(r.uploadedAt)}`}
+                  </p>
+                  {r.policyReason || r.policyCategory ? (
+                    <p className='mt-2 rounded bg-muted/50 px-2 py-1.5 text-muted-foreground text-xs italic'>
+                      AI said: {plainReason(r.policyCategory, r.policyReason)}
                     </p>
-                    {r.policyReason || r.policyCategory ? (
-                      <p className='mt-2 rounded bg-muted/50 px-2 py-1.5 text-muted-foreground text-xs italic'>
-                        AI said: {plainReason(r.policyCategory, r.policyReason)}
-                      </p>
-                    ) : null}
-                    <div className='mt-3 flex flex-wrap gap-2'>
-                      <Button onClick={() => setSelected(r._id)} size='sm' variant='outline'>
-                        <FileText className='size-4' />
-                        Look at file
-                      </Button>
+                  ) : null}
+                  <div className='mt-3 flex flex-wrap gap-2'>
+                    <Button onClick={() => openDoc(r._id)} size='sm' variant='outline'>
+                      <FileText className='size-4' />
+                      Look at file
+                    </Button>
+                    <Button
+                      disabled={isBusy}
+                      onClick={() => {
+                        // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
+                        onApprove(r._id).catch((error: unknown) => toast.error(String(error)))
+                      }}
+                      size='sm'>
+                      <CheckCircle2 className='size-4' />
+                      Add to corpus
+                    </Button>
+                    {r.kind === 'appeal' ? (
                       <Button
                         disabled={isBusy}
                         onClick={() => {
                           // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
-                          onApprove(r._id).catch((error: unknown) => toast.error(String(error)))
+                          onReject(r._id).catch((error: unknown) => toast.error(String(error)))
                         }}
-                        size='sm'>
-                        <CheckCircle2 className='size-4' />
-                        Add to corpus
+                        size='sm'
+                        variant='outline'>
+                        <XCircle className='size-4' />I agree with AI
                       </Button>
-                      {r.kind === 'appeal' ? (
-                        <Button
-                          disabled={isBusy}
-                          onClick={() => {
-                            // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
-                            onReject(r._id).catch((error: unknown) => toast.error(String(error)))
-                          }}
-                          size='sm'
-                          variant='outline'>
-                          <XCircle className='size-4' />I agree with AI
-                        </Button>
-                      ) : (
-                        <Button
-                          disabled={isBusy}
-                          onClick={() => {
-                            // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
-                            onReject(r._id).catch((error: unknown) => toast.error(String(error)))
-                          }}
-                          size='sm'
-                          variant='outline'>
-                          <XCircle className='size-4' />
-                          Don&apos;t add
-                        </Button>
-                      )}
-                      {r.kind === 'appeal' ? null : (
-                        <Button
-                          disabled={isBusy}
-                          onClick={() => {
-                            // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
-                            onReclassify(r._id).catch((error: unknown) => toast.error(String(error)))
-                          }}
-                          size='sm'
-                          variant='outline'>
-                          <RotateCw className='size-4' />
-                          Try AI again
-                        </Button>
-                      )}
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-          <div className='border-t bg-background p-3'>
+                    ) : (
+                      <Button
+                        disabled={isBusy}
+                        onClick={() => {
+                          // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
+                          onReject(r._id).catch((error: unknown) => toast.error(String(error)))
+                        }}
+                        size='sm'
+                        variant='outline'>
+                        <XCircle className='size-4' />
+                        Don&apos;t add
+                      </Button>
+                    )}
+                    {r.kind === 'appeal' ? null : (
+                      <Button
+                        disabled={isBusy}
+                        onClick={() => {
+                          // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
+                          onReclassify(r._id).catch((error: unknown) => toast.error(String(error)))
+                        }}
+                        size='sm'
+                        variant='outline'>
+                        <RotateCw className='size-4' />
+                        Try AI again
+                      </Button>
+                    )}
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+        {rows && rows.length > 0 ? (
+          <div className='border-t bg-background p-4'>
             <Textarea
               aria-label='Decision comment'
               className='h-14'
@@ -260,27 +235,7 @@ const PolicyInboxPage = (): React.ReactElement => {
               value={comment}
             />
           </div>
-        </aside>
-        <button
-          aria-label='Resize preview'
-          className='w-1 shrink-0 cursor-col-resize bg-border hover:bg-primary/40'
-          onPointerDown={startResize}
-          type='button'
-        />
-        <main className='flex-1 overflow-auto'>
-          {selected ? (
-            <DocViewer docId={selected} />
-          ) : (
-            <div className='flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-muted-foreground'>
-              <FileText aria-hidden className='size-10 opacity-40' />
-              <p className='font-medium'>Pick &ldquo;Look at file&rdquo; on any item</p>
-              <p className='max-w-sm text-sm'>
-                The auto-check handles most uploads. You only see the ones it could not decide or that an employee
-                appealed.
-              </p>
-            </div>
-          )}
-        </main>
+        ) : null}
       </div>
     </div>
   )
