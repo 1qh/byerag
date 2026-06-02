@@ -77,7 +77,7 @@ const PolicyQueuePage = (): React.ReactElement => {
   const onApprove = async (id: Id<'docs'>): Promise<void> => {
     setBusy(id)
     try {
-      await approve({ docId: id })
+      await approve({ comment: comment.trim() || undefined, docId: id })
       toast.success('Approved — added to corpus')
       setComment('')
       if (selected === id) setSelected(null)
@@ -90,7 +90,7 @@ const PolicyQueuePage = (): React.ReactElement => {
   const onReject = async (id: Id<'docs'>): Promise<void> => {
     setBusy(id)
     try {
-      await reject({ docId: id })
+      await reject({ comment: comment.trim() || undefined, docId: id })
       toast.success('Rejection confirmed')
       setComment('')
       if (selected === id) setSelected(null)

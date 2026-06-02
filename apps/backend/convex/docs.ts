@@ -671,8 +671,8 @@ const requestReview = mutation({
   }
 })
 const adminApproveReview = mutation({
-  args: { docId: v.id('docs') },
-  handler: async (ctx, { docId }): Promise<void> => {
+  args: { comment: v.optional(v.string()), docId: v.id('docs') },
+  handler: async (ctx, { comment, docId }): Promise<void> => {
     const identity = await ctx.auth.getUserIdentity()
     const email = identity?.email?.toLowerCase()
     if (!email) throw new Error('not authenticated')
@@ -687,7 +687,7 @@ const adminApproveReview = mutation({
     await ctx.scheduler.runAfter(0, internal.docsEmbed.embed, { docId })
     if (doc.scope === 'shared') await ctx.scheduler.runAfter(0, internal.trainingGen.generate, { docId })
     await ctx.db.insert('auditLogs', {
-      args: JSON.stringify({ docId, filename: doc.filename }),
+      args: JSON.stringify({ comment: comment ?? '', docId, filename: doc.filename }),
       command: 'docs.policyOverride.approve',
       mode: 'session',
       ok: true,
@@ -697,8 +697,8 @@ const adminApproveReview = mutation({
   }
 })
 const adminConfirmReject = mutation({
-  args: { docId: v.id('docs') },
-  handler: async (ctx, { docId }): Promise<void> => {
+  args: { comment: v.optional(v.string()), docId: v.id('docs') },
+  handler: async (ctx, { comment, docId }): Promise<void> => {
     const identity = await ctx.auth.getUserIdentity()
     const email = identity?.email?.toLowerCase()
     if (!email) throw new Error('not authenticated')
@@ -709,16 +709,20 @@ const adminConfirmReject = mutation({
     if (profile?.role !== 'admin') throw new Error('admin only')
     const doc = await ctx.db.get(docId)
     if (!doc) throw new Error('doc not found')
-    if (doc.storageId) {
+    if (doc.storageId)
       try {
         await ctx.storage.delete(doc.storageId)
       } catch {
         // Already gone
       }
-      await ctx.db.patch(docId, { policyOverriddenBy: email, storageId: undefined })
-    }
+    await ctx.db.patch(docId, {
+      policyOverriddenBy: email,
+      policyReason: comment ? `admin-rejected: ${comment.slice(0, 200)}` : 'admin-rejected',
+      policyStatus: 'rejected',
+      storageId: undefined
+    })
     await ctx.db.insert('auditLogs', {
-      args: JSON.stringify({ docId, filename: doc.filename }),
+      args: JSON.stringify({ comment: comment ?? '', docId, filename: doc.filename }),
       command: 'docs.policyOverride.confirmReject',
       mode: 'session',
       ok: true,
@@ -828,7 +832,13 @@ const listShared = query({
     const rows = await ctx.db
       .query('docs')
       .withIndex('by_scope_uploadedAt', q => q.eq('scope', 'shared'))
-      .filter(q => q.eq(q.field('deletedAt'), undefined))
+      .filter(q =>
+        q.and(
+          q.eq(q.field('deletedAt'), undefined),
+          q.eq(q.field('policyStatus'), 'approved'),
+          q.eq(q.field('scanStatus'), 'clean')
+        )
+      )
       .order('desc')
       .take(limit ?? 50)
     return rows.map(r => ({
