@@ -408,6 +408,9 @@ interface DocListItem {
   filename: string
   fileSize: number
   mime: string
+  policyCategory?: string
+  policyReason?: string
+  policyReviewRequestedAt?: number
   policyStatus: 'approved' | 'pending' | 'rejected'
   scanStatus: 'clean' | 'pending' | 'quarantined'
   scope: 'mine' | 'shared'
@@ -429,6 +432,9 @@ const listMine = query({
       fileSize: r.fileSize,
       filename: r.filename,
       mime: r.mime,
+      policyCategory: r.policyCategory,
+      policyReason: r.policyReason,
+      policyReviewRequestedAt: r.policyReviewRequestedAt,
       policyStatus: r.policyStatus,
       scanStatus: r.scanStatus,
       scope: r.scope,
@@ -554,6 +560,89 @@ const adminRestoreDoc = mutation({
       ok: true,
       owner: email,
       severity: 'medium'
+    })
+    return { ok: true }
+  }
+})
+const POLICY_RECENT_REJECTED_MS = 30 * 86_400_000
+const listPolicyPending = query({
+  args: {},
+  handler: async (
+    ctx
+  ): Promise<
+    {
+      _id: Id<'docs'>
+      filename: string
+      isLimbo: boolean
+      policyCategory?: string
+      policyReason?: string
+      policyReviewRequestedAt?: number
+      policyStatus: 'approved' | 'pending' | 'rejected'
+      scope: 'mine' | 'shared'
+      uploadedAt: number
+      uploadedBy: string
+      version: number
+    }[]
+  > => {
+    const identity = await ctx.auth.getUserIdentity()
+    const email = identity?.email?.toLowerCase()
+    if (!email) return []
+    const profile = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', email))
+      .first()
+    if (profile?.role !== 'admin') return []
+    const cutoff = Date.now() - POLICY_RECENT_REJECTED_MS
+    const pending = await ctx.db
+      .query('docs')
+      .withIndex('by_policyStatus', q => q.eq('policyStatus', 'pending'))
+      .filter(q => q.eq(q.field('deletedAt'), undefined))
+      .take(500)
+    const rejected = await ctx.db
+      .query('docs')
+      .withIndex('by_policyStatus', q => q.eq('policyStatus', 'rejected'))
+      .filter(q => q.and(q.eq(q.field('deletedAt'), undefined), q.gte(q.field('uploadedAt'), cutoff)))
+      .take(500)
+    const combined = [...pending, ...rejected]
+    return combined
+      .toSorted((a, b) => b.uploadedAt - a.uploadedAt)
+      .map(r => ({
+        _id: r._id,
+        filename: r.filename,
+        isLimbo: r.policyStatus === 'pending' && (r.policyReason?.startsWith('classifier-error:') ?? false),
+        policyCategory: r.policyCategory,
+        policyReason: r.policyReason,
+        policyReviewRequestedAt: r.policyReviewRequestedAt,
+        policyStatus: r.policyStatus,
+        scope: r.scope,
+        uploadedAt: r.uploadedAt,
+        uploadedBy: r.uploadedBy,
+        version: r.version
+      }))
+  }
+})
+const adminReclassifyDoc = mutation({
+  args: { docId: v.id('docs') },
+  handler: async (ctx, { docId }): Promise<{ ok: true }> => {
+    const identity = await ctx.auth.getUserIdentity()
+    const email = identity?.email?.toLowerCase()
+    if (!email) throw new Error('not authenticated')
+    const profile = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', email))
+      .first()
+    if (profile?.role !== 'admin') throw new Error('admin only')
+    const doc = await ctx.db.get(docId)
+    if (!doc) throw new Error('doc not found')
+    await ctx.db.patch(docId, { policyCategory: undefined, policyReason: undefined, policyStatus: 'pending' })
+    await ctx.scheduler.runAfter(0, internal.docsPolicy.classify, { docId })
+    await ctx.db.insert('auditLogs', {
+      args: JSON.stringify({ docId, filename: doc.filename }),
+      command: 'docs.adminReclassify',
+      mode: 'session',
+      ok: true,
+      owner: email,
+      severity: 'low'
     })
     return { ok: true }
   }
@@ -841,6 +930,7 @@ export {
   adminApproveReview,
   adminConfirmReject,
   adminDeleteDoc,
+  adminReclassifyDoc,
   adminRestoreDoc,
   adminScanCancel,
   adminScanOverride,
@@ -861,6 +951,7 @@ export {
   listForQuarantine,
   listMine,
   listMineForSandbox,
+  listPolicyPending,
   listShared,
   listSharedForSandbox,
   markClassifierError,
