@@ -573,6 +573,7 @@ const adminPurgeDoc = mutation({
       await ctx.db.delete(c._id)
       chunksPurged += 1
     }
+    await ctx.db.delete(docId)
     await ctx.db.insert('auditLogs', {
       args: JSON.stringify({ blobPurged, chunksPurged, docId, filename: doc.filename }),
       command: 'docs.adminPurge',
