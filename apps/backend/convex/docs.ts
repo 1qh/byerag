@@ -540,6 +540,50 @@ const listDeleted = query({
       }))
   }
 })
+const adminPurgeDoc = mutation({
+  args: { docId: v.id('docs') },
+  handler: async (ctx, { docId }): Promise<{ blobPurged: boolean; chunksPurged: number; ok: true }> => {
+    const identity = await ctx.auth.getUserIdentity()
+    const email = identity?.email?.toLowerCase()
+    if (!email) throw new Error('not authenticated')
+    const profile = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', email))
+      .first()
+    if (profile?.role !== 'admin') throw new Error('admin only')
+    const doc = await ctx.db.get(docId)
+    if (!doc) throw new Error('doc not found')
+    if (doc.deletedAt === undefined) throw new Error('only soft-deleted docs can be purged')
+    let blobPurged = false
+    if (doc.storageId) {
+      try {
+        await ctx.storage.delete(doc.storageId)
+        blobPurged = true
+      } catch {
+        // Already gone
+      }
+      await ctx.db.patch(docId, { storageId: undefined })
+    }
+    const chunks = await ctx.db
+      .query('docChunks')
+      .withIndex('by_doc', q => q.eq('docId', docId))
+      .take(2000)
+    let chunksPurged = 0
+    for (const c of chunks) {
+      await ctx.db.delete(c._id)
+      chunksPurged += 1
+    }
+    await ctx.db.insert('auditLogs', {
+      args: JSON.stringify({ blobPurged, chunksPurged, docId, filename: doc.filename }),
+      command: 'docs.adminPurge',
+      mode: 'session',
+      ok: true,
+      owner: email,
+      severity: 'high'
+    })
+    return { blobPurged, chunksPurged, ok: true }
+  }
+})
 const adminRestoreDoc = mutation({
   args: { docId: v.id('docs') },
   handler: async (ctx, { docId }): Promise<{ ok: true }> => {
@@ -1008,6 +1052,7 @@ export {
   adminApproveReview,
   adminConfirmReject,
   adminDeleteDoc,
+  adminPurgeDoc,
   adminReclassifyDoc,
   adminRestoreDoc,
   adminScanCancel,
