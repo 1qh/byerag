@@ -1,3 +1,5 @@
+/** biome-ignore-all lint/nursery/noContinue: linear loop reads cleaner with continue than nested else branches */
+/* eslint-disable no-continue */
 import type { ArgSpec, ArgSpecs } from './types'
 
 interface ValidateErr {
@@ -92,6 +94,10 @@ const validateArgs = (specs: ArgSpecs, args: Record<string, unknown>): ValidateE
   for (const [name, spec] of Object.entries(specs)) {
     const raw = args[name]
     const empty = raw === undefined || raw === null || raw === ''
+    if (empty && spec.default !== undefined) {
+      coerced[name] = spec.default
+      continue
+    }
     if (empty && spec.required !== false)
       return { details: { expected, missing: name }, message: `missing required: ${name}`, ok: false }
     if (!empty) {

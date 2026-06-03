@@ -22,17 +22,21 @@ interface StringOptsBase<A extends readonly string[]> {
 }
 const argStringImpl = <const A extends readonly string[] = readonly []>(
   opts: StringOptsBase<A> & { optional?: boolean }
-): ArgSpec<ReturnType<typeof v.string>, boolean, A> => ({
-  aliases: opts.aliases,
-  description: opts.description,
-  kind: 'string',
-  maxLength: opts.maxLength,
-  minLength: opts.minLength,
-  optional: opts.optional ?? false,
-  pattern: opts.pattern,
-  required: !(opts.optional ?? false),
-  v: v.string()
-})
+): ArgSpec<ReturnType<typeof v.string>, boolean, A> => {
+  const isOptional = opts.optional ?? opts.default !== undefined
+  return {
+    aliases: opts.aliases,
+    default: opts.default,
+    description: opts.description,
+    kind: 'string',
+    maxLength: opts.maxLength,
+    minLength: opts.minLength,
+    optional: isOptional,
+    pattern: opts.pattern,
+    required: !isOptional,
+    v: v.string()
+  }
+}
 const argString = argStringImpl as ArgStringFn
 interface ArgNumberFn {
   <const A extends readonly string[] = readonly []>(
@@ -52,17 +56,21 @@ interface NumberOptsBase<A extends readonly string[]> {
 }
 const argNumberImpl = <const A extends readonly string[] = readonly []>(
   opts: NumberOptsBase<A> & { optional?: boolean }
-): ArgSpec<ReturnType<typeof v.float64>, boolean, A> => ({
-  aliases: opts.aliases,
-  description: opts.description,
-  integer: opts.integer,
-  kind: 'number',
-  max: opts.max,
-  min: opts.min,
-  optional: opts.optional ?? false,
-  required: !(opts.optional ?? false),
-  v: v.float64()
-})
+): ArgSpec<ReturnType<typeof v.float64>, boolean, A> => {
+  const isOptional = opts.optional ?? opts.default !== undefined
+  return {
+    aliases: opts.aliases,
+    default: opts.default,
+    description: opts.description,
+    integer: opts.integer,
+    kind: 'number',
+    max: opts.max,
+    min: opts.min,
+    optional: isOptional,
+    required: !isOptional,
+    v: v.float64()
+  }
+}
 const argNumber = argNumberImpl as ArgNumberFn
 interface ArgBoolFn {
   <const A extends readonly string[] = readonly []>(opts: {
@@ -105,13 +113,15 @@ const argEnumImpl = <const Vals extends readonly [string, ...string[]], const A 
 ): ArgSpec<Validator<Vals[number]>, boolean, A> => {
   const lits = values.map(vv => v.literal(vv)) as [ReturnType<typeof v.literal>, ...ReturnType<typeof v.literal>[]]
   const union = v.union(...lits) as unknown as Validator<Vals[number]>
+  const isOptional = opts.optional ?? opts.default !== undefined
   return {
     aliases: opts.aliases,
+    default: opts.default,
     description: opts.description,
     enum: values,
     kind: 'enum',
-    optional: opts.optional ?? false,
-    required: !(opts.optional ?? false),
+    optional: isOptional,
+    required: !isOptional,
     v: union
   }
 }
@@ -227,6 +237,12 @@ const unpack = (
   } = raw as Record<string, unknown>
   return { args, authCtx, chatCtx, pathCtx, traceCtx }
 }
+const applyDefaults = (specs: ArgSpecs, args: Record<string, unknown>): Record<string, unknown> => {
+  const out: Record<string, unknown> = { ...args }
+  for (const [k, spec] of Object.entries(specs))
+    if (spec.default !== undefined && out[k] === undefined) out[k] = spec.default
+  return out
+}
 interface BuilderDeps<TAuth, TActionCtx, TQueryCtx, TMutationCtx, TAct, TQry, TMut> {
   authValidator: Validator<TAuth, 'required', string>
   cached: (opts: CacheOpts<TActionCtx, TAuth>) => Promise<unknown>
@@ -310,7 +326,8 @@ const createBuilder = <TAuth, TActionCtx, TQueryCtx, TMutationCtx, TAct, TQry, T
     def: DefineToolOpts<Args, Codes, TActionCtx, TAuth>
   ): TAct => {
     const handler = async (ctx: TActionCtx, raw: unknown): Promise<WrappedResult> => {
-      const { args, authCtx, chatCtx, pathCtx, traceCtx } = unpack(raw)
+      const { args: rawArgs, authCtx, chatCtx, pathCtx, traceCtx } = unpack(raw)
+      const args = applyDefaults(def.args, rawArgs)
       const { ctx: base, steps } = baseExtras<Codes>({ authCtx, chatCtx, pathCtx, providedFail: def.fail, traceCtx })
       try {
         const cached: CachedFn<Args> = async <T>(cargs: HandlerArgs<Args>, compute: () => Promise<T>) =>
@@ -338,7 +355,8 @@ const createBuilder = <TAuth, TActionCtx, TQueryCtx, TMutationCtx, TAct, TQry, T
     def: DefineQueryOpts<Args, Codes, TQueryCtx, TAuth>
   ): TQry => {
     const handler = async (ctx: TQueryCtx, raw: unknown): Promise<WrappedResult> => {
-      const { args, authCtx, chatCtx, pathCtx, traceCtx } = unpack(raw)
+      const { args: rawArgs, authCtx, chatCtx, pathCtx, traceCtx } = unpack(raw)
+      const args = applyDefaults(def.args, rawArgs)
       const { ctx: base, steps } = baseExtras<Codes>({ authCtx, chatCtx, pathCtx, providedFail: def.fail, traceCtx })
       try {
         const enhanced = { ...(ctx as object), ...base } as ReadCtxExtras<Codes, TAuth> & TQueryCtx
@@ -358,7 +376,8 @@ const createBuilder = <TAuth, TActionCtx, TQueryCtx, TMutationCtx, TAct, TQry, T
     def: DefineMutationOpts<Args, Codes, TMutationCtx, TAuth>
   ): TMut => {
     const handler = async (ctx: TMutationCtx, raw: unknown): Promise<WrappedResult> => {
-      const { args, authCtx, chatCtx, pathCtx, traceCtx } = unpack(raw)
+      const { args: rawArgs, authCtx, chatCtx, pathCtx, traceCtx } = unpack(raw)
+      const args = applyDefaults(def.args, rawArgs)
       const { ctx: base, steps } = baseExtras<Codes>({ authCtx, chatCtx, pathCtx, providedFail: def.fail, traceCtx })
       try {
         const enhanced = { ...(ctx as object), ...base } as ReadCtxExtras<Codes, TAuth> & TMutationCtx

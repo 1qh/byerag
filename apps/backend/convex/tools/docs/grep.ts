@@ -6,7 +6,7 @@ const MAX_HITS = 200
 const SNIPPET_CHARS = 160
 const action = defineQuery({
   args: {
-    limit: arg.number({ default: 50, description: 'Max hits (cap 200)', optional: true }),
+    limit: arg.number({ default: 50, description: 'Max hits (cap 200)' }),
     pattern: arg.string({ description: 'RE2-flavored regex' }),
     scope: arg.enum(SCOPES, { description: 'Visibility scope' })
   },
@@ -16,7 +16,7 @@ const action = defineQuery({
   examples: ['docs grep --pattern "warranty" --scope shared'],
   handler: async (ctx, args) => {
     const fail = makeFail('INVALID_ARG')
-    const cap = Math.min(args.limit ?? 50, MAX_HITS)
+    const cap = Math.min(args.limit, MAX_HITS)
     let regex: RegExp
     try {
       regex = new RegExp(args.pattern, 'gu')

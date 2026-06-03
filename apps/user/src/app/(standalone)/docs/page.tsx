@@ -317,7 +317,7 @@ const DocsPage = (): React.ReactElement => {
       try {
         globalThis.localStorage.setItem('draft-new', v)
       } catch {
-        // LocalStorage unavailable; navigation still proceeds
+        /* Private-browsing storage rejection: nav still proceeds */
       }
       router.push('/')
     }

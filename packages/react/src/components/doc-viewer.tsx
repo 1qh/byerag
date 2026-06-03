@@ -7,6 +7,7 @@ import { useMutation, useQuery } from 'convex/react'
 import { Download, Loader2, MessageSquare } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useApp } from '../app-context'
@@ -31,6 +32,7 @@ const DocViewer = ({ docId }: DocViewerProps): React.ReactElement => {
   const { id: app } = useApp()
   const { close: closeDocSheet } = useDocSheet()
   const sendMessage = useMutation(api.messages.send)
+  const router = useRouter()
   const [asking, setAsking] = useState(false)
   const askInFlightRef = useRef(false)
   if (result === undefined) return <p className='p-6 text-muted-foreground'>Loading…</p>
@@ -49,7 +51,7 @@ const DocViewer = ({ docId }: DocViewerProps): React.ReactElement => {
     try {
       const chatId = await sendMessage({ app, chatId: undefined, content: text })
       closeDocSheet()
-      globalThis.location.assign(`/chat/${chatId}`)
+      router.push(`/chat/${chatId}`)
     } catch (error: unknown) {
       toast.error(`Could not start the chat: ${String(error).slice(0, 120)}`)
       askInFlightRef.current = false

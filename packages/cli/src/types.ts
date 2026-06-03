@@ -24,6 +24,7 @@ interface ArgSpec<
   Aliases extends readonly string[] = readonly string[]
 > extends ArgConstraints {
   aliases?: Aliases
+  default?: unknown
   description: string
   optional?: Optional
   required?: boolean

@@ -19,17 +19,7 @@ import { Checkbox } from '@a/ui/components/checkbox'
 import { Input } from '@a/ui/components/input'
 import { api } from 'backend/convex/_generated/api'
 import { useMutation, useQuery } from 'convex/react'
-import {
-  File,
-  FileImage,
-  FileSpreadsheet,
-  FileText,
-  Loader2,
-  Presentation,
-  Search,
-  Sparkles,
-  Trash2
-} from 'lucide-react'
+import { File, FileImage, FileSpreadsheet, FileText, Loader2, Presentation, Search, Sparkles, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
@@ -204,7 +194,7 @@ const DocsPage = (): React.ReactElement => {
       try {
         globalThis.localStorage.setItem('draft-new', v)
       } catch {
-        // LocalStorage unavailable; navigation still proceeds
+        /* Private-browsing storage rejection: nav still proceeds */
       }
       router.push('/')
     }
