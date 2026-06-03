@@ -30,7 +30,7 @@ const verifySecret = async (ctx: MutationCtx, chatId: Id<'chats'>, secret: strin
   const provided = await hashSecret(secret)
   if (!constantTimeEqual(chat.secretHash, provided)) throw new Error('unauthorized')
 }
-const ATTACH_NOTE_RE = /\((?:Files I just attached|I just uploaded)[^)]*\)/gu
+const ATTACH_NOTE_RE = /\((?:Files I just attached|I just uploaded|Read it with the docs tools)[^)]*\)/gu
 const sanitizeTitle = (s: string): string => {
   const stripped = s.replaceAll(ATTACH_NOTE_RE, '')
   const cleaned = sanitizeExternal(stripped).replaceAll(WHITESPACE_RE, ' ').trim()
