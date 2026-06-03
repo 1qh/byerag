@@ -140,6 +140,7 @@ interface ClassifyDoc {
   extractedText?: string
   filename: string
   policyStatus: 'approved' | 'pending' | 'rejected'
+  summary?: string
   uploadedBy: string
 }
 const getForEmbed = internalQuery({
@@ -306,6 +307,7 @@ const getForClassify = internalQuery({
       extractedText: row.extractedText,
       filename: row.filename,
       policyStatus: row.policyStatus,
+      summary: row.summary,
       uploadedBy: row.uploadedBy
     }
   }
