@@ -26,6 +26,7 @@ import type * as docs from "../docs.js";
 import type * as docsEmbed from "../docsEmbed.js";
 import type * as docsExtract from "../docsExtract.js";
 import type * as docsPolicy from "../docsPolicy.js";
+import type * as docsSummary from "../docsSummary.js";
 import type * as docsUpload from "../docsUpload.js";
 import type * as env from "../env.js";
 import type * as fileActions from "../fileActions.js";
@@ -105,6 +106,7 @@ declare const fullApi: ApiFromModules<{
   docsEmbed: typeof docsEmbed;
   docsExtract: typeof docsExtract;
   docsPolicy: typeof docsPolicy;
+  docsSummary: typeof docsSummary;
   docsUpload: typeof docsUpload;
   env: typeof env;
   fileActions: typeof fileActions;

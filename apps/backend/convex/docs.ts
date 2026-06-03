@@ -133,6 +133,7 @@ const setExtracted = internalMutation({
   handler: async (ctx, { docId, extractedText, extractedTextStorageId, lang }): Promise<void> => {
     await ctx.db.patch(docId, { extractedText, extractedTextStorageId, lang })
     await ctx.scheduler.runAfter(0, internal.docsPolicy.classify, { docId })
+    await ctx.scheduler.runAfter(0, internal.docsSummary.summarize, { docId })
   }
 })
 interface ClassifyDoc {
@@ -414,6 +415,7 @@ interface DocListItem {
   policyStatus: 'approved' | 'pending' | 'rejected'
   scanStatus: 'clean' | 'pending' | 'quarantined'
   scope: 'mine' | 'shared'
+  summary?: string
   uploadedAt: number
   uploadedBy: string
   version: number
@@ -439,10 +441,70 @@ const listMine = query({
       policyStatus: r.policyStatus,
       scanStatus: r.scanStatus,
       scope: r.scope,
+      summary: r.summary,
       uploadedAt: r.uploadedAt,
       uploadedBy: r.uploadedBy,
       version: r.version
     }))
+  }
+})
+const setSummary = internalMutation({
+  args: { docId: v.id('docs'), summary: v.string() },
+  handler: async (ctx, { docId, summary }): Promise<void> => {
+    await ctx.db.patch(docId, { summary })
+  }
+})
+const listMissingSummaries = internalQuery({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, { limit }): Promise<{ _id: Id<'docs'> }[]> => {
+    const cap = limit ?? 50
+    const rows = await ctx.db
+      .query('docs')
+      .filter(q =>
+        q.and(
+          q.eq(q.field('deletedAt'), undefined),
+          q.eq(q.field('policyStatus'), 'approved'),
+          q.eq(q.field('summary'), undefined)
+        )
+      )
+      .take(cap)
+    return rows.filter(r => r.extractedText && r.extractedText.length > 0).map(r => ({ _id: r._id }))
+  }
+})
+const weeklyHighlights = query({
+  args: {},
+  handler: async (
+    ctx
+  ): Promise<{ _id: Id<'docs'>; filename: string; scope: 'mine' | 'shared'; summary?: string; uploadedAt: number }[]> => {
+    const email = await requireOwnerEmail(ctx)
+    const cutoff = Date.now() - 7 * 86_400_000
+    const rows = await ctx.db
+      .query('docs')
+      .withIndex('by_scope_uploadedAt', q => q.eq('scope', 'shared'))
+      .filter(q =>
+        q.and(
+          q.eq(q.field('deletedAt'), undefined),
+          q.eq(q.field('policyStatus'), 'approved'),
+          q.gte(q.field('uploadedAt'), cutoff)
+        )
+      )
+      .order('desc')
+      .take(50)
+    const mineRows = await ctx.db
+      .query('docs')
+      .withIndex('by_owner', q => q.eq('owner', email))
+      .filter(q =>
+        q.and(
+          q.eq(q.field('deletedAt'), undefined),
+          q.eq(q.field('policyStatus'), 'approved'),
+          q.gte(q.field('uploadedAt'), cutoff)
+        )
+      )
+      .take(50)
+    return [...rows, ...mineRows]
+      .toSorted((a, b) => b.uploadedAt - a.uploadedAt)
+      .slice(0, 5)
+      .map(r => ({ _id: r._id, filename: r.filename, scope: r.scope, summary: r.summary, uploadedAt: r.uploadedAt }))
   }
 })
 const getCitationBadge = query({
@@ -984,6 +1046,7 @@ const listShared = query({
       policyStatus: r.policyStatus,
       scanStatus: r.scanStatus,
       scope: r.scope,
+      summary: r.summary,
       uploadedAt: r.uploadedAt,
       uploadedBy: r.uploadedBy,
       version: r.version
@@ -1099,6 +1162,7 @@ export {
   listForQuarantine,
   listMine,
   listMineForSandbox,
+  listMissingSummaries,
   listPolicyPending,
   listShared,
   listSharedForSandbox,
@@ -1111,6 +1175,8 @@ export {
   requestReview,
   setExtracted,
   setPolicy,
-  upload
+  setSummary,
+  upload,
+  weeklyHighlights
 }
 export type { ConflictDoc, DocListItem, DocRow, ExtractTarget, RowSnippet, UploadResult }

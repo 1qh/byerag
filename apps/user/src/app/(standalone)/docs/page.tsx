@@ -31,8 +31,10 @@ import {
   Presentation,
   Search,
   ShieldAlert,
+  Sparkles,
   Trash2
 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -45,10 +47,13 @@ interface DocRow {
   policyReason?: string
   policyReviewRequestedAt?: number
   policyStatus: 'approved' | 'pending' | 'rejected'
+  summary?: string
   uploadedAt: number
   uploadedBy: string
   version: number
 }
+const NAME_SPLIT_RE = /[\s@]/u
+const ASK_TRAILING_QUESTION_RE = /[?？]$/u
 const pad2 = (n: number): string => String(n).padStart(2, '0')
 const relTime = (ms: number, now: number): string => {
   const d = now - ms
@@ -64,14 +69,21 @@ const humanSize = (bytes: number): string => {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
-const iconFor = (mime: string): React.ReactNode => {
-  const cls = 'size-5 shrink-0 text-muted-foreground'
-  if (mime === 'application/pdf') return <FileText aria-hidden className={cls} />
-  if (mime.startsWith('image/')) return <FileImage aria-hidden className={cls} />
-  if (mime.includes('spreadsheet')) return <FileSpreadsheet aria-hidden className={cls} />
-  if (mime.includes('presentation')) return <Presentation aria-hidden className={cls} />
-  if (mime === 'text/markdown' || mime === 'text/plain') return <FileText aria-hidden className={cls} />
-  return <File aria-hidden className={cls} />
+const fileTypeFor = (mime: string): { Icon: typeof FileText; tone: string } => {
+  if (mime === 'application/pdf') return { Icon: FileText, tone: 'bg-destructive/10 text-destructive' }
+  if (mime.startsWith('image/')) return { Icon: FileImage, tone: 'bg-primary/10 text-primary' }
+  if (mime.includes('spreadsheet')) return { Icon: FileSpreadsheet, tone: 'bg-secondary text-secondary-foreground' }
+  if (mime.includes('presentation')) return { Icon: Presentation, tone: 'bg-secondary text-secondary-foreground' }
+  if (mime === 'text/markdown' || mime === 'text/plain') return { Icon: FileText, tone: 'bg-muted text-muted-foreground' }
+  return { Icon: File, tone: 'bg-muted text-muted-foreground' }
+}
+const FileTypeChip = ({ mime }: { mime: string }): React.ReactElement => {
+  const { Icon, tone } = fileTypeFor(mime)
+  return (
+    <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-full', tone)}>
+      <Icon aria-hidden className='size-5' />
+    </span>
+  )
 }
 const DocCard = ({
   doc,
@@ -94,7 +106,7 @@ const DocCard = ({
 }): React.ReactElement => (
   <li
     className={cn(
-      'flex items-stretch gap-1 rounded-lg border bg-card transition-colors hover:bg-muted',
+      'flex items-stretch gap-1 rounded-xl border bg-card transition-all hover:-translate-y-px hover:shadow-md',
       selected && 'bg-muted'
     )}>
     {selectMode ? (
@@ -107,24 +119,24 @@ const DocCard = ({
       </span>
     ) : null}
     <button
-      className='flex min-w-0 flex-1 items-center gap-3 rounded-l-lg px-3 py-2.5 text-left'
+      className='group flex min-w-0 flex-1 items-center gap-3 rounded-l-xl px-3 py-3 text-left'
       onClick={() => (selectMode ? onToggleSelect?.(doc._id) : onOpen(doc._id))}
+      title={`${relTime(doc.uploadedAt, now)} · ${humanSize(doc.fileSize)}${showUploader ? ` · by ${doc.uploadedBy}` : ''}`}
       type='button'>
-      {iconFor(doc.mime)}
+      <FileTypeChip mime={doc.mime} />
       <div className='min-w-0 flex-1'>
-        <p className='truncate text-sm'>
+        <p className='truncate font-medium text-sm'>
           {doc.filename}
           {doc.version > 1 ? <span className='ml-1 text-muted-foreground text-xs'>v{doc.version}</span> : null}
         </p>
-        <p className='truncate text-muted-foreground text-xs'>
-          {relTime(doc.uploadedAt, now)} · {humanSize(doc.fileSize)}
-          {showUploader ? ` · by ${doc.uploadedBy}` : ''}
+        <p className='line-clamp-2 text-muted-foreground text-xs'>
+          {doc.summary ?? `Added ${relTime(doc.uploadedAt, now)}.`}
         </p>
       </div>
       {doc.policyStatus === 'pending' ? (
         <span className='flex items-center gap-1 text-muted-foreground text-xs'>
           <Loader2 aria-hidden className='size-3 animate-spin' />
-          Checking
+          Reading…
         </span>
       ) : null}
     </button>
@@ -207,11 +219,14 @@ const RejectedSection = ({
   )
 }
 const DocsPage = (): React.ReactElement => {
+  const me = useQuery(api.chats.currentUser, {})
   const mine = useQuery(api.docs.listMine, {})
   const shared = useQuery(api.docs.listShared, {})
+  const highlights = useQuery(api.docs.weeklyHighlights, {})
   const requestReview = useMutation(api.docs.requestReview)
   const deleteMine = useMutation(api.docs.deleteMyDoc)
   const { openDoc } = useDocSheet()
+  const router = useRouter()
   const [query, setQuery] = useState('')
   // eslint-disable-next-line react/hook-use-state -- one-shot render-time snapshot
   const [now] = useState(() => Date.now())
@@ -294,26 +309,71 @@ const DocsPage = (): React.ReactElement => {
     .map(d => d.filename)
     .join(', ')
   const bulkMoreCount = mineSelected.size > 5 ? mineSelected.size - 5 : 0
+  const firstName = (me?.name ?? me?.email ?? '').split(NAME_SPLIT_RE)[0] ?? ''
+  const submitHeroAsk = (): void => {
+    const v = query.trim()
+    if (!v) return
+    if (ASK_TRAILING_QUESTION_RE.test(v)) {
+      try {
+        globalThis.localStorage.setItem('draft-null', v)
+      } catch {
+        // LocalStorage unavailable; navigation still proceeds
+      }
+      router.push('/')
+    }
+  }
   return (
     <div className='mx-auto flex h-dvh w-full max-w-3xl flex-col gap-6 overflow-y-auto p-6'>
-      <div className='relative'>
-        <Search aria-hidden className='absolute top-2.5 left-3 size-4 text-muted-foreground' />
-        <Input
-          aria-label='Search documents'
-          className='pl-9'
-          onChange={e => setQuery(e.target.value)}
-          placeholder='Search documents by name…'
-          value={query}
-        />
-      </div>
+      <header className='space-y-3'>
+        <h1 className='font-semibold text-2xl tracking-tight'>
+          {firstName ? `Hi ${firstName}, what are you looking for?` : 'What are you looking for?'}
+        </h1>
+        <div className='relative'>
+          <Search aria-hidden className='absolute top-3 left-3 size-4 text-muted-foreground' />
+          <Input
+            aria-label='Search files or ask the assistant'
+            className='h-11 rounded-xl pr-3 pl-9 text-sm shadow-sm'
+            onChange={e => setQuery(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') submitHeroAsk()
+            }}
+            placeholder='Search files, or ask the assistant (end with ?)…'
+            value={query}
+          />
+        </div>
+      </header>
+      {!q && highlights && highlights.length > 0 ? (
+        <section className='rounded-xl border bg-gradient-to-br from-primary/5 to-card p-4 shadow-sm'>
+          <div className='flex items-center gap-2 text-sm'>
+            <Sparkles aria-hidden className='size-4 text-primary' />
+            <h2 className='font-semibold'>What is worth knowing this week</h2>
+          </div>
+          <ul className='mt-2 space-y-1.5'>
+            {highlights.map(h => (
+              <li key={h._id}>
+                <button
+                  className='flex w-full items-start gap-2 rounded-md p-1.5 text-left text-sm hover:bg-muted'
+                  onClick={() => onOpen(h._id)}
+                  type='button'>
+                  <span className='mt-1 size-1.5 shrink-0 rounded-full bg-primary' />
+                  <span className='min-w-0 flex-1'>
+                    <span className='font-medium'>{h.filename}</span>
+                    {h.summary ? <span className='ml-1 text-muted-foreground'>— {h.summary}</span> : null}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       <section className='space-y-3'>
-        <SectionHeader count={sharedFiltered.length} label='Available to everyone' />
-        <p className='text-muted-foreground text-xs'>Company documents. The assistant cites these when it answers.</p>
+        <SectionHeader count={sharedFiltered.length} label='Shared with your team' />
+        <p className='text-muted-foreground text-xs'>The assistant cites these when it answers.</p>
         {shared === undefined ? (
           <p className='text-muted-foreground text-sm'>Loading…</p>
         ) : sharedFiltered.length === 0 ? (
-          <p className='rounded-lg border border-dashed p-6 text-center text-muted-foreground text-sm'>
-            {q ? 'No documents match your search.' : 'No shared documents yet.'}
+          <p className='rounded-xl border border-dashed p-6 text-center text-muted-foreground text-sm'>
+            {q ? 'Nothing matches your search yet.' : 'Your team has not shared anything yet.'}
           </p>
         ) : (
           <>
@@ -332,7 +392,7 @@ const DocsPage = (): React.ReactElement => {
       </section>
       <section className='space-y-3'>
         <div className='flex items-center justify-between gap-2'>
-          <SectionHeader count={mineActive.length} label='My uploads' />
+          <SectionHeader count={mineActive.length} label='Your private files' />
           {mineActive.length > 0 ? (
             mineSelectMode ? (
               <div className='flex items-center gap-2 text-sm'>
@@ -356,15 +416,15 @@ const DocsPage = (): React.ReactElement => {
             )
           ) : null}
         </div>
-        <p className='text-muted-foreground text-xs'>
-          Only you can see these. The assistant reads them when you ask about them in chat.
-        </p>
+        <p className='text-muted-foreground text-xs'>Only you can see these. The assistant reads them when you ask.</p>
         <DocUpload scope='mine' />
         {mine === undefined ? (
           <p className='text-muted-foreground text-sm'>Loading…</p>
         ) : mineActive.length === 0 ? (
-          <p className='rounded-lg border border-dashed p-6 text-center text-muted-foreground text-sm'>
-            {q ? 'No documents match your search.' : 'Upload a file to keep it private to you.'}
+          <p className='rounded-xl border border-dashed p-6 text-center text-muted-foreground text-sm'>
+            {q
+              ? 'Nothing matches your search yet.'
+              : 'Drop a file or click Upload. The assistant will read it and remember.'}
           </p>
         ) : (
           <>

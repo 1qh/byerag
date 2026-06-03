@@ -1801,6 +1801,13 @@ const listSandboxIds = internalQuery({
   }
 })
 const CHAT_ATTACH_RE = /\((?:Files I just attached|I just uploaded).*?(?:\)|$)/giu
+const backfillSummariesProbe = action({
+  args: { limit: v.optional(v.number()), testSecret: v.string() },
+  handler: async (ctx, { limit, testSecret }): Promise<{ attempted: number; ok: number }> => {
+    verifyTestSecret(testSecret)
+    return ctx.runAction(internal.docsSummary.backfillSummaries, { limit })
+  }
+})
 const cleanChatTitlesProbe = mutation({
   args: { testSecret: v.string() },
   handler: async (ctx, { testSecret }): Promise<{ patched: number }> => {
@@ -1828,6 +1835,7 @@ export {
   approveSuggestionProbe,
   assignAllForTopicProbe,
   attemptDetailProbe,
+  backfillSummariesProbe,
   checkRateLimitProbe,
   claimContextProbe,
   cleanChatTitlesProbe,
