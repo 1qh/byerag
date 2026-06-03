@@ -194,6 +194,8 @@ const DocsPage = (): React.ReactElement => {
   const [now] = useState(() => Date.now())
   const [pendingDelete, setPendingDelete] = useState<null | { filename: string; id: Id<'docs'> }>(null)
   const [deleting, setDeleting] = useState(false)
+  const [sharedExpanded, setSharedExpanded] = useState(false)
+  const [mineExpanded, setMineExpanded] = useState(false)
   const onOpen = (id: Id<'docs'>): void => {
     openDoc(id)
   }
@@ -251,11 +253,18 @@ const DocsPage = (): React.ReactElement => {
             {q ? 'No documents match your search.' : 'No shared documents yet.'}
           </p>
         ) : (
-          <ul className='space-y-2'>
-            {sharedFiltered.map(d => (
-              <DocCard doc={d} key={d._id} now={now} onOpen={onOpen} showUploader />
-            ))}
-          </ul>
+          <>
+            <ul className='space-y-2'>
+              {(q || sharedExpanded ? sharedFiltered : sharedFiltered.slice(0, 5)).map(d => (
+                <DocCard doc={d} key={d._id} now={now} onOpen={onOpen} showUploader />
+              ))}
+            </ul>
+            {!q && sharedFiltered.length > 5 ? (
+              <Button onClick={() => setSharedExpanded(v => !v)} size='sm' variant='ghost'>
+                {sharedExpanded ? 'Show less' : `Show all (${sharedFiltered.length})`}
+              </Button>
+            ) : null}
+          </>
         )}
       </section>
       <section className='space-y-3'>
@@ -271,11 +280,18 @@ const DocsPage = (): React.ReactElement => {
             {q ? 'No documents match your search.' : 'Upload a file to keep it private to you.'}
           </p>
         ) : (
-          <ul className='space-y-2'>
-            {mineActive.map(d => (
-              <DocCard doc={d} key={d._id} now={now} onDelete={onDeleteClick} onOpen={onOpen} showUploader={false} />
-            ))}
-          </ul>
+          <>
+            <ul className='space-y-2'>
+              {(q || mineExpanded ? mineActive : mineActive.slice(0, 5)).map(d => (
+                <DocCard doc={d} key={d._id} now={now} onDelete={onDeleteClick} onOpen={onOpen} showUploader={false} />
+              ))}
+            </ul>
+            {!q && mineActive.length > 5 ? (
+              <Button onClick={() => setMineExpanded(v => !v)} size='sm' variant='ghost'>
+                {mineExpanded ? 'Show less' : `Show all (${mineActive.length})`}
+              </Button>
+            ) : null}
+          </>
         )}
       </section>
       {mineRejected.length > 0 ? <RejectedSection docs={mineRejected} onAskReview={onAskReview} onOpen={onOpen} /> : null}
