@@ -495,13 +495,17 @@ const weeklyHighlights = query({
       .withIndex('by_owner', q => q.eq('owner', email))
       .filter(q =>
         q.and(
+          q.eq(q.field('scope'), 'mine'),
           q.eq(q.field('deletedAt'), undefined),
           q.eq(q.field('policyStatus'), 'approved'),
           q.gte(q.field('uploadedAt'), cutoff)
         )
       )
       .take(50)
-    return [...rows, ...mineRows]
+    const merged = new Map<string, (typeof rows)[number]>()
+    for (const r of rows) merged.set(r._id, r)
+    for (const r of mineRows) merged.set(r._id, r)
+    return [...merged.values()]
       .toSorted((a, b) => b.uploadedAt - a.uploadedAt)
       .slice(0, 5)
       .map(r => ({ _id: r._id, filename: r.filename, scope: r.scope, summary: r.summary, uploadedAt: r.uploadedAt }))
