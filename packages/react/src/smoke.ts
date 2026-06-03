@@ -38,11 +38,13 @@ const runSmoke = async ({
 }: RunSmokeOpts): Promise<void> => {
   const repoRoot = resolve(import.meta.dirname, '..', '..', '..')
   const env = parseEnv(readFileSync(join(repoRoot, 'apps/backend/.env'), 'utf8'))
-  const email = env.ALLOWED_EMAILS?.split(',')[0]?.trim()
+  const email = env.ALLOWED_EMAILS?.split(',')[0]?.trim() ?? env.BOOTSTRAP_ADMIN_EMAIL?.trim()
   const url = env.NEXT_PUBLIC_CONVEX_URL ?? env.CONVEX_SELF_HOSTED_URL
   const secret = env.TEST_SECRET
   if (!(email && url && secret)) {
-    console.error('smoke: ALLOWED_EMAILS / NEXT_PUBLIC_CONVEX_URL / TEST_SECRET missing in apps/backend/.env')
+    console.error(
+      'smoke: need (ALLOWED_EMAILS or BOOTSTRAP_ADMIN_EMAIL) + NEXT_PUBLIC_CONVEX_URL + TEST_SECRET in apps/backend/.env'
+    )
     process.exit(1)
   }
   const client = new ConvexHttpClient(url)
