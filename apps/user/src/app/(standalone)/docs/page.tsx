@@ -1,6 +1,16 @@
 'use client'
 import type { Id } from 'backend/convex/_generated/dataModel'
 import { DocUpload, useDocSheet } from '@a/react/components'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@a/ui/components/alert-dialog'
 import { Button } from '@a/ui/components/button'
 import { Input } from '@a/ui/components/input'
 import { api } from 'backend/convex/_generated/api'
@@ -16,7 +26,8 @@ import {
   Loader2,
   Presentation,
   Search,
-  ShieldAlert
+  ShieldAlert,
+  Trash2
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
@@ -61,17 +72,19 @@ const iconFor = (mime: string): React.ReactNode => {
 const DocCard = ({
   doc,
   now,
+  onDelete,
   onOpen,
   showUploader
 }: {
   doc: DocRow
   now: number
+  onDelete?: (id: Id<'docs'>, filename: string) => void
   onOpen: (id: Id<'docs'>) => void
   showUploader: boolean
 }): React.ReactElement => (
-  <li>
+  <li className='flex items-stretch gap-1 rounded-lg border bg-card transition-colors hover:bg-muted'>
     <button
-      className='flex w-full items-center gap-3 rounded-lg border bg-card px-3 py-2.5 text-left transition-colors hover:bg-muted'
+      className='flex min-w-0 flex-1 items-center gap-3 rounded-l-lg px-3 py-2.5 text-left'
       onClick={() => onOpen(doc._id)}
       type='button'>
       {iconFor(doc.mime)}
@@ -92,6 +105,16 @@ const DocCard = ({
         </span>
       ) : null}
     </button>
+    {onDelete ? (
+      <Button
+        aria-label={`Delete ${doc.filename}`}
+        className='mr-2 self-center'
+        onClick={() => onDelete(doc._id, doc.filename)}
+        size='icon-sm'
+        variant='ghost'>
+        <Trash2 className='size-4' />
+      </Button>
+    ) : null}
   </li>
 )
 const SectionHeader = ({ count, label }: { count: number; label: string }): React.ReactElement => (
@@ -164,10 +187,13 @@ const DocsPage = (): React.ReactElement => {
   const mine = useQuery(api.docs.listMine, {})
   const shared = useQuery(api.docs.listShared, {})
   const requestReview = useMutation(api.docs.requestReview)
+  const deleteMine = useMutation(api.docs.deleteMyDoc)
   const { openDoc } = useDocSheet()
   const [query, setQuery] = useState('')
   // eslint-disable-next-line react/hook-use-state -- one-shot render-time snapshot
   const [now] = useState(() => Date.now())
+  const [pendingDelete, setPendingDelete] = useState<null | { filename: string; id: Id<'docs'> }>(null)
+  const [deleting, setDeleting] = useState(false)
   const onOpen = (id: Id<'docs'>): void => {
     openDoc(id)
   }
@@ -177,6 +203,20 @@ const DocsPage = (): React.ReactElement => {
       toast.success('Sent to admin for review')
     } catch (error: unknown) {
       toast.error(String(error))
+    }
+  }
+  const onDeleteClick = (id: Id<'docs'>, filename: string): void => setPendingDelete({ filename, id })
+  const runDelete = async (): Promise<void> => {
+    if (!pendingDelete) return
+    setDeleting(true)
+    try {
+      await deleteMine({ docId: pendingDelete.id })
+      toast.success('Deleted')
+      setPendingDelete(null)
+    } catch (error: unknown) {
+      toast.error(String(error))
+    } finally {
+      setDeleting(false)
     }
   }
   const q = query.trim().toLowerCase()
@@ -229,12 +269,39 @@ const DocsPage = (): React.ReactElement => {
         ) : (
           <ul className='space-y-2'>
             {mineActive.map(d => (
-              <DocCard doc={d} key={d._id} now={now} onOpen={onOpen} showUploader={false} />
+              <DocCard doc={d} key={d._id} now={now} onDelete={onDeleteClick} onOpen={onOpen} showUploader={false} />
             ))}
           </ul>
         )}
       </section>
       {mineRejected.length > 0 ? <RejectedSection docs={mineRejected} onAskReview={onAskReview} onOpen={onOpen} /> : null}
+      <AlertDialog
+        onOpenChange={open => {
+          if (!(open || deleting)) setPendingDelete(null)
+        }}
+        open={pendingDelete !== null}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this document?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className='font-medium text-foreground'>{pendingDelete?.filename}</span> will be removed from your
+              uploads and from anything the assistant can see. It is kept privately for 30 days then permanently deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={e => {
+                e.preventDefault()
+                // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
+                runDelete().catch((error: unknown) => toast.error(String(error)))
+              }}>
+              {deleting ? 'Deleting…' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -759,6 +759,29 @@ const adminReclassifyDoc = mutation({
     return { ok: true }
   }
 })
+const deleteMyDoc = mutation({
+  args: { docId: v.id('docs') },
+  handler: async (ctx, { docId }): Promise<{ ok: true }> => {
+    const identity = await ctx.auth.getUserIdentity()
+    const email = identity?.email?.toLowerCase()
+    if (!email) throw new Error('not authenticated')
+    const doc = await ctx.db.get(docId)
+    if (!doc) throw new Error('doc not found')
+    if (doc.scope !== 'mine') throw new Error('shared docs require admin to delete')
+    if (doc.owner !== email) throw new Error('not your document')
+    if (doc.deletedAt !== undefined) throw new Error('already deleted')
+    await ctx.db.patch(docId, { deletedAt: Date.now() })
+    await ctx.db.insert('auditLogs', {
+      args: JSON.stringify({ docId, filename: doc.filename }),
+      command: 'docs.deleteMine',
+      mode: 'session',
+      ok: true,
+      owner: email,
+      severity: 'low'
+    })
+    return { ok: true }
+  }
+})
 const requestReview = mutation({
   args: { docId: v.id('docs') },
   handler: async (ctx, { docId }): Promise<void> => {
@@ -1059,6 +1082,7 @@ export {
   adminScanCancel,
   adminScanOverride,
   countRecentQuarantines,
+  deleteMyDoc,
   findByFilename,
   findBySha256,
   generateUploadUrl,
