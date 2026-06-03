@@ -2,7 +2,8 @@
 import type { Id } from 'backend/convex/_generated/dataModel'
 import type { ComponentType, ReactNode } from 'react'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@a/ui/components/sidebar'
-import { useConvexAuth } from 'convex/react'
+import { api } from 'backend/convex/_generated/api'
+import { useConvexAuth, useQuery } from 'convex/react'
 import { useParams, useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { AppSidebar, Chat, CommandPalette, DocSheet, ShortcutModal, useBusyState } from '../components'
@@ -65,6 +66,7 @@ const DefaultMainLayout = ({
   const params = useParams<{ id?: string }>()
   const activeChatId = (params.id ?? null) as Id<'chats'> | null
   const chats = useChatList()
+  const chatStatus = useQuery(api.chats.status, activeChatId ? { chatId: activeChatId } : 'skip')
   const mentionItems = useMentionItemsCtx()
   const onFileUpload = useFileUploadCtx()
   const dynamicPrompts = useStarterPromptsCtx()
@@ -83,10 +85,10 @@ const DefaultMainLayout = ({
   useStreamingTitle()
   useEffect(() => {
     if (!activeChatId) return
-    if (!chats) return
-    if (chats.some(c => c._id === activeChatId)) return
+    if (chatStatus === undefined) return
+    if (chatStatus.title !== '') return
     router.replace('/')
-  }, [activeChatId, chats, router])
+  }, [activeChatId, chatStatus, router])
   if (isLoading) return <div className='flex h-dvh items-center justify-center text-muted-foreground'>Loading…</div>
   if (!isAuthenticated) return <LoginScreen />
   return (
