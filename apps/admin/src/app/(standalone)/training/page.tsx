@@ -12,6 +12,7 @@ import {
   AlertDialogTitle
 } from '@a/ui/components/alert-dialog'
 import { Button } from '@a/ui/components/button'
+import { Checkbox } from '@a/ui/components/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@a/ui/components/dialog'
 import {
   DropdownMenu,
@@ -228,8 +229,9 @@ const TrainingPage = (): React.ReactElement => {
   const [dueDraft, setDueDraft] = useState<null | string>(null)
   const [composerOpen, setComposerOpen] = useState(false)
   const [cTopic, setCTopic] = useState('')
-  const [cAudience, setCAudience] = useState<'all' | 'department'>('all')
+  const [cAudience, setCAudience] = useState<'all' | 'department' | 'selected'>('all')
   const [cDept, setCDept] = useState<string>('Safety, Health and Environment')
+  const [cUserIds, setCUserIds] = useState<string[]>([])
   const [cDueDays, setCDueDays] = useState('')
   const [cBusy, setCBusy] = useState(false)
   const [agentOpen, setAgentOpen] = useState(false)
@@ -339,11 +341,17 @@ const TrainingPage = (): React.ReactElement => {
     try {
       const days = cDueDays.trim() ? Number.parseInt(cDueDays, 10) : Number.NaN
       const dueAtMs = Number.isFinite(days) && days > 0 ? Date.now() + days * 86_400_000 : undefined
+      if (cAudience === 'selected' && cUserIds.length === 0) {
+        toast.error('Pick at least one user')
+        setCBusy(false)
+        return
+      }
       const r = await assignComposer({
         audience: cAudience,
         department: cAudience === 'department' ? cDept : undefined,
         dueAtMs,
-        topicId: cTopic as never
+        topicId: cTopic as never,
+        userIds: cAudience === 'selected' ? cUserIds : undefined
       })
       toast.success(`Assigned ${r.assignmentsCreated} · ${r.skipped} skipped`)
       setComposerOpen(false)
@@ -398,6 +406,7 @@ const TrainingPage = (): React.ReactElement => {
               setCTopic(summary.tests[0]?.topicId ?? '')
               setCAudience('all')
               setCDueDays('')
+              setCUserIds([])
               setComposerOpen(true)
             }}
             size='sm'>
@@ -882,10 +891,11 @@ const TrainingPage = (): React.ReactElement => {
               <Label htmlFor={cAudienceId}>Who</Label>
               <NativeSelect
                 id={cAudienceId}
-                onChange={e => setCAudience(e.target.value as 'all' | 'department')}
+                onChange={e => setCAudience(e.target.value as 'all' | 'department' | 'selected')}
                 value={cAudience}>
                 <NativeSelectOption value='all'>Everyone</NativeSelectOption>
                 <NativeSelectOption value='department'>A department</NativeSelectOption>
+                <NativeSelectOption value='selected'>Specific people</NativeSelectOption>
               </NativeSelect>
             </div>
             {cAudience === 'department' ? (
@@ -898,6 +908,31 @@ const TrainingPage = (): React.ReactElement => {
                     </NativeSelectOption>
                   ))}
                 </NativeSelect>
+              </div>
+            ) : null}
+            {cAudience === 'selected' ? (
+              <div className='space-y-1'>
+                <div className='font-medium text-sm'>People ({cUserIds.length} selected)</div>
+                <div className='max-h-48 overflow-y-auto rounded border p-2 text-sm'>
+                  {(userSum?.rows ?? []).map(u => (
+                    <button
+                      className='flex w-full items-center gap-2 py-0.5 text-left'
+                      key={u.userId}
+                      onClick={() =>
+                        setCUserIds(prev =>
+                          prev.includes(u.userId) ? prev.filter(x => x !== u.userId) : [...prev, u.userId]
+                        )
+                      }
+                      type='button'>
+                      <Checkbox checked={cUserIds.includes(u.userId)} />
+                      <span className='font-mono text-xs'>{u.userId}</span>
+                      <span className='text-muted-foreground text-xs'>· {u.department}</span>
+                    </button>
+                  ))}
+                </div>
+                <p className='text-muted-foreground text-xs'>
+                  Showing this page of users (search to filter via the User summary table).
+                </p>
               </div>
             ) : null}
             <div className='space-y-1'>
