@@ -35,7 +35,7 @@ const DocViewer = ({ docId }: DocViewerProps): React.ReactElement => {
   const isOffice = OFFICE_MIMES.has(mime)
   const askAboutThis = (): void => {
     try {
-      globalThis.localStorage.setItem('draft-null', `Tell me about ${result.filename}`)
+      globalThis.localStorage.setItem('draft-new', `Tell me about ${result.filename}`)
     } catch {
       // LocalStorage unavailable; navigation still proceeds
     }

@@ -315,7 +315,7 @@ const DocsPage = (): React.ReactElement => {
     if (!v) return
     if (ASK_TRAILING_QUESTION_RE.test(v)) {
       try {
-        globalThis.localStorage.setItem('draft-null', v)
+        globalThis.localStorage.setItem('draft-new', v)
       } catch {
         // LocalStorage unavailable; navigation still proceeds
       }
