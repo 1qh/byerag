@@ -243,6 +243,7 @@ const DocsPage = (): React.ReactElement => {
       </div>
       <section className='space-y-3'>
         <SectionHeader count={sharedFiltered.length} label='Available to everyone' />
+        <p className='text-muted-foreground text-xs'>Company documents. The assistant cites these when it answers.</p>
         {shared === undefined ? (
           <p className='text-muted-foreground text-sm'>Loading…</p>
         ) : sharedFiltered.length === 0 ? (
@@ -259,6 +260,9 @@ const DocsPage = (): React.ReactElement => {
       </section>
       <section className='space-y-3'>
         <SectionHeader count={mineActive.length} label='My uploads' />
+        <p className='text-muted-foreground text-xs'>
+          Only you can see these. The assistant reads them when you ask about them in chat.
+        </p>
         <DocUpload scope='mine' />
         {mine === undefined ? (
           <p className='text-muted-foreground text-sm'>Loading…</p>
