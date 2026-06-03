@@ -1009,7 +1009,10 @@ const listForQuarantine = query({
       .query('docs')
       .filter(q => q.and(q.eq(q.field('scanStatus'), 'quarantined'), q.eq(q.field('deletedAt'), undefined)))
       .take(200)
-    return [...rejected, ...quarantined].map(r => ({
+    const merged = new Map<string, (typeof rejected)[number]>()
+    for (const r of rejected) merged.set(r._id, r)
+    for (const r of quarantined) merged.set(r._id, r)
+    return [...merged.values()].map(r => ({
       _id: r._id,
       filename: r.filename,
       owner: r.owner,
