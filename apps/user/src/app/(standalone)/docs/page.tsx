@@ -1,6 +1,9 @@
+/* eslint-disable no-await-in-loop, complexity */
+/** biome-ignore-all lint/performance/noAwaitInLoops: sequential bulk delete */
 'use client'
 import type { Id } from 'backend/convex/_generated/dataModel'
 import { DocUpload, useDocSheet } from '@a/react/components'
+import { cn } from '@a/ui'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,6 +15,7 @@ import {
   AlertDialogTitle
 } from '@a/ui/components/alert-dialog'
 import { Button } from '@a/ui/components/button'
+import { Checkbox } from '@a/ui/components/checkbox'
 import { Input } from '@a/ui/components/input'
 import { api } from 'backend/convex/_generated/api'
 import { useMutation, useQuery } from 'convex/react'
@@ -74,18 +78,37 @@ const DocCard = ({
   now,
   onDelete,
   onOpen,
+  onToggleSelect,
+  selectMode,
+  selected,
   showUploader
 }: {
   doc: DocRow
   now: number
   onDelete?: (id: Id<'docs'>, filename: string) => void
   onOpen: (id: Id<'docs'>) => void
+  onToggleSelect?: (id: Id<'docs'>) => void
+  selected?: boolean
+  selectMode?: boolean
   showUploader: boolean
 }): React.ReactElement => (
-  <li className='flex items-stretch gap-1 rounded-lg border bg-card transition-colors hover:bg-muted'>
+  <li
+    className={cn(
+      'flex items-stretch gap-1 rounded-lg border bg-card transition-colors hover:bg-muted',
+      selected && 'bg-muted'
+    )}>
+    {selectMode ? (
+      <span className='flex items-center pl-3'>
+        <Checkbox
+          aria-label={`Select ${doc.filename}`}
+          checked={selected ?? false}
+          onCheckedChange={() => onToggleSelect?.(doc._id)}
+        />
+      </span>
+    ) : null}
     <button
       className='flex min-w-0 flex-1 items-center gap-3 rounded-l-lg px-3 py-2.5 text-left'
-      onClick={() => onOpen(doc._id)}
+      onClick={() => (selectMode ? onToggleSelect?.(doc._id) : onOpen(doc._id))}
       type='button'>
       {iconFor(doc.mime)}
       <div className='min-w-0 flex-1'>
@@ -105,7 +128,7 @@ const DocCard = ({
         </span>
       ) : null}
     </button>
-    {onDelete ? (
+    {onDelete && !selectMode ? (
       <Button
         aria-label={`Delete ${doc.filename}`}
         className='mr-2 self-center'
@@ -196,6 +219,10 @@ const DocsPage = (): React.ReactElement => {
   const [deleting, setDeleting] = useState(false)
   const [sharedExpanded, setSharedExpanded] = useState(false)
   const [mineExpanded, setMineExpanded] = useState(false)
+  const [mineSelectMode, setMineSelectMode] = useState(false)
+  const [mineSelected, setMineSelected] = useState<Set<string>>(() => new Set())
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
   const onOpen = (id: Id<'docs'>): void => {
     openDoc(id)
   }
@@ -208,6 +235,36 @@ const DocsPage = (): React.ReactElement => {
     }
   }
   const onDeleteClick = (id: Id<'docs'>, filename: string): void => setPendingDelete({ filename, id })
+  const onToggleSelectMine = (id: Id<'docs'>): void =>
+    setMineSelected(prev => {
+      const next = new Set(prev)
+      const key = id as string
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  const exitSelectMode = (): void => {
+    setMineSelectMode(false)
+    setMineSelected(new Set())
+  }
+  const runBulkDelete = async (): Promise<void> => {
+    setBulkDeleting(true)
+    const ids = [...mineSelected]
+    let ok = 0
+    let fail = 0
+    for (const id of ids)
+      try {
+        await deleteMine({ docId: id as Id<'docs'> })
+        ok += 1
+      } catch (error: unknown) {
+        fail += 1
+        toast.error(`${id.slice(-6)}: ${String(error).slice(0, 80)}`)
+      }
+    toast.success(`Deleted ${ok}/${ids.length}${fail > 0 ? ` (${fail} failed)` : ''}`)
+    setBulkConfirmOpen(false)
+    setBulkDeleting(false)
+    exitSelectMode()
+  }
   const runDelete = async (): Promise<void> => {
     if (!pendingDelete) return
     setDeleting(true)
@@ -231,6 +288,12 @@ const DocsPage = (): React.ReactElement => {
     () => shared?.filter(d => q === '' || d.filename.toLowerCase().includes(q)) ?? [],
     [shared, q]
   )
+  const bulkPreviewNames = mineActive
+    .filter(d => mineSelected.has(d._id as string))
+    .slice(0, 5)
+    .map(d => d.filename)
+    .join(', ')
+  const bulkMoreCount = mineSelected.size > 5 ? mineSelected.size - 5 : 0
   return (
     <div className='mx-auto flex h-dvh w-full max-w-3xl flex-col gap-6 overflow-y-auto p-6'>
       <div className='relative'>
@@ -268,7 +331,31 @@ const DocsPage = (): React.ReactElement => {
         )}
       </section>
       <section className='space-y-3'>
-        <SectionHeader count={mineActive.length} label='My uploads' />
+        <div className='flex items-center justify-between gap-2'>
+          <SectionHeader count={mineActive.length} label='My uploads' />
+          {mineActive.length > 0 ? (
+            mineSelectMode ? (
+              <div className='flex items-center gap-2 text-sm'>
+                <span className='text-muted-foreground'>{mineSelected.size} selected</span>
+                <Button
+                  disabled={mineSelected.size === 0 || bulkDeleting}
+                  onClick={() => setBulkConfirmOpen(true)}
+                  size='sm'
+                  variant='destructive'>
+                  <Trash2 className='size-4' />
+                  Delete {mineSelected.size > 0 ? mineSelected.size : ''}
+                </Button>
+                <Button disabled={bulkDeleting} onClick={exitSelectMode} size='sm' variant='ghost'>
+                  Done
+                </Button>
+              </div>
+            ) : (
+              <Button onClick={() => setMineSelectMode(true)} size='sm' variant='outline'>
+                Select
+              </Button>
+            )
+          ) : null}
+        </div>
         <p className='text-muted-foreground text-xs'>
           Only you can see these. The assistant reads them when you ask about them in chat.
         </p>
@@ -283,7 +370,17 @@ const DocsPage = (): React.ReactElement => {
           <>
             <ul className='space-y-2'>
               {(q || mineExpanded ? mineActive : mineActive.slice(0, 5)).map(d => (
-                <DocCard doc={d} key={d._id} now={now} onDelete={onDeleteClick} onOpen={onOpen} showUploader={false} />
+                <DocCard
+                  doc={d}
+                  key={d._id}
+                  now={now}
+                  onDelete={onDeleteClick}
+                  onOpen={onOpen}
+                  onToggleSelect={onToggleSelectMine}
+                  selected={mineSelected.has(d._id as string)}
+                  selectMode={mineSelectMode}
+                  showUploader={false}
+                />
               ))}
             </ul>
             {!q && mineActive.length > 5 ? (
@@ -318,6 +415,36 @@ const DocsPage = (): React.ReactElement => {
                 runDelete().catch((error: unknown) => toast.error(String(error)))
               }}>
               {deleting ? 'Deleting…' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        onOpenChange={open => {
+          if (!(open || bulkDeleting)) setBulkConfirmOpen(false)
+        }}
+        open={bulkConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {mineSelected.size} document{mineSelected.size === 1 ? '' : 's'}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Removed from your uploads and from anything the assistant can see: {bulkPreviewNames}
+              {bulkMoreCount > 0 ? ` and ${bulkMoreCount} more` : ''}. Files are kept privately for 30 days then
+              permanently deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={bulkDeleting}
+              onClick={e => {
+                e.preventDefault()
+                // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
+                runBulkDelete().catch((error: unknown) => toast.error(String(error)))
+              }}>
+              {bulkDeleting ? 'Deleting…' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
