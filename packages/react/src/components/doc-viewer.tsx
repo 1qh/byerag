@@ -7,8 +7,7 @@ import { useMutation, useQuery } from 'convex/react'
 import { Download, Loader2, MessageSquare } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useApp } from '../app-context'
 import { useDocSheet } from './doc-sheet-context'
@@ -29,11 +28,11 @@ const OFFICE_MIMES = new Set([
 ])
 const DocViewer = ({ docId }: DocViewerProps): React.ReactElement => {
   const result = useQuery(api.docs.read, { docId })
-  const router = useRouter()
   const { id: app } = useApp()
   const { close: closeDocSheet } = useDocSheet()
   const sendMessage = useMutation(api.messages.send)
   const [asking, setAsking] = useState(false)
+  const askInFlightRef = useRef(false)
   if (result === undefined) return <p className='p-6 text-muted-foreground'>Loading…</p>
   if (result === null) return <p className='p-6 text-destructive'>Doc not found or access denied.</p>
   const { mime, url, content } = result
@@ -42,16 +41,18 @@ const DocViewer = ({ docId }: DocViewerProps): React.ReactElement => {
   const isMarkdown = mime === 'text/markdown'
   const isOffice = OFFICE_MIMES.has(mime)
   const askAboutThis = async (): Promise<void> => {
-    if (asking) return
+    if (askInFlightRef.current) return
+    askInFlightRef.current = true
     setAsking(true)
     const scopeHint = result.scope === 'shared' ? 'shared' : 'mine'
     const text = `Summarize the most important points in ${result.filename}. (Read it with the docs tools — id ${docId} in the ${scopeHint} scope.)`
     try {
       const chatId = await sendMessage({ app, chatId: undefined, content: text })
       closeDocSheet()
-      router.push(`/chat/${chatId}`)
+      globalThis.location.assign(`/chat/${chatId}`)
     } catch (error: unknown) {
       toast.error(`Could not start the chat: ${String(error).slice(0, 120)}`)
+      askInFlightRef.current = false
       setAsking(false)
     }
   }
