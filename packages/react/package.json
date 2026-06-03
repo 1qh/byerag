@@ -36,6 +36,7 @@
   "dependencies": {
     "@a/ui": "workspace:*",
     "backend": "workspace:*",
-    "next": "latest"
+    "next": "latest",
+    "react-pdf": "latest"
   }
 }

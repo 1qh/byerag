@@ -3,8 +3,13 @@ import type { Id } from 'backend/convex/_generated/dataModel'
 import { MessageResponse } from '@a/ui/components/ai-elements/message'
 import { api } from 'backend/convex/_generated/api'
 import { useQuery } from 'convex/react'
+import dynamic from 'next/dynamic'
 import Image from 'next/image'
 
+const PdfPreview = dynamic(async () => import('./pdf-preview'), {
+  loading: () => <p className='p-6 text-muted-foreground'>Loading PDF…</p>,
+  ssr: false
+})
 interface DocViewerProps {
   docId: Id<'docs'>
 }
@@ -34,12 +39,7 @@ const DocViewer = ({ docId }: DocViewerProps): React.ReactElement => {
         </p>
       </header>
       {isPdf && url ? (
-        <iframe
-          className='h-[80vh] w-full rounded-md border'
-          sandbox='allow-same-origin allow-popups'
-          src={url}
-          title={result.filename}
-        />
+        <PdfPreview url={url} />
       ) : isImage && url ? (
         <div className='relative h-[80vh] w-full'>
           <Image alt={result.filename} className='rounded-md border object-contain' fill src={url} unoptimized />
