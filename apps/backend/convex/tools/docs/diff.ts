@@ -49,7 +49,7 @@ const action = defineQuery({
   args: {
     a: arg.string({ description: 'docId A' }),
     b: arg.string({ description: 'docId B' }),
-    context: arg.number({ default: CONTEXT_LINES, description: 'Lines of context per hunk' })
+    context: arg.number({ default: CONTEXT_LINES, description: 'Lines of context per hunk', optional: true })
   },
   cost: 'medium',
   description: 'Mechanical unified diff between two docs (line-level). ACL: each doc independently checked.',
@@ -68,7 +68,7 @@ const action = defineQuery({
     return {
       a: { _id: rowA._id, filename: rowA.filename },
       b: { _id: rowB._id, filename: rowB.filename },
-      diff: unifiedDiff(linesA, linesB, args.context)
+      diff: unifiedDiff(linesA, linesB, args.context ?? CONTEXT_LINES)
     }
   }
 })

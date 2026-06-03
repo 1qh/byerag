@@ -21,9 +21,9 @@ interface SnippetRow {
 }
 const action = defineTool({
   args: {
-    dim: arg.enum(['256', '512', '768'], { default: '768', description: 'Matryoshka prefix dim' }),
+    dim: arg.enum(['256', '512', '768'], { default: '768', description: 'Matryoshka prefix dim', optional: true }),
     granular: arg.bool({ description: 'Return chunk-level (docId, chunkSeq, snippet, score)', optional: true }),
-    limit: arg.number({ default: 10, description: 'Max hits (cap 50)' }),
+    limit: arg.number({ default: 10, description: 'Max hits (cap 50)', optional: true }),
     query: arg.string({ description: 'Natural-language query text' }),
     scope: arg.enum(SCOPES, { description: 'Visibility scope' })
   },
@@ -32,9 +32,9 @@ const action = defineTool({
   errorCodes: ['UPSTREAM_ERROR'],
   examples: ['docs similar --query "PTO policy" --scope shared'],
   handler: async (ctx, args) => {
-    const cap = Math.min(args.limit, 50)
+    const cap = Math.min(args.limit ?? 10, 50)
     const full = await embedQuery(args.query)
-    const vec = matryoshkaTruncate(full, Number.parseInt(args.dim, 10))
+    const vec = matryoshkaTruncate(full, Number.parseInt(args.dim ?? '768', 10))
     const wantShared = args.scope === 'shared' || args.scope === 'both'
     const wantMine = args.scope === 'mine' || args.scope === 'both'
     if (args.granular) {

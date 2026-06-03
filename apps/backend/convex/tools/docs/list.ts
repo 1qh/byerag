@@ -3,7 +3,7 @@ import { arg, defineQuery } from '../_api'
 const SCOPES = ['shared', 'mine', 'both'] as const
 const action = defineQuery({
   args: {
-    limit: arg.number({ default: 50, description: 'Max rows (cap 200)' }),
+    limit: arg.number({ default: 50, description: 'Max rows (cap 200)', optional: true }),
     scope: arg.enum(SCOPES, { description: 'Visibility scope' })
   },
   cost: 'low',
@@ -11,7 +11,7 @@ const action = defineQuery({
   errorCodes: [],
   examples: ['docs list --scope shared', 'docs list --scope both --limit 20'],
   handler: async (ctx, args) => {
-    const cap = Math.min(args.limit, 200)
+    const cap = Math.min(args.limit ?? 50, 200)
     const wantShared = args.scope === 'shared' || args.scope === 'both'
     const wantMine = args.scope === 'mine' || args.scope === 'both'
     const sharedRows = wantShared
