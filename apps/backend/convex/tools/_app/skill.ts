@@ -33,8 +33,8 @@ const getSkill = (): string => {
   cachedSkill ??= buildSkill()
   return cachedSkill
 }
-const skillHttp = httpAction(async () =>
-  Promise.resolve(
+const skillHttp = httpAction(
+  async () =>
     new Response(getSkill(), {
       headers: {
         'cache-control': 'public, max-age=86400, stale-while-revalidate=604800',
@@ -42,15 +42,12 @@ const skillHttp = httpAction(async () =>
         'x-skill-version': String(SKILL_VERSION)
       }
     })
-  )
 )
 const skillManifestHttp = httpAction(async () =>
-  Promise.resolve(
-    jsonRes(200, {
-      commandCount: Object.values(REGISTRY).filter(e => e.tier !== 'admin').length,
-      generatedAt: Date.now(),
-      version: SKILL_VERSION
-    })
-  )
+  jsonRes(200, {
+    commandCount: Object.values(REGISTRY).filter(e => e.tier !== 'admin').length,
+    generatedAt: Date.now(),
+    version: SKILL_VERSION
+  })
 )
 export { SKILL_VERSION, skillHttp, skillManifestHttp }
