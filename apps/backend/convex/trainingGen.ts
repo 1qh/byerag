@@ -102,9 +102,11 @@ const parseQuestions = (raw: string): ParsedQuestion[] => {
     return []
   }
 }
+const MAX_RETRY = 5
 const generate = internalAction({
-  args: { docId: v.id('docs') },
-  handler: async (ctx, { docId }): Promise<{ conflictsFlagged?: number; generated: number; reason?: string }> => {
+  args: { attempt: v.optional(v.number()), docId: v.id('docs') },
+  handler: async (ctx, { docId, attempt }): Promise<{ conflictsFlagged?: number; generated: number; reason?: string }> => {
+    const att = attempt ?? 0
     const doc = (await ctx.runQuery(internal.docs.getForConflict, { docId })) as null | {
       extractedText: string
       filename: string
@@ -113,15 +115,31 @@ const generate = internalAction({
     if (!doc) return { generated: 0, reason: 'doc-not-found' }
     if (doc.scope !== 'shared') return { generated: 0, reason: 'not-shared-scope' }
     const text = doc.extractedText.slice(0, MAX_PROMPT_DOC_CHARS)
-    let res: KimiResult
-    try {
-      res = await callKimi(buildUserPrompt(doc.filename, text))
-    } catch (error) {
-      return { generated: 0, reason: `kimi-error:${String(error).slice(0, 100)}` }
+    let res: KimiResult | null = null
+    let lastError = ''
+    for (let i = 0; i < 3; i += 1)
+      try {
+        res = await callKimi(buildUserPrompt(doc.filename, text))
+        break
+      } catch (error) {
+        lastError = String(error).slice(0, 100)
+        if (i < 2)
+          await new Promise<void>(resolve => {
+            setTimeout(resolve, 2000 * (i + 1))
+          })
+      }
+    if (!res) {
+      if (att < MAX_RETRY)
+        await ctx.scheduler.runAfter(5 * 60_000, internal.trainingGen.generate, { attempt: att + 1, docId })
+      return { generated: 0, reason: `kimi-error:${lastError}${att < MAX_RETRY ? ' (rescheduled)' : ' (giving up)'}` }
     }
     await recordKimiUsage(ctx, res.usage)
     const parsed = parseQuestions(res.text)
-    if (parsed.length === 0) return { generated: 0, reason: 'parse-empty' }
+    if (parsed.length === 0) {
+      if (att < MAX_RETRY)
+        await ctx.scheduler.runAfter(5 * 60_000, internal.trainingGen.generate, { attempt: att + 1, docId })
+      return { generated: 0, reason: `parse-empty${att < MAX_RETRY ? ' (rescheduled)' : ' (giving up)'}` }
+    }
     const embedded: {
       choices: string[]
       correctIndex: number

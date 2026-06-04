@@ -1685,6 +1685,100 @@ const countOwnerSpend = query({
     return { count: rows.length, totalCents: total }
   }
 })
+const reRunGenerationProbe = action({
+  args: { filename: v.string(), testSecret: v.string() },
+  handler: async (
+    ctx,
+    { filename, testSecret }
+  ): Promise<{ conflictsFlagged?: number; docId?: string; generated: number; reason?: string }> => {
+    verifyTestSecret(testSecret)
+    const docId = await ctx.runQuery(internal.testing.findActiveDocByFilename, { filename })
+    if (!docId) return { generated: 0, reason: 'doc-not-found' }
+    const result = await ctx.runAction(internal.trainingGen.generate, { docId: docId as never })
+    return { ...result, docId }
+  }
+})
+const findActiveDocByFilename = internalQuery({
+  args: { filename: v.string() },
+  handler: async (ctx, { filename }): Promise<null | string> => {
+    const rows = await ctx.db.query('docs').take(2000)
+    const match = rows.find(r => r.filename === filename && r.deletedAt === undefined && r.supersededBy === undefined)
+    return match?._id ?? null
+  }
+})
+const suggestionsForDocByName = query({
+  args: { filename: v.string(), testSecret: v.string() },
+  handler: async (
+    ctx,
+    { filename, testSecret }
+  ): Promise<
+    {
+      _id: string
+      action?: string
+      createdAt: number
+      docId: string
+      reason?: string
+      status: string
+    }[]
+  > => {
+    verifyTestSecret(testSecret)
+    const docs = await ctx.db.query('docs').take(500)
+    const matching = docs.filter(d => d.filename === filename)
+    const out: {
+      _id: string
+      action?: string
+      createdAt: number
+      docId: string
+      reason?: string
+      status: string
+    }[] = []
+    for (const d of matching) {
+      const sugs = await ctx.db.query('testQuestionSuggestions').take(500)
+      for (const s of sugs)
+        if (s.sourceDocIds.includes(d._id))
+          out.push({
+            _id: s._id,
+            action: s.resolvedAction,
+            createdAt: s.createdAt,
+            docId: d._id,
+            reason: s.resolvedReason,
+            status: s.status
+          })
+    }
+    return out
+  }
+})
+const suggestionsBreakdown = query({
+  args: { testSecret: v.string() },
+  handler: async (
+    ctx,
+    { testSecret }
+  ): Promise<{
+    byAction: Record<string, number>
+    byReason: Record<string, number>
+    byStatus: Record<string, number>
+    latest: { action?: string; createdAt: number; reason?: string; resolvedBy?: string; status: string }[]
+  }> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db.query('testQuestionSuggestions').order('desc').take(500)
+    const byStatus: Record<string, number> = {}
+    const byAction: Record<string, number> = {}
+    const byReason: Record<string, number> = {}
+    for (const r of rows) {
+      byStatus[r.status] = (byStatus[r.status] ?? 0) + 1
+      if (r.resolvedAction) byAction[r.resolvedAction] = (byAction[r.resolvedAction] ?? 0) + 1
+      if (r.resolvedReason) byReason[r.resolvedReason] = (byReason[r.resolvedReason] ?? 0) + 1
+    }
+    const latest = rows.slice(0, 5).map(r => ({
+      action: r.resolvedAction,
+      createdAt: r.createdAt,
+      reason: r.resolvedReason,
+      resolvedBy: r.resolvedBy,
+      status: r.status
+    }))
+    return { byAction, byReason, byStatus, latest }
+  }
+})
 const countTestSuggestions = query({
   args: { testSecret: v.string() },
   handler: async (ctx, { testSecret }): Promise<{ count: number; topicNames: string[] }> => {
@@ -1884,6 +1978,7 @@ export {
   downloadZip,
   editQuestionProbe,
   ensureChatRuntime,
+  findActiveDocByFilename,
   getChatStreaming,
   getDocRow,
   getQuestionRow,
@@ -1911,6 +2006,7 @@ export {
   readFile,
   removeChat,
   requestReviewProbe,
+  reRunGenerationProbe,
   reserveBudgetProbe,
   resetPolicyPending,
   retireQuestionProbe,
@@ -1940,6 +2036,8 @@ export {
   softDeleteDocProbe,
   startAttemptProbe,
   submitAttemptProbe,
+  suggestionsBreakdown,
+  suggestionsForDocByName,
   topStripProbe,
   unassignAllForTopicProbe,
   uploadFile,
