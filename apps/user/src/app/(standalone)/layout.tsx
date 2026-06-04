@@ -2,6 +2,7 @@
 import type { ReactNode } from 'react'
 import { DocSheet, GoogleSignInButton, SidebarUserNav } from '@a/react/components'
 import { cn } from '@a/ui'
+import { SidebarProvider } from '@a/ui/components/sidebar'
 import { api } from 'backend/convex/_generated/api'
 import { Authenticated, AuthLoading, Unauthenticated, useQuery } from 'convex/react'
 import { Source_Serif_4 } from 'next/font/google'
@@ -24,15 +25,17 @@ const StandaloneLayout = ({ children }: { children: ReactNode }): React.ReactEle
       </div>
     </Unauthenticated>
     <Authenticated>
-      <aside className='sticky top-0 flex h-dvh w-64 shrink-0 flex-col gap-3 overflow-y-auto border-sidebar-border border-r bg-sidebar p-3 text-sidebar-foreground'>
-        <Link className={cn(brandFont.className, 'font-semibold text-2xl tracking-tighter')} href='/'>
-          user
-        </Link>
-        <UserSidebarNav />
-        <SidebarAccount />
-      </aside>
-      <main className='flex-1 overflow-auto'>{children}</main>
-      <DocSheet />
+      <SidebarProvider defaultOpen>
+        <aside className='sticky top-0 flex h-dvh w-64 shrink-0 flex-col gap-3 overflow-y-auto border-sidebar-border border-r bg-sidebar p-3 text-sidebar-foreground'>
+          <Link className={cn(brandFont.className, 'font-semibold text-2xl tracking-tighter')} href='/'>
+            user
+          </Link>
+          <UserSidebarNav />
+          <SidebarAccount />
+        </aside>
+        <main className='flex-1 overflow-auto'>{children}</main>
+        <DocSheet />
+      </SidebarProvider>
     </Authenticated>
   </div>
 )

@@ -1,3 +1,4 @@
+/* oxlint-disable react-perf/jsx-no-jsx-as-prop -- base-ui render prop pattern requires inline JSX; component memoized internally */
 'use client'
 import { Badge } from '@a/ui/components/badge'
 import { SidebarMenu, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem } from '@a/ui/components/sidebar'
