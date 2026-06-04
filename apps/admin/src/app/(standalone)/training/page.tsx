@@ -579,7 +579,9 @@ const TrainingPage = (): React.ReactElement => {
               </TableBody>
             </Table>
             <div className='flex items-center justify-between text-muted-foreground text-sm'>
-              <span>{userSum.total} trainees</span>
+              <span>
+                {userSum.total} trainee{userSum.total === 1 ? '' : 's'}
+              </span>
               <div className='flex items-center gap-2'>
                 <Button disabled={sPage === 0} onClick={() => setSPage(p => p - 1)} size='sm' variant='outline'>
                   Prev
