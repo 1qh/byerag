@@ -1,5 +1,6 @@
 'use client'
 import type { LucideIcon } from 'lucide-react'
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@a/ui/components/sidebar'
 import {
   ClipboardList,
   FileText,
@@ -25,16 +26,23 @@ const LINKS: { href: string; icon: LucideIcon; label: string }[] = [
   { href: '/deleted', icon: Trash2, label: 'Trash' }
 ]
 const AdminSidebarNav = (): React.ReactElement => (
-  <nav className='flex flex-1 flex-col gap-1 border-b py-2 text-sm'>
+  <SidebarMenu className='border-b pb-2'>
     {LINKS.map(l => {
       const Icon = l.icon
       return (
-        <Link className='flex items-center gap-2 rounded px-2 py-1 hover:bg-muted' href={l.href} key={l.href}>
-          <Icon aria-hidden className='size-4 shrink-0 text-muted-foreground' />
-          {l.label}
-        </Link>
+        <SidebarMenuItem key={l.href}>
+          <SidebarMenuButton
+            render={
+              <Link href={l.href}>
+                <Icon aria-hidden />
+                <span>{l.label}</span>
+              </Link>
+            }
+            tooltip={l.label}
+          />
+        </SidebarMenuItem>
       )
     })}
-  </nav>
+  </SidebarMenu>
 )
 export { AdminSidebarNav }
