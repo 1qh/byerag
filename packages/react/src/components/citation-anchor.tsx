@@ -7,7 +7,8 @@ import { api } from 'backend/convex/_generated/api'
 import { useQuery } from 'convex/react'
 import { useDocSheet } from './doc-sheet-context'
 
-const DOC_HREF_RE = /^\/docs\/(?<docId>[^/#?]+)(?:#(?<anchor>[^?]+))?$/u
+const DOC_HREF_RE = /^\/docs\/(?<docId>[^/#?§%]+)(?:%C2%A7|§)?(?<sectionInPath>[^/#?]*)(?:#(?<anchor>[^?]+))?$/u
+const DOC_ID_RE = /^[a-z0-9]+$/u
 interface CitationAnchorProps extends ComponentProps<'a'> {
   children?: ReactNode
 }
@@ -41,14 +42,15 @@ const CitationAnchor = ({ href, children, ...rest }: CitationAnchorProps) => {
   if (typeof href !== 'string') return <a {...rest}>{children}</a>
   const m = DOC_HREF_RE.exec(href)
   const g = m?.groups
-  if (!g?.docId)
+  if (!(g?.docId && DOC_ID_RE.test(g.docId)))
     return (
       <a href={href} {...rest}>
         {children}
       </a>
     )
+  const anchorFromPath = g.sectionInPath && g.sectionInPath.length > 0 ? g.sectionInPath : undefined
   return (
-    <Inner anchor={g.anchor} docId={g.docId}>
+    <Inner anchor={g.anchor ?? anchorFromPath} docId={g.docId}>
       {children}
     </Inner>
   )
