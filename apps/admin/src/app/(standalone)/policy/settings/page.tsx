@@ -34,7 +34,7 @@ const PolicySettingsPage = (): React.ReactElement => {
         <h1 className='font-semibold text-lg'>Policy</h1>
         <nav className='flex items-center gap-1 text-sm'>
           <Link className='rounded px-2 py-1 text-muted-foreground hover:bg-muted' href='/policy'>
-            Queue
+            Inbox
           </Link>
           <span className='rounded bg-muted px-2 py-1 font-medium'>Rules</span>
         </nav>

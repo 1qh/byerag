@@ -36,8 +36,7 @@ const DocViewer = ({ docId }: DocViewerProps): React.ReactElement => {
   const isMarkdown = mime === 'text/markdown'
   const isOffice = OFFICE_MIMES.has(mime)
   const askAboutThis = (): void => {
-    const scopeHint = result.scope === 'shared' ? 'shared' : 'mine'
-    const draft = `Summarize the most important points in ${result.filename}. (Read it with the docs tools — id ${docId} in the ${scopeHint} scope.)`
+    const draft = `Summarize the most important points in ${result.filename}.`
     try {
       globalThis.localStorage.setItem('draft-new', draft)
     } catch {
@@ -81,12 +80,11 @@ const DocViewer = ({ docId }: DocViewerProps): React.ReactElement => {
       ) : (
         <>
           {isOffice ? (
-            <p className='rounded-md border bg-muted px-3 py-2 text-muted-foreground text-xs'>
-              Preview is extracted text — original formatting (tables, images, layout) is not preserved. Use Download for
-              the original.
+            <p className='text-muted-foreground text-xs italic'>
+              Preview shows text only. Use Download for the original formatting.
             </p>
           ) : null}
-          <pre className='max-h-[80vh] overflow-auto whitespace-pre-wrap rounded-md border bg-muted p-4 font-mono text-sm'>
+          <pre className='max-h-[80vh] overflow-auto whitespace-pre-wrap rounded-md border bg-muted p-4 font-sans text-sm leading-relaxed'>
             {content}
           </pre>
         </>

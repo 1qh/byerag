@@ -82,6 +82,32 @@ const listChats = query({
       )
   }
 })
+const wipeChatsForEmail = mutation({
+  args: { email: v.string(), testSecret: v.string() },
+  handler: async (ctx, { testSecret, email }): Promise<{ deleted: number }> => {
+    verifyTestSecret(testSecret)
+    const chats = await ctx.db
+      .query('chats')
+      .withIndex('by_owner', q => q.eq('owner', email))
+      .collect()
+    let deleted = 0
+    for (const chat of chats) {
+      const msgs = await ctx.db
+        .query('messages')
+        .withIndex('by_chat', q => q.eq('chatId', chat._id))
+        .collect()
+      for (const m of msgs) await ctx.db.delete(m._id)
+      const events = await ctx.db
+        .query('streamEvents')
+        .withIndex('by_chat', q => q.eq('chatId', chat._id))
+        .collect()
+      for (const e of events) await ctx.db.delete(e._id)
+      await ctx.db.delete(chat._id)
+      deleted += 1
+    }
+    return { deleted }
+  }
+})
 const removeChat = mutation({
   args: { chatId: v.id('chats'), email: v.string(), testSecret: v.string() },
   handler: async (ctx, { testSecret, email, chatId }) => {
@@ -1919,6 +1945,7 @@ export {
   uploadFile,
   whoAmIProbe,
   wipeAllForOwner,
+  wipeChatsForEmail,
   wipeCostRecords,
   wipeDocs,
   wipeTrainingTables,

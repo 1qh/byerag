@@ -190,8 +190,7 @@ const DocsPage = (): React.ReactElement => {
     const picked = (shared ?? []).filter(d => selected.has(d._id as string))
     if (picked.length === 0) return
     const names = picked.map(p => p.filename).join(', ')
-    const ids = picked.map(p => p._id).join(', ')
-    const draft = `Tell me about: ${names}. (Read with the docs tools — ids ${ids} in the shared scope.)`
+    const draft = `Tell me about: ${names}.`
     try {
       globalThis.localStorage.setItem('draft-new', draft)
     } catch {
@@ -260,7 +259,7 @@ const DocsPage = (): React.ReactElement => {
                   <span className='mt-1 size-1.5 shrink-0 rounded-full bg-primary' />
                   <span className='min-w-0 flex-1'>
                     <span className='font-medium'>{h.filename}</span>
-                    {h.summary ? <span className='ml-1 text-muted-foreground'>— {h.summary}</span> : null}
+                    {h.summary ? <span className='ml-1 line-clamp-1 text-muted-foreground'>— {h.summary}</span> : null}
                   </span>
                 </button>
               </li>

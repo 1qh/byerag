@@ -18,11 +18,70 @@ const cycleSince = (cycleStart: string): string => {
   const [, m, d] = cycleStart.split('-')
   return `since ${MONTH_ABBR[Number(m) - 1] ?? m} ${Number(d)}`
 }
+interface HistoryItem {
+  cents: number
+  cycleEnd: string
+  cycleStart: string
+  isCurrent: boolean
+}
 interface InboxTile {
   count: number
   href: string
   label: string
   tone: 'attention' | 'info' | 'warning'
+}
+const trimHistory = (history: readonly HistoryItem[]): HistoryItem[] => {
+  const arr = [...history].toReversed()
+  const firstWithData = arr.findIndex(c => c.cents > 0 || c.isCurrent)
+  return firstWithData === -1 ? arr.slice(-1) : arr.slice(firstWithData)
+}
+const CostHistorySection = ({
+  history,
+  onSelectCycle,
+  selectedCycle
+}: {
+  history: readonly HistoryItem[]
+  onSelectCycle: (cycleStart: string | undefined) => void
+  selectedCycle: string | undefined
+}): React.ReactElement => {
+  const trimmed = trimHistory(history)
+  const maxCents = Math.max(1, ...history.map(h => h.cents))
+  return (
+    <section>
+      <div className='mb-2 flex items-baseline justify-between'>
+        <h2 className='font-semibold text-lg'>Cost history</h2>
+        <span className='text-muted-foreground text-xs'>
+          {trimmed.length === 1 ? 'this cycle' : `last ${trimmed.length} cycles`} · click a bar to drill the pivot
+        </span>
+      </div>
+      <div className='flex items-end gap-3'>
+        {trimmed.map(c => {
+          const heightPct = c.cents === 0 ? 2 : Math.max(6, (c.cents / maxCents) * 56)
+          // oxlint-disable-next-line react-perf/jsx-no-new-object-as-prop -- height varies per bar
+          const barStyle: React.CSSProperties = { height: `${heightPct}px` }
+          const isSelected = selectedCycle === c.cycleStart
+          return (
+            <button
+              className='flex flex-col items-center gap-1 text-xs'
+              key={c.cycleStart}
+              onClick={() => onSelectCycle(c.cycleStart === selectedCycle ? undefined : c.cycleStart)}
+              type='button'>
+              <div className={cn('text-muted-foreground', c.cents === 0 && 'invisible')}>{fmtCents(c.cents)}</div>
+              <div
+                className={cn(
+                  'w-10 rounded-t',
+                  c.isCurrent ? 'animate-pulse bg-primary/70' : 'bg-primary/80',
+                  isSelected && 'ring-2 ring-foreground'
+                )}
+                style={barStyle}
+              />
+              <div className={cn(isSelected && 'font-semibold')}>{cycleLabel(c.cycleStart)}</div>
+            </button>
+          )
+        })}
+      </div>
+    </section>
+  )
 }
 const toneClass = (tone: InboxTile['tone'], count: number): string => {
   if (count === 0) return 'border-border text-muted-foreground'
@@ -92,43 +151,7 @@ const DashboardPage = (): React.ReactElement => {
         </div>
       </section>
       {history && history.length > 0 ? (
-        <section>
-          <div className='mb-2 flex items-baseline justify-between'>
-            <h2 className='font-semibold text-lg'>Cost history</h2>
-            <span className='text-muted-foreground text-xs'>
-              last {history.length} cycles · click a bar to drill the pivot
-            </span>
-          </div>
-          <div className='flex items-end gap-3'>
-            {[...history].toReversed().map(c => {
-              const maxCents = Math.max(1, ...history.map(h => h.cents))
-              const heightPct = c.cents === 0 ? 2 : Math.max(6, (c.cents / maxCents) * 56)
-              // oxlint-disable-next-line react-perf/jsx-no-new-object-as-prop -- height varies per bar
-              const barStyle: React.CSSProperties = { height: `${heightPct}px` }
-              const isSelected = selectedCycle === c.cycleStart
-              return (
-                <button
-                  className='flex flex-col items-center gap-1 text-xs'
-                  key={c.cycleStart}
-                  onClick={() => {
-                    setSelectedCycle(c.cycleStart === selectedCycle ? undefined : c.cycleStart)
-                  }}
-                  type='button'>
-                  <div className={cn('text-muted-foreground', c.cents === 0 && 'invisible')}>{fmtCents(c.cents)}</div>
-                  <div
-                    className={cn(
-                      'w-10 rounded-t',
-                      c.isCurrent ? 'animate-pulse bg-primary/70' : 'bg-primary/80',
-                      isSelected && 'ring-2 ring-foreground'
-                    )}
-                    style={barStyle}
-                  />
-                  <div className={cn(isSelected && 'font-semibold')}>{cycleLabel(c.cycleStart)}</div>
-                </button>
-              )
-            })}
-          </div>
-        </section>
+        <CostHistorySection history={history} onSelectCycle={setSelectedCycle} selectedCycle={selectedCycle} />
       ) : null}
       <section>
         <h2 className='mb-2 font-semibold text-lg'>

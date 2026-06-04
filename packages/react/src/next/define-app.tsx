@@ -46,7 +46,7 @@ const defineApp = (config: DefineAppConfig): DefinedApp => {
       prompts={config.prompts}
       sidebarSlotAboveHistory={config.sidebarSlotAboveHistory}
       sidebarSlotBelowHistory={config.sidebarSlotBelowHistory}
-      title={config.title}>
+      title={config.title ?? config.appId}>
       {children}
     </DefaultMainLayout>
   )

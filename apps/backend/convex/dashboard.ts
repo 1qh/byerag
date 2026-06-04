@@ -8,6 +8,11 @@ import type { QueryCtx } from './_generated/server'
 import { query } from './_generated/server'
 
 const BILLING_CYCLE_ANCHOR_DAY = 5
+const TEST_OWNER_PATTERNS = ['@example.com', '@user.test', '@example.org', 'gdpr-admin@', 'perf-test', 'proxy-test']
+const isTestOwner = (owner: string): boolean => {
+  const lower = owner.toLowerCase()
+  return TEST_OWNER_PATTERNS.some(p => lower.includes(p))
+}
 const has = (arr: string[] | undefined, v2: string): boolean => !arr || arr.length === 0 || arr.includes(v2)
 const requireAdmin = async (ctx: QueryCtx): Promise<null | string> => {
   const identity = await ctx.auth.getUserIdentity()
@@ -75,7 +80,8 @@ const topStrip = query({
     const cycle = cycleStartFor(Date.now(), BILLING_CYCLE_ANCHOR_DAY)
     const costRows = await ctx.db.query('costRecords').take(5000)
     let cycleCents = 0
-    for (const r of costRows) if (r.dayKey >= cycle.start && r.dayKey <= cycle.end) cycleCents += r.cents
+    for (const r of costRows)
+      if (r.dayKey >= cycle.start && r.dayKey <= cycle.end && !isTestOwner(r.owner)) cycleCents += r.cents
     const pendingSugs = await ctx.db
       .query('testQuestionSuggestions')
       .filter(q => q.eq(q.field('status'), 'pending'))
@@ -129,7 +135,7 @@ const costCycleHistory = query({
     const rows = await ctx.db.query('costRecords').take(10_000)
     return cycles.map(c => {
       let cents = 0
-      for (const r of rows) if (r.dayKey >= c.start && r.dayKey <= c.end) cents += r.cents
+      for (const r of rows) if (r.dayKey >= c.start && r.dayKey <= c.end && !isTestOwner(r.owner)) cents += r.cents
       return { cents, cycleEnd: c.end, cycleStart: c.start, isCurrent: c.start === todayCycle.start }
     })
   }
@@ -155,6 +161,7 @@ const costCyclePivot = query({
     >()
     for (const r of rows) {
       if (r.dayKey < cycle.start || r.dayKey > cycle.end) continue
+      if (isTestOwner(r.owner)) continue
       const key = `${r.owner}|${r.model}`
       const e = agg.get(key)
       if (e) {

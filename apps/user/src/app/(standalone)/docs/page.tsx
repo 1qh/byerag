@@ -316,16 +316,8 @@ const DocsPage = (): React.ReactElement => {
   const bulkMoreCount = selectedMine.length > 5 ? selectedMine.length - 5 : 0
   const askAboutSelected = (): void => {
     if (selected.size === 0) return
-    const sharedPart =
-      selectedShared.length > 0
-        ? ` (Read ${selectedShared.map(p => p.filename).join(', ')} with the docs tools — ids ${selectedShared.map(p => p._id).join(', ')} in the shared scope.)`
-        : ''
-    const minePart =
-      selectedMine.length > 0
-        ? ` (Read ${selectedMine.map(p => p.filename).join(', ')} with the docs tools — ids ${selectedMine.map(p => p._id).join(', ')} in the mine scope.)`
-        : ''
     const allNames = [...selectedShared, ...selectedMine].map(p => p.filename).join(', ')
-    const draft = `Tell me about: ${allNames}.${sharedPart}${minePart}`
+    const draft = `Tell me about: ${allNames}.`
     try {
       globalThis.localStorage.setItem('draft-new', draft)
     } catch {
@@ -383,7 +375,7 @@ const DocsPage = (): React.ReactElement => {
                   <span className='mt-1 size-1.5 shrink-0 rounded-full bg-primary' />
                   <span className='min-w-0 flex-1'>
                     <span className='font-medium'>{h.filename}</span>
-                    {h.summary ? <span className='ml-1 text-muted-foreground'>— {h.summary}</span> : null}
+                    {h.summary ? <span className='ml-1 line-clamp-1 text-muted-foreground'>— {h.summary}</span> : null}
                   </span>
                 </button>
               </li>

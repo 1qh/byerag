@@ -103,7 +103,8 @@ const TrainingPage = (): React.ReactElement => {
         </h1>
         {assigned.length === 0 ? (
           <p className='text-muted-foreground text-sm'>
-            When an admin assigns a test it appears here. You can also practice any topic below.
+            When an admin assigns a test it appears here.
+            {practice.length > 0 ? ' You can also practice any topic below.' : ''}
           </p>
         ) : (
           <ul className='space-y-2'>
