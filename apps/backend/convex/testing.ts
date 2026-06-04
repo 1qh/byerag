@@ -210,17 +210,41 @@ const getUserProfile = query({
   }
 })
 const seedUserProfile = mutation({
-  args: { role: v.union(v.literal('admin'), v.literal('user')), testSecret: v.string(), userId: v.string() },
-  handler: async (ctx, { userId, role, testSecret }): Promise<void> => {
+  args: {
+    kind: v.optional(v.union(v.literal('real'), v.literal('test'))),
+    role: v.union(v.literal('admin'), v.literal('user')),
+    testSecret: v.string(),
+    userId: v.string()
+  },
+  handler: async (ctx, { userId, role, kind, testSecret }): Promise<void> => {
     verifyTestSecret(testSecret)
+    const effectiveKind = kind ?? 'test'
     const rows = await ctx.db
       .query('userProfiles')
       .withIndex('by_userId', q => q.eq('userId', userId))
       .collect()
     const existing = rows[0]
     await (existing
-      ? ctx.db.patch(existing._id, { role, updatedAt: Date.now(), updatedBy: 'test-seed' })
-      : ctx.db.insert('userProfiles', { role, updatedAt: Date.now(), updatedBy: 'test-seed', userId }))
+      ? ctx.db.patch(existing._id, { kind: effectiveKind, role, updatedAt: Date.now(), updatedBy: 'test-seed' })
+      : ctx.db.insert('userProfiles', {
+          kind: effectiveKind,
+          role,
+          updatedAt: Date.now(),
+          updatedBy: 'test-seed',
+          userId
+        }))
+  }
+})
+const markProfileKind = mutation({
+  args: { kind: v.union(v.literal('real'), v.literal('test')), testSecret: v.string(), userId: v.string() },
+  handler: async (ctx, { userId, kind, testSecret }): Promise<{ patched: number }> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', userId))
+      .collect()
+    for (const r of rows) await ctx.db.patch(r._id, { kind, updatedAt: Date.now(), updatedBy: 'kind-mark' })
+    return { patched: rows.length }
   }
 })
 const setUserRoleProbe = mutation({
@@ -1282,6 +1306,14 @@ const seedTopicWithPool = mutation({
     return topicId
   }
 })
+const listProfilesForTest = query({
+  args: { testSecret: v.string() },
+  handler: async (ctx, { testSecret }): Promise<{ kind?: 'real' | 'test'; role: 'admin' | 'user'; userId: string }[]> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db.query('userProfiles').take(10_000)
+    return rows.map(r => ({ kind: r.kind, role: r.role, userId: r.userId }))
+  }
+})
 const listTopicsForTest = query({
   args: { testSecret: v.string() },
   handler: async (ctx, { testSecret }): Promise<{ _id: string; name: string }[]> => {
@@ -2027,12 +2059,14 @@ export {
   listFiles,
   listMessages,
   listMyTopicsProbe,
+  listProfilesForTest,
   listQuestionsForTopic,
   listSandboxIds,
   listStreamEvents,
   listStreamEventsForChat,
   listTopicsForTest,
   listUsersProbe,
+  markProfileKind,
   markTopicSubstantiveProbe,
   purgeUserProbe,
   readFile,

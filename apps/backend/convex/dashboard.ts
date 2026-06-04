@@ -7,13 +7,14 @@ import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
 import type { QueryCtx } from './_generated/server'
 import { query } from './_generated/server'
+import { filterRealProfiles, isRealProfile } from './lib/userKind'
 
 const BILLING_CYCLE_ANCHOR_DAY = 5
-const TEST_OWNER_PATTERNS = ['@example.com', '@user.test', '@example.org', 'gdpr-admin@', 'perf-test', 'proxy-test']
-const isTestOwner = (owner: string): boolean => {
-  const lower = owner.toLowerCase()
-  return TEST_OWNER_PATTERNS.some(p => lower.includes(p))
+const testOwnersSet = async (ctx: QueryCtx): Promise<Set<string>> => {
+  const profiles = await ctx.db.query('userProfiles').take(10_000)
+  return new Set(profiles.filter(p => p.kind === 'test').map(p => p.userId.toLowerCase()))
 }
+const isTestOwner = (owner: string, testOwners: Set<string>): boolean => testOwners.has(owner.toLowerCase())
 const has = (arr: string[] | undefined, v2: string): boolean => !arr || arr.length === 0 || arr.includes(v2)
 const requireAdmin = async (ctx: QueryCtx): Promise<null | string> => {
   const identity = await ctx.auth.getUserIdentity()
@@ -61,10 +62,12 @@ const topStrip = query({
   }> => {
     const adminEmail = await requireAdmin(ctx)
     if (!adminEmail) return null
-    const usersRows = await ctx.db
-      .query('userProfiles')
-      .withIndex('by_role', q => q.eq('role', 'user'))
-      .take(2000)
+    const usersRows = filterRealProfiles(
+      await ctx.db
+        .query('userProfiles')
+        .withIndex('by_role', q => q.eq('role', 'user'))
+        .take(2000)
+    )
     const totalUsers = usersRows.length
     const docs = await ctx.db
       .query('docs')
@@ -79,10 +82,10 @@ const topStrip = query({
       .take(5000)
     const docsInCorpus = docs.length
     const cycle = cycleStartFor(Date.now(), BILLING_CYCLE_ANCHOR_DAY)
-    const costRows = await ctx.db.query('costRecords').take(5000)
+    const [costRows, testOwners] = await Promise.all([ctx.db.query('costRecords').take(5000), testOwnersSet(ctx)])
     let cycleCents = 0
     for (const r of costRows)
-      if (r.dayKey >= cycle.start && r.dayKey <= cycle.end && !isTestOwner(r.owner)) cycleCents += r.cents
+      if (r.dayKey >= cycle.start && r.dayKey <= cycle.end && !isTestOwner(r.owner, testOwners)) cycleCents += r.cents
     const pendingSugs = await ctx.db
       .query('testQuestionSuggestions')
       .filter(q => q.eq(q.field('status'), 'pending'))
@@ -133,10 +136,11 @@ const costCycleHistory = query({
       if (!prev) break
       cycles.push(prevCycle(prev.start, BILLING_CYCLE_ANCHOR_DAY))
     }
-    const rows = await ctx.db.query('costRecords').take(10_000)
+    const [rows, testOwners] = await Promise.all([ctx.db.query('costRecords').take(10_000), testOwnersSet(ctx)])
     return cycles.map(c => {
       let cents = 0
-      for (const r of rows) if (r.dayKey >= c.start && r.dayKey <= c.end && !isTestOwner(r.owner)) cents += r.cents
+      for (const r of rows)
+        if (r.dayKey >= c.start && r.dayKey <= c.end && !isTestOwner(r.owner, testOwners)) cents += r.cents
       return { cents, cycleEnd: c.end, cycleStart: c.start, isCurrent: c.start === todayCycle.start }
     })
   }
@@ -155,14 +159,14 @@ const costCyclePivot = query({
           start: cycleStart
         }
       : cycleStartFor(Date.now(), BILLING_CYCLE_ANCHOR_DAY)
-    const rows = await ctx.db.query('costRecords').take(10_000)
+    const [rows, testOwners] = await Promise.all([ctx.db.query('costRecords').take(10_000), testOwnersSet(ctx)])
     const agg = new Map<
       string,
       { cents: number; inputTokens: number; model: string; outputTokens: number; owner: string }
     >()
     for (const r of rows) {
       if (r.dayKey < cycle.start || r.dayKey > cycle.end) continue
-      if (isTestOwner(r.owner)) continue
+      if (isTestOwner(r.owner, testOwners)) continue
       const key = `${r.owner}|${r.model}`
       const e = agg.get(key)
       if (e) {
@@ -296,7 +300,7 @@ const computeTrain = async (ctx: QueryCtx): Promise<{ now: number; topics: Topic
   for (const a of allFailedAttempts)
     if ((a.finishedAt ?? a.startedAt) >= cycleStartMs)
       failedCountByUser.set(a.userId, (failedCountByUser.get(a.userId) ?? 0) + 1)
-  const users: UserTrain[] = userRows.map(u => ({
+  const users: UserTrain[] = filterRealProfiles(userRows).map(u => ({
     assigned: 0,
     department: u.department,
     details: [],
@@ -400,10 +404,12 @@ const assignmentsTable = query({
     if (!adminEmail) return null
     const now = Date.now()
     const dueMs = (await getDueDays(ctx)) * DAY_MS
-    const profiles = await ctx.db
-      .query('userProfiles')
-      .withIndex('by_role', q => q.eq('role', 'user'))
-      .take(5000)
+    const profiles = filterRealProfiles(
+      await ctx.db
+        .query('userProfiles')
+        .withIndex('by_role', q => q.eq('role', 'user'))
+        .take(5000)
+    )
     const deptOf = new Map(profiles.map(p => [p.userId, p.department ?? '—']))
     const live = await ctx.db
       .query('testAssignments')
@@ -556,6 +562,11 @@ const userAttemptHistory = query({
   ): Promise<null | { attempts: AttemptHistoryRow[]; failedTopics: string[]; userId: string }> => {
     const adminEmail = await requireAdmin(ctx)
     if (!adminEmail) return null
+    const profile = ctx.db
+      .query('userProfiles')
+      .withIndex('by_userId', q => q.eq('userId', userId))
+      .first()
+    if (!(profile && isRealProfile(profile))) return null
     const attemptRows = await ctx.db
       .query('testAttempts')
       .withIndex('by_user_topic', q => q.eq('userId', userId))
@@ -782,10 +793,12 @@ const testDetail = query({
       if (d && 'filename' in d && !(d as { deletedAt?: number }).deletedAt)
         sourceDocs.push({ _id: id, filename: (d as { filename: string }).filename })
     }
-    const userRows = await ctx.db
-      .query('userProfiles')
-      .withIndex('by_role', q => q.eq('role', 'user'))
-      .take(2000)
+    const userRows = filterRealProfiles(
+      await ctx.db
+        .query('userProfiles')
+        .withIndex('by_role', q => q.eq('role', 'user'))
+        .take(2000)
+    )
     const dueMs = (await getDueDays(ctx)) * DAY_MS
     const now = Date.now()
     const winners: TestDetailPersonRow[] = []

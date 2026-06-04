@@ -28,7 +28,13 @@ const { auth, isAuthenticated, signIn, signOut, store } = convexAuth({
           .collect()) as { _id: string }[]
         if (profileRows[0]) return
         const role = BOOTSTRAP_ADMIN_EMAILS.has(email) ? 'admin' : 'user'
-        await ctx.db.insert('userProfiles', { role, updatedAt: Date.now(), updatedBy: 'self', userId: email })
+        await ctx.db.insert('userProfiles', {
+          kind: 'real',
+          role,
+          updatedAt: Date.now(),
+          updatedBy: 'self',
+          userId: email
+        })
       }
       if (existingUserId) {
         await ensureProfile()

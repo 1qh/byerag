@@ -331,6 +331,7 @@ export default defineSchema({
   }).index('by_user', ['userId']),
   userProfiles: defineTable({
     department: v.optional(v.literal('Safety, Health and Environment')),
+    kind: v.optional(v.union(v.literal('real'), v.literal('test'))),
     role: v.union(v.literal('admin'), v.literal('user')),
     updatedAt: v.number(),
     updatedBy: v.string(),
