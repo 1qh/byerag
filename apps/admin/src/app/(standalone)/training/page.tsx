@@ -219,7 +219,11 @@ const TrainingPage = (): React.ReactElement => {
   const assignedOptions = useMemo(() => at?.facets.assigneds ?? [], [at?.facets.assigneds])
   const [sSearch, setSSearch] = useState('')
   const [sPage, setSPage] = useState(0)
-  const userSum = useQuery(api.dashboard.userSummary, { page: sPage, search: sSearch })
+  const [sCoaching, setSCoaching] = useState(false)
+  const userSum = useQuery(api.dashboard.userSummary, { needsCoaching: sCoaching, page: sPage, search: sSearch })
+  const coaching = useQuery(api.dashboard.coachingSummary, {})
+  const [drilldownUser, setDrilldownUser] = useState<null | string>(null)
+  const drilldown = useQuery(api.dashboard.userAttemptHistory, drilldownUser ? { userId: drilldownUser } : 'skip')
   const [tSearch, setTSearch] = useState('')
   const [tPage, setTPage] = useState(0)
   const [pending, setPending] = useState<null | PendingAction>(null)
@@ -417,7 +421,7 @@ const TrainingPage = (): React.ReactElement => {
           </Button>
         </div>
       </div>
-      <section className='grid gap-3 md:grid-cols-3'>
+      <section className='grid gap-3 md:grid-cols-2 lg:grid-cols-4'>
         <Card onClick={() => summaryRef.current?.scrollIntoView({ behavior: 'smooth' })} title='Overview'>
           <div className='font-bold text-3xl'>{summary.totalUsers}</div>
           <div className='mt-1 text-muted-foreground text-sm'>users — view summary</div>
@@ -450,6 +454,27 @@ const TrainingPage = (): React.ReactElement => {
           ) : (
             <div className='text-muted-foreground text-sm'>No assigned tests yet</div>
           )}
+        </Card>
+        <Card
+          disabled={!coaching || coaching.userCount === 0}
+          onClick={() => {
+            setSCoaching(true)
+            setSPage(0)
+            summaryRef.current?.scrollIntoView({ behavior: 'smooth' })
+          }}
+          title='Needs coaching'>
+          <div
+            className={cn(
+              'font-bold text-3xl',
+              coaching && coaching.userCount > 0 && 'text-yellow-700 dark:text-yellow-400'
+            )}>
+            {coaching?.userCount ?? 0}
+          </div>
+          <div className='mt-1 text-muted-foreground text-sm'>
+            {!coaching || coaching.userCount === 0
+              ? 'no repeat failures this cycle'
+              : `failed ≥${coaching.threshold} tests in last 30 days — view who`}
+          </div>
         </Card>
       </section>
       <section className='space-y-2'>
@@ -553,6 +578,17 @@ const TrainingPage = (): React.ReactElement => {
             placeholder='Search user…'
             value={sSearch}
           />
+          {sCoaching ? (
+            <button
+              className='rounded-full bg-yellow-500/15 px-2 py-0.5 text-xs text-yellow-700 hover:bg-yellow-500/25 dark:text-yellow-400'
+              onClick={() => {
+                setSCoaching(false)
+                setSPage(0)
+              }}
+              type='button'>
+              Showing repeat-failers only · clear
+            </button>
+          ) : null}
         </div>
         {userSum === undefined ? (
           <div className='text-muted-foreground'>Loading…</div>
@@ -566,16 +602,32 @@ const TrainingPage = (): React.ReactElement => {
                   <TableHead>User</TableHead>
                   <TableHead>Department</TableHead>
                   <TableHead className='text-right'>Passed / assigned</TableHead>
+                  <TableHead className='text-right'>Failed</TableHead>
                   <TableHead className='text-right'>Overdue</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {userSum.rows.map(u => (
                   <TableRow key={u.userId}>
-                    <TableCell className='font-medium'>{u.userId}</TableCell>
+                    <TableCell>
+                      <button
+                        className='text-left font-medium hover:underline'
+                        onClick={() => setDrilldownUser(u.userId)}
+                        type='button'>
+                        {u.userId}
+                      </button>
+                    </TableCell>
                     <TableCell className='text-muted-foreground'>{u.department}</TableCell>
                     <TableCell className='text-right tabular-nums'>
                       {u.passed}/{u.assigned}
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        'text-right tabular-nums',
+                        u.failedAttempts >= 3 && 'font-semibold text-destructive',
+                        u.failedAttempts > 0 && u.failedAttempts < 3 && 'text-yellow-700 dark:text-yellow-400'
+                      )}>
+                      {u.failedAttempts}
                     </TableCell>
                     <TableCell
                       className={cn(
@@ -961,6 +1013,65 @@ const TrainingPage = (): React.ReactElement => {
               {cBusy ? 'Assigning…' : 'Assign'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog onOpenChange={open => !open && setDrilldownUser(null)} open={drilldownUser !== null}>
+        <DialogContent className='max-w-2xl'>
+          <DialogHeader>
+            <DialogTitle>Attempt history</DialogTitle>
+            <DialogDescription>
+              {drilldownUser ? <span className='font-mono text-xs'>{drilldownUser}</span> : null}
+            </DialogDescription>
+          </DialogHeader>
+          {drilldown === undefined ? (
+            <div className='text-muted-foreground text-sm'>Loading…</div>
+          ) : drilldown === null ? (
+            <div className='text-destructive text-sm'>Not found.</div>
+          ) : drilldown.attempts.length === 0 ? (
+            <div className='text-muted-foreground text-sm'>No attempts yet.</div>
+          ) : (
+            <div className='space-y-3'>
+              {drilldown.failedTopics.length > 0 ? (
+                <div className='rounded-md bg-destructive/10 px-3 py-2 text-sm'>
+                  <span className='font-medium text-destructive'>Repeatedly failed:</span>{' '}
+                  <span className='text-foreground'>{drilldown.failedTopics.join(', ')}</span>
+                </div>
+              ) : null}
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Topic</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className='text-right'>Score</TableHead>
+                    <TableHead className='text-right'>When</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {drilldown.attempts.map(a => (
+                    <TableRow key={`${a.topicName}-${a.startedAt}`}>
+                      <TableCell className='font-medium'>{a.topicName}</TableCell>
+                      <TableCell>
+                        <span
+                          className={cn(
+                            'rounded-full px-2 py-0.5 text-xs',
+                            a.status === 'passed' && 'bg-green-500/15 text-green-700 dark:text-green-400',
+                            a.status === 'failed' && 'bg-destructive/15 text-destructive',
+                            a.status === 'in-progress' && 'bg-muted text-muted-foreground',
+                            a.status === 'cancelled' && 'bg-muted/50 text-muted-foreground'
+                          )}>
+                          {a.status}
+                        </span>
+                      </TableCell>
+                      <TableCell className='text-right tabular-nums'>{a.score ?? '—'}</TableCell>
+                      <TableCell className='text-right text-muted-foreground text-xs'>
+                        {new Date(a.finishedAt ?? a.startedAt).toISOString().slice(0, 10)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

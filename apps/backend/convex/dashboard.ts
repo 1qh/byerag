@@ -208,10 +208,12 @@ interface UserTrain {
   assigned: number
   department?: string
   details: UserTestDetail[]
+  failedAttempts: number
   overdue: number
   passed: number
   userId: string
 }
+const COACHING_THRESHOLD = 3
 const computeTrain = async (ctx: QueryCtx): Promise<{ now: number; topics: TopicTrain[]; users: UserTrain[] }> => {
   const now = Date.now()
   const dueMs = (await getDueDays(ctx)) * DAY_MS
@@ -236,6 +238,7 @@ const computeTrain = async (ctx: QueryCtx): Promise<{ now: number; topics: Topic
     assigned: 0,
     department: u.department,
     details: [],
+    failedAttempts: 0,
     overdue: 0,
     passed: 0,
     userId: u.userId
@@ -284,6 +287,15 @@ const computeTrain = async (ctx: QueryCtx): Promise<{ now: number; topics: Topic
         })
       } else u.details.push({ name: t.name, overdueDays: 0, status: 'open' })
     }
+  const cycleStartMs = Date.now() - 30 * DAY_MS
+  for (const u of users) {
+    const failed = await ctx.db
+      .query('testAttempts')
+      .withIndex('by_user_topic', q => q.eq('userId', u.userId))
+      .filter(q => q.eq(q.field('status'), 'failed'))
+      .take(500)
+    u.failedAttempts = failed.filter(a => (a.finishedAt ?? a.startedAt ?? 0) >= cycleStartMs).length
+  }
   return { now, topics, users }
 }
 const trainingSummary = query({
@@ -442,27 +454,39 @@ const assignmentsTable = query({
 interface UserSummaryRow {
   assigned: number
   department: string
+  failedAttempts: number
   overdue: number
   passed: number
   userId: string
 }
 const userSummary = query({
-  args: { page: v.optional(v.number()), search: v.optional(v.string()) },
-  handler: async (ctx, { page, search }): Promise<null | { pageCount: number; rows: UserSummaryRow[]; total: number }> => {
+  args: { needsCoaching: v.optional(v.boolean()), page: v.optional(v.number()), search: v.optional(v.string()) },
+  handler: async (
+    ctx,
+    { page, search, needsCoaching }
+  ): Promise<null | { pageCount: number; rows: UserSummaryRow[]; total: number }> => {
     const adminEmail = await requireAdmin(ctx)
     if (!adminEmail) return null
     const { users } = await computeTrain(ctx)
     const term = (search ?? '').trim().toLowerCase()
-    const filtered = (term ? users.filter(u => u.userId.toLowerCase().includes(term)) : users).map(u => ({
+    const termFiltered = term ? users.filter(u => u.userId.toLowerCase().includes(term)) : users
+    const coachingFiltered = needsCoaching
+      ? termFiltered.filter(u => u.failedAttempts >= COACHING_THRESHOLD)
+      : termFiltered
+    const filtered = coachingFiltered.map(u => ({
       assigned: u.assigned,
       department: u.department ?? '—',
+      failedAttempts: u.failedAttempts,
       overdue: u.overdue,
       passed: u.passed,
       userId: u.userId
     }))
     const sorted = filtered.toSorted(
       (a, b) =>
-        b.overdue - a.overdue || b.assigned - b.passed - (a.assigned - a.passed) || a.userId.localeCompare(b.userId)
+        b.failedAttempts - a.failedAttempts ||
+        b.overdue - a.overdue ||
+        b.assigned - b.passed - (a.assigned - a.passed) ||
+        a.userId.localeCompare(b.userId)
     )
     const pageSize = 25
     const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize))
@@ -470,4 +494,66 @@ const userSummary = query({
     return { pageCount, rows: sorted.slice(p * pageSize, p * pageSize + pageSize), total: sorted.length }
   }
 })
-export { assignmentsTable, costCycleHistory, costCyclePivot, topStrip, trainingSummary, userSummary }
+const coachingSummary = query({
+  args: {},
+  handler: async (ctx): Promise<null | { threshold: number; userCount: number }> => {
+    const adminEmail = await requireAdmin(ctx)
+    if (!adminEmail) return null
+    const { users } = await computeTrain(ctx)
+    return {
+      threshold: COACHING_THRESHOLD,
+      userCount: users.filter(u => u.failedAttempts >= COACHING_THRESHOLD).length
+    }
+  }
+})
+interface AttemptHistoryRow {
+  finishedAt?: number
+  score?: number
+  startedAt: number
+  status: 'cancelled' | 'failed' | 'in-progress' | 'passed'
+  topicName: string
+}
+const userAttemptHistory = query({
+  args: { userId: v.string() },
+  handler: async (
+    ctx,
+    { userId }
+  ): Promise<null | { attempts: AttemptHistoryRow[]; failedTopics: string[]; userId: string }> => {
+    const adminEmail = await requireAdmin(ctx)
+    if (!adminEmail) return null
+    const attemptRows = await ctx.db
+      .query('testAttempts')
+      .withIndex('by_user_topic', q => q.eq('userId', userId))
+      .take(500)
+    const sorted = attemptRows.toSorted((a, b) => (b.startedAt ?? 0) - (a.startedAt ?? 0))
+    const topicNames = new Map<string, string>()
+    const attempts: AttemptHistoryRow[] = []
+    for (const a of sorted) {
+      let name = topicNames.get(a.topicId)
+      if (!name) {
+        const t = await ctx.db.get(a.topicId)
+        name = (t && 'name' in t ? (t as { name?: string }).name : undefined) ?? '?'
+        topicNames.set(a.topicId, name)
+      }
+      attempts.push({
+        finishedAt: a.finishedAt,
+        score: a.score,
+        startedAt: a.startedAt,
+        status: a.status,
+        topicName: name
+      })
+    }
+    const failedTopics = [...new Set(attempts.filter(a => a.status === 'failed').map(a => a.topicName))]
+    return { attempts, failedTopics, userId }
+  }
+})
+export {
+  assignmentsTable,
+  coachingSummary,
+  costCycleHistory,
+  costCyclePivot,
+  topStrip,
+  trainingSummary,
+  userAttemptHistory,
+  userSummary
+}
