@@ -1282,6 +1282,36 @@ const seedTopicWithPool = mutation({
     return topicId
   }
 })
+const listTopicsForTest = query({
+  args: { testSecret: v.string() },
+  handler: async (ctx, { testSecret }): Promise<{ _id: string; name: string }[]> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db
+      .query('topics')
+      .withIndex('by_deletedAt', q => q.eq('deletedAt', undefined))
+      .take(500)
+    return rows.map(t => ({ _id: t._id, name: t.name }))
+  }
+})
+const backdateAssignments = mutation({
+  args: {
+    createdAt: v.number(),
+    dueAtMs: v.number(),
+    testSecret: v.string(),
+    topicId: v.id('topics'),
+    userId: v.string()
+  },
+  handler: async (ctx, { userId, topicId, createdAt, dueAtMs, testSecret }): Promise<{ patched: number }> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db
+      .query('testAssignments')
+      .withIndex('by_user_topic', q => q.eq('userId', userId).eq('topicId', topicId))
+      .filter(q => q.eq(q.field('deletedAt'), undefined))
+      .collect()
+    for (const r of rows) await ctx.db.patch(r._id, { createdAt, dueAtMs })
+    return { patched: rows.length }
+  }
+})
 const runAutoAssign = action({
   args: { testSecret: v.string() },
   handler: async (
@@ -1955,6 +1985,7 @@ export {
   approveSuggestionProbe,
   assignAllForTopicProbe,
   attemptDetailProbe,
+  backdateAssignments,
   backfillSummariesProbe,
   checkRateLimitProbe,
   claimContextProbe,
@@ -2000,6 +2031,7 @@ export {
   listSandboxIds,
   listStreamEvents,
   listStreamEventsForChat,
+  listTopicsForTest,
   listUsersProbe,
   markTopicSubstantiveProbe,
   purgeUserProbe,
