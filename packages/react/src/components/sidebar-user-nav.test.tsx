@@ -1,3 +1,4 @@
+/* oxlint-disable react-perf/jsx-no-new-object-as-prop */
 import { render } from '@testing-library/react'
 import { describe, expect, test } from 'bun:test'
 import { SidebarUserNav } from './sidebar-user-nav'

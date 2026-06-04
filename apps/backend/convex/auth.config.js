@@ -1,4 +1,4 @@
-export default {
+const authConfig = {
   providers: [
     {
       applicationID: 'convex',
@@ -6,3 +6,4 @@ export default {
     }
   ]
 }
+export default authConfig

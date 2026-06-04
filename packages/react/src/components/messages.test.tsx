@@ -1,3 +1,4 @@
+/* oxlint-disable react-perf/jsx-no-new-array-as-prop */
 import type { UIMessage } from '@a/react/lib'
 import { render } from '@testing-library/react'
 import { describe, expect, test } from 'bun:test'

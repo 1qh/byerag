@@ -1,3 +1,4 @@
+/* oxlint-disable react-perf/jsx-no-new-array-as-prop */
 /* eslint-disable @typescript-eslint/unbound-method */
 import { fireEvent, render } from '@testing-library/react'
 import { describe, expect, test } from 'bun:test'

@@ -587,7 +587,8 @@ const userAttemptHistory = query({
   ): Promise<null | { attempts: AttemptHistoryRow[]; failedTopics: string[]; userId: string }> => {
     const adminEmail = await requireAdmin(ctx)
     if (!adminEmail) return null
-    const profile = ctx.db
+    // biome-ignore lint/nursery/noPlaywrightUselessAwait: Convex .first() returns thenable
+    const profile = await ctx.db
       .query('userProfiles')
       .withIndex('by_userId', q => q.eq('userId', userId))
       .first()

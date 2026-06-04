@@ -65,8 +65,7 @@ const copyTree = async (src: string, dst: string): Promise<void> => {
     if (EXCLUDE.has(e.name)) continue
     const s = join(src, e.name)
     const d = join(dst, e.name)
-    if (e.isDirectory()) await copyTree(s, d)
-    else await copyFile(s, d)
+    await (e.isDirectory() ? copyTree(s, d) : copyFile(s, d))
   }
 }
 console.log(`→ scaffolding apps/${appName} on port ${port}`)

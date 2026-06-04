@@ -1,3 +1,4 @@
+/* oxlint-disable promise/prefer-await-to-then, promise/prefer-await-to-callbacks */
 'use client'
 import type { Id } from 'backend/convex/_generated/dataModel'
 import { useApp } from '@a/react/app-context'

@@ -1,3 +1,4 @@
+/* oxlint-disable promise/prefer-await-to-then */
 'use client'
 import type { ReactNode } from 'react'
 import { Button } from '@a/ui/components/button'

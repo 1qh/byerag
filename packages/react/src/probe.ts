@@ -1,3 +1,4 @@
+/* oxlint-disable unicorn/no-process-exit, unicorn/consistent-function-scoping */
 /** biome-ignore-all lint/style/noProcessEnv: probe env override */
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: probe env override */
 /** biome-ignore-all lint/performance/useTopLevelRegex: probe-only inline regex */

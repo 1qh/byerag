@@ -1,5 +1,6 @@
-/* eslint-disable no-await-in-loop */
+/* eslint-disable no-await-in-loop, no-continue */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops */
+/** biome-ignore-all lint/nursery/noContinue: pool-floor early-exit */
 import { DEFAULT_DUE_DAYS, deriveUrgency } from '../../lib/trainingUrgency'
 import { defineQuery } from '../_api'
 

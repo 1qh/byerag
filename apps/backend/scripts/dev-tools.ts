@@ -1,5 +1,6 @@
 /* eslint-disable no-console, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/prefer-optional-chain */
 /** biome-ignore-all lint/complexity/useOptionalChain: explicit narrow */
+/* oxlint-disable promise/prefer-await-to-then, promise/prefer-await-to-callbacks */
 import { $ } from 'bun'
 import { watch } from 'node:fs'
 import { resolve } from 'node:path'

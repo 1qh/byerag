@@ -1,3 +1,4 @@
+/* oxlint-disable react-perf/jsx-no-jsx-as-prop */
 'use client'
 import { Badge } from '@a/ui/components/badge'
 import { SidebarMenu, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem } from '@a/ui/components/sidebar'

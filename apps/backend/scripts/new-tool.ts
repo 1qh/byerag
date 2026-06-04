@@ -1,4 +1,5 @@
 /* eslint-disable no-console */
+/* oxlint-disable unicorn/no-process-exit */
 import { $ } from 'bun'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'

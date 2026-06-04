@@ -1,3 +1,5 @@
+/* eslint-disable no-template-curly-in-string */
+/** biome-ignore-all lint/suspicious/noTemplateCurlyInString: prompt body literals describe LLM output shape */
 const buildAgentPrompt = (): string =>
   [
     'You are a personal documentation + training assistant running in a sandbox.',

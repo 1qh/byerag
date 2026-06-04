@@ -1,3 +1,7 @@
+#!/usr/bin/env bun
+/* eslint-disable no-console, no-await-in-loop */
+/** biome-ignore-all lint/performance/noAwaitInLoops: sequential script ops */
+/** oxlint-disable unicorn/no-process-exit */
 import { ConvexHttpClient } from 'convex/browser'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'

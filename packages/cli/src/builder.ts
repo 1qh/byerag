@@ -1,3 +1,4 @@
+/* oxlint-disable unicorn/consistent-function-scoping */
 import type { Infer, PropertyValidators, Validator } from 'convex/values'
 import { v } from 'convex/values'
 import type { ArgSpec, ArgSpecs, CostClass, ToolMeta } from './types'

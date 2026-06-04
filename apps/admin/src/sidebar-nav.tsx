@@ -1,3 +1,4 @@
+/* oxlint-disable react-perf/jsx-no-jsx-as-prop */
 'use client'
 import type { LucideIcon } from 'lucide-react'
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@a/ui/components/sidebar'

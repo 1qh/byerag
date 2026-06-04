@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/require-await */
 import { jsonRes } from '@a/cli'
 import { httpAction } from '../../_generated/server'
 import { REGISTRY } from '../generated/registry'

@@ -3,6 +3,7 @@
 /** biome-ignore-all lint/performance/noDelete: cleaning env vars */
 /** biome-ignore-all lint/performance/useTopLevelRegex: inline validation regex */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential retry backoff */
+/* oxlint-disable promise/prefer-await-to-then, unicorn/prefer-top-level-await */
 /* eslint-disable no-await-in-loop */
 import { unstable_v2_createSession, unstable_v2_resumeSession } from '@anthropic-ai/claude-agent-sdk'
 import { execSync } from 'node:child_process'

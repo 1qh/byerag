@@ -3,6 +3,7 @@
 /** biome-ignore-all lint/nursery/noContinue: poll loop */
 /* eslint-disable no-continue */
 /* eslint-disable no-await-in-loop, no-console, @typescript-eslint/max-params, @typescript-eslint/prefer-destructuring, @typescript-eslint/prefer-nullish-coalescing */
+/* oxlint-disable unicorn/no-process-exit */
 import { api } from 'backend/convex/_generated/api'
 import { ConvexHttpClient } from 'convex/browser'
 

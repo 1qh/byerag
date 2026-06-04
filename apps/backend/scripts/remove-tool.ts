@@ -1,4 +1,5 @@
 /* eslint-disable no-console */
+/* oxlint-disable unicorn/no-process-exit */
 import { $ } from 'bun'
 import { existsSync, rmSync } from 'node:fs'
 import { join } from 'node:path'

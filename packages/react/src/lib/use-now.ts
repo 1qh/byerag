@@ -1,3 +1,4 @@
+/* oxlint-disable promise/prefer-await-to-callbacks */
 import { useSyncExternalStore } from 'react'
 
 const TICK_MS = 300_000
