@@ -1,5 +1,4 @@
 /** biome-ignore-all lint/a11y/noNoninteractiveElementInteractions: section as drop target is intentional — only used to detect file drag-drop */
-/* oxlint-disable promise/prefer-await-to-then */
 'use client'
 import type { Status } from '@a/react/hooks'
 import { cn } from '@a/ui'

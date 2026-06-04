@@ -1,5 +1,4 @@
 /* eslint-disable no-await-in-loop */
-/* oxlint-disable promise/prefer-await-to-then, promise/prefer-await-to-callbacks, promise/catch-or-return */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential uploads */
 /** biome-ignore-all lint/nursery/noUnnecessaryConditions: intentional while-true drain loop */
 'use client'

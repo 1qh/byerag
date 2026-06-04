@@ -1,4 +1,3 @@
-/* oxlint-disable promise/prefer-await-to-then */
 'use client'
 import type { UIMessage } from '@a/react/lib'
 import type { Id } from 'backend/convex/_generated/dataModel'

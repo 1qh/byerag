@@ -4,7 +4,6 @@
 /** biome-ignore-all lint/performance/noAwaitInLoops: small N (apps), fs IO ordered */
 /* eslint-disable no-console, no-await-in-loop, no-continue */
 import { Vercel } from '@vercel/sdk'
-/* oxlint-disable unicorn/prefer-ternary */
 import { $ } from 'bun'
 import { copyFile, mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'

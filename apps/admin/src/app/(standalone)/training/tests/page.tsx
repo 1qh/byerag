@@ -1,4 +1,3 @@
-/* eslint-disable complexity */
 'use client'
 import { cn } from '@a/ui'
 import { Button } from '@a/ui/components/button'
@@ -9,23 +8,10 @@ import { useQuery } from 'convex/react'
 import { ArrowLeft, ArrowUpDown, Download } from 'lucide-react'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
+import { downloadCsv } from '../_components/csv'
 
 type SortKey = 'assigned' | 'createdAt' | 'lastActivity' | 'name' | 'overdue' | 'passRate' | 'poolSize' | 'sourceDocs'
 const fmtDate = (ms?: number): string => (ms && ms > 0 ? new Date(ms).toISOString().slice(0, 10) : '—')
-const csvEscape = (s: string): string => (/[",\n]/u.test(s) ? `"${s.replaceAll('"', '""')}"` : s)
-const downloadCsv = (rows: Record<string, unknown>[], filename: string): void => {
-  if (rows.length === 0) return
-  const headers = Object.keys(rows[0] ?? {})
-  const lines = [headers.join(',')]
-  for (const r of rows) lines.push(headers.map(h => csvEscape(String(r[h] ?? ''))).join(','))
-  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
-}
 const SortHeader = ({
   active,
   asc,
@@ -52,22 +38,22 @@ const TrainingTestsListPage = (): React.ReactElement => {
     const cmp = (a: (typeof data.rows)[number], b: (typeof data.rows)[number]): number => {
       const dir = sortAsc ? 1 : -1
       switch (sortKey) {
-        case 'name':
-          return a.name.localeCompare(b.name) * dir
-        case 'poolSize':
-          return (a.poolSize - b.poolSize) * dir
         case 'assigned':
           return (a.assigned - b.assigned) * dir
-        case 'passRate':
-          return (a.passRate - b.passRate) * dir
-        case 'overdue':
-          return (a.overdue - b.overdue) * dir
         case 'createdAt':
           return (a.createdAt - b.createdAt) * dir
-        case 'sourceDocs':
-          return (a.sourceDocsCount - b.sourceDocsCount) * dir
         case 'lastActivity':
           return ((a.lastActivityMs ?? 0) - (b.lastActivityMs ?? 0)) * dir
+        case 'name':
+          return a.name.localeCompare(b.name) * dir
+        case 'overdue':
+          return (a.overdue - b.overdue) * dir
+        case 'passRate':
+          return (a.passRate - b.passRate) * dir
+        case 'poolSize':
+          return (a.poolSize - b.poolSize) * dir
+        case 'sourceDocs':
+          return (a.sourceDocsCount - b.sourceDocsCount) * dir
         default:
           return 0
       }

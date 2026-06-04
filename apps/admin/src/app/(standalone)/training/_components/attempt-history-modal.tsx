@@ -12,7 +12,11 @@ interface Props {
 const AttemptHistoryModal = ({ userId, onClose }: Props): React.ReactElement => {
   const drilldown = useQuery(api.dashboard.userAttemptHistory, userId ? { userId } : 'skip')
   return (
-    <Dialog onOpenChange={open => !open && onClose()} open={userId !== null}>
+    <Dialog
+      onOpenChange={open => {
+        if (!open) onClose()
+      }}
+      open={userId !== null}>
       <DialogContent className='max-w-2xl'>
         <DialogHeader>
           <DialogTitle>Attempt history</DialogTitle>

@@ -1,4 +1,3 @@
-/* oxlint-disable unicorn/consistent-function-scoping -- generic-typed factory chains: inner arrow fns carry type-parameter context erased at runtime */
 import type { Infer, PropertyValidators, Validator } from 'convex/values'
 import { v } from 'convex/values'
 import type { ArgSpec, ArgSpecs, CostClass, ToolMeta } from './types'

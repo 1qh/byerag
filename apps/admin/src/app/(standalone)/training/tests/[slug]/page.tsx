@@ -1,10 +1,8 @@
-/* eslint-disable complexity */
 'use client'
 import { useDocSheet } from '@a/react/components'
 import { cn } from '@a/ui'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@a/ui/components/table'
 import { api } from 'backend/convex/_generated/api'
-import type { Id } from 'backend/convex/_generated/dataModel'
 import { useQuery } from 'convex/react'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
@@ -39,11 +37,14 @@ const StatCard = ({
 )
 const TestDetailPage = (): React.ReactElement => {
   const params = useParams<{ slug: string }>()
-  const slug = params.slug
+  const { slug } = params
   const data = useQuery(api.dashboard.testDetail, { slug })
   const { openDoc } = useDocSheet()
   const [questionsOpen, setQuestionsOpen] = useState(false)
   const [drilldownUser, setDrilldownUser] = useState<null | string>(null)
+  // oxlint-disable-next-line react/hook-use-state -- one-shot render-time wall-clock snapshot
+  // eslint-disable-next-line react/hook-use-state -- one-shot render-time wall-clock snapshot
+  const [renderNow] = useState(() => Date.now())
   if (data === undefined) return <div className='p-6 text-muted-foreground'>Loading…</div>
   if (data === null)
     return (
@@ -105,7 +106,7 @@ const TestDetailPage = (): React.ReactElement => {
               <button
                 className='rounded-md border bg-card px-3 py-1.5 text-sm hover:bg-muted'
                 key={d._id}
-                onClick={() => openDoc(d._id as Id<'docs'>)}
+                onClick={() => openDoc(d._id)}
                 type='button'>
                 {d.filename}
               </button>
@@ -257,11 +258,11 @@ const TestDetailPage = (): React.ReactElement => {
                     className={cn(
                       'text-right text-xs',
                       n.lastAt !== undefined &&
-                        n.lastAt < Date.now() &&
+                        n.lastAt < renderNow &&
                         'font-semibold text-yellow-700 dark:text-yellow-400'
                     )}>
                     {fmtDate(n.lastAt)}
-                    {n.lastAt !== undefined && n.lastAt < Date.now() ? ' (overdue)' : ''}
+                    {n.lastAt !== undefined && n.lastAt < renderNow ? ' (overdue)' : ''}
                   </TableCell>
                 </TableRow>
               ))}

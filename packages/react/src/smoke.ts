@@ -1,7 +1,6 @@
 /** biome-ignore-all lint/nursery/noContinue: env parser */
 /** biome-ignore-all lint/performance/noAwaitInLoops: polling */
 /* eslint-disable no-console, no-await-in-loop, no-continue */
-/* oxlint-disable promise/param-names, unicorn/no-process-exit */
 import type { Id } from 'backend/convex/_generated/dataModel'
 import { api } from 'backend/convex/_generated/api'
 import { ConvexHttpClient } from 'convex/browser'

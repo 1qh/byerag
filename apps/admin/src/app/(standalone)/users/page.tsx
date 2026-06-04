@@ -25,7 +25,8 @@ const UsersPage = (): React.ReactElement => {
       .catch((error: unknown) => toast.error(String(error)))
   }
   const onDeptChange = (userId: string, department: string): void => {
-    setDept({ department: department || undefined, userId })
+    const dept = DEPARTMENTS.find(d => d === department)
+    setDept({ department: dept, userId })
       // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React event handler
       .then(() => toast.success(`Department for ${userId} → ${department || '—'}`))
       // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React event handler

@@ -1,4 +1,3 @@
-/* eslint-disable complexity */
 'use client'
 import { cn } from '@a/ui'
 import { Button } from '@a/ui/components/button'

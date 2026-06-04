@@ -1,11 +1,9 @@
-/* oxlint-disable unicorn/no-process-exit */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential test ops */
 /** biome-ignore-all lint/style/noProcessEnv: test env access */
 /** biome-ignore-all lint/nursery/noContinue: poll loop */
 /* eslint-disable no-continue */
 /* eslint-disable no-await-in-loop, no-console, @typescript-eslint/max-params, @typescript-eslint/prefer-destructuring, @typescript-eslint/prefer-nullish-coalescing */
 import { api } from 'backend/convex/_generated/api'
-/* oxlint-disable unicorn/no-process-exit */
 import { ConvexHttpClient } from 'convex/browser'
 
 const ENV = process.env as { CONVEX_SELF_HOSTED_URL?: string; TEST_SECRET?: string }

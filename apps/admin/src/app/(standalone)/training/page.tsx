@@ -46,7 +46,6 @@ const slugify = (s: string): string =>
     .replaceAll(NON_SLUG_RE, '-')
     .replaceAll(TRIM_HYPHEN_RE, '')
 const ACTIONS_TRIGGER = <Button aria-label='Topic actions' size='icon-sm' variant='ghost' />
-const FILTER_TRIGGER = <Button className='-ml-2 h-auto gap-1 px-2 py-1 font-medium' size='sm' variant='ghost' />
 const DEPARTMENTS = ['Safety, Health and Environment'] as const
 const HOURS = Array.from({ length: 24 }, (_, h) => String(h))
 const WEEKDAYS = [
@@ -827,7 +826,11 @@ const TrainingPage = (): React.ReactElement => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Dialog onOpenChange={open => !open && setDrilldownUser(null)} open={drilldownUser !== null}>
+      <Dialog
+        onOpenChange={open => {
+          if (!open) setDrilldownUser(null)
+        }}
+        open={drilldownUser !== null}>
         <DialogContent className='max-w-2xl'>
           <DialogHeader>
             <DialogTitle>Attempt history</DialogTitle>

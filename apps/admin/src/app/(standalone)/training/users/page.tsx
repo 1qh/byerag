@@ -1,4 +1,3 @@
-/* eslint-disable complexity */
 'use client'
 import { cn } from '@a/ui'
 import { Button } from '@a/ui/components/button'
@@ -18,24 +17,11 @@ import { ArrowLeft, ArrowUpDown, Download } from 'lucide-react'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { AttemptHistoryModal } from '../_components/attempt-history-modal'
+import { downloadCsv } from '../_components/csv'
 
-type SortKey = 'department' | 'failed' | 'lastAttempt' | 'overdue' | 'passRate' | 'passed' | 'user'
+type SortKey = 'department' | 'failed' | 'lastAttempt' | 'overdue' | 'passed' | 'passRate' | 'user'
 const FILTER_TRIGGER = <Button className='-ml-2 h-auto gap-1 px-2 py-1 font-medium' size='sm' variant='ghost' />
 const fmtDate = (ms?: number): string => (ms ? new Date(ms).toISOString().slice(0, 10) : '—')
-const csvEscape = (s: string): string => (/[",\n]/u.test(s) ? `"${s.replaceAll('"', '""')}"` : s)
-const downloadCsv = (rows: Record<string, unknown>[], filename: string): void => {
-  if (rows.length === 0) return
-  const headers = Object.keys(rows[0] ?? {})
-  const lines = [headers.join(',')]
-  for (const r of rows) lines.push(headers.map(h => csvEscape(String(r[h] ?? ''))).join(','))
-  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
-}
 const SortHeader = ({
   active,
   asc,
@@ -70,20 +56,20 @@ const TrainingUsersPage = (): React.ReactElement => {
     const cmp = (a: (typeof data.rows)[number], b: (typeof data.rows)[number]): number => {
       const dir = sortAsc ? 1 : -1
       switch (sortKey) {
-        case 'user':
-          return a.userId.localeCompare(b.userId) * dir
         case 'department':
           return a.department.localeCompare(b.department) * dir
-        case 'passed':
-          return (a.passed - b.passed) * dir
         case 'failed':
           return (a.failedAttempts - b.failedAttempts) * dir
-        case 'overdue':
-          return (a.overdue - b.overdue) * dir
-        case 'passRate':
-          return (a.passRate - b.passRate) * dir
         case 'lastAttempt':
           return ((a.lastAttemptMs ?? 0) - (b.lastAttemptMs ?? 0)) * dir
+        case 'overdue':
+          return (a.overdue - b.overdue) * dir
+        case 'passed':
+          return (a.passed - b.passed) * dir
+        case 'passRate':
+          return (a.passRate - b.passRate) * dir
+        case 'user':
+          return a.userId.localeCompare(b.userId) * dir
         default:
           return 0
       }

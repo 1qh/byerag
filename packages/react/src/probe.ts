@@ -2,7 +2,6 @@
 /** biome-ignore-all lint/nursery/noUndeclaredEnvVars: probe env override */
 /** biome-ignore-all lint/performance/useTopLevelRegex: probe-only inline regex */
 /* eslint-disable no-console */
-/* oxlint-disable unicorn/no-process-exit, unicorn/consistent-function-scoping */
 const runProbe = async (defaultUrl?: string): Promise<void> => {
   const url = process.env.PROBE_URL ?? defaultUrl
   if (!url) {

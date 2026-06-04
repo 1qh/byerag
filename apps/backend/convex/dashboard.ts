@@ -4,6 +4,7 @@
 /** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
 /* eslint-disable no-await-in-loop */
 import { v } from 'convex/values'
+import type { Id } from './_generated/dataModel'
 import type { QueryCtx } from './_generated/server'
 import { query } from './_generated/server'
 
@@ -214,31 +215,92 @@ interface UserTrain {
   userId: string
 }
 const COACHING_THRESHOLD = 3
+const cellKey = (userId: string, topicId: string): string => `${userId}|${topicId}`
+interface CellCtx {
+  assignedPassByCell: Set<string>
+  assignmentsByCell: Map<string, { createdAt: number; dueAtMs?: number }[]>
+  dueMs: number
+  now: number
+}
+const tallyCell = (u: UserTrain, t: TopicTrain, c: CellCtx): void => {
+  const k = cellKey(u.userId, t.topicId)
+  const assignmentRows = c.assignmentsByCell.get(k)
+  if (!assignmentRows || assignmentRows.length === 0) return
+  u.assigned += 1
+  t.assigned += 1
+  if (c.assignedPassByCell.has(k)) {
+    u.passed += 1
+    t.passed += 1
+    u.details.push({ name: t.name, overdueDays: 0, status: 'passed' })
+    return
+  }
+  const effectiveDue = Math.min(...assignmentRows.map(r => r.dueAtMs ?? r.createdAt + c.dueMs))
+  if (c.now > effectiveDue) {
+    u.overdue += 1
+    t.overdue += 1
+    u.details.push({
+      name: t.name,
+      overdueDays: Math.max(1, Math.ceil((c.now - effectiveDue) / DAY_MS)),
+      status: 'overdue'
+    })
+  } else u.details.push({ name: t.name, overdueDays: 0, status: 'open' })
+}
 const computeTrain = async (ctx: QueryCtx): Promise<{ now: number; topics: TopicTrain[]; users: UserTrain[] }> => {
   const now = Date.now()
   const dueMs = (await getDueDays(ctx)) * DAY_MS
-  const userRows = await ctx.db
-    .query('userProfiles')
-    .withIndex('by_role', q => q.eq('role', 'user'))
-    .take(2000)
-  const topicRowsAll = await ctx.db
-    .query('topics')
-    .withIndex('by_deletedAt', q => q.eq('deletedAt', undefined))
-    .take(500)
+  const cycleStartMs = now - 30 * DAY_MS
+  const [userRows, topicRowsAll, allAssignments, allPasses, allQuestions, allFailedAttempts] = await Promise.all([
+    ctx.db
+      .query('userProfiles')
+      .withIndex('by_role', q => q.eq('role', 'user'))
+      .take(2000),
+    ctx.db
+      .query('topics')
+      .withIndex('by_deletedAt', q => q.eq('deletedAt', undefined))
+      .take(500),
+    ctx.db
+      .query('testAssignments')
+      .filter(q => q.eq(q.field('deletedAt'), undefined))
+      .take(10_000),
+    ctx.db.query('testPasses').take(10_000),
+    ctx.db
+      .query('testQuestions')
+      .withIndex('by_deletedAt', q => q.eq('deletedAt', undefined))
+      .take(5000),
+    ctx.db
+      .query('testAttempts')
+      .withIndex('by_status_startedAt', q => q.eq('status', 'failed'))
+      .take(5000)
+  ])
+  const poolByTopic = new Map<string, number>()
+  for (const q of allQuestions) poolByTopic.set(q.topicId, (poolByTopic.get(q.topicId) ?? 0) + 1)
   const topicRows = topicRowsAll.toSorted((a, b) => a.createdAt - b.createdAt)
   const topicsWithPool: { _id: string; name: string; poolSize: number }[] = []
   for (const t of topicRows) {
-    const pool = await ctx.db
-      .query('testQuestions')
-      .withIndex('by_topic_deletedAt', q => q.eq('topicId', t._id).eq('deletedAt', undefined))
-      .take(200)
-    if (pool.length >= 5) topicsWithPool.push({ _id: t._id, name: t.name, poolSize: pool.length })
+    const poolSize = poolByTopic.get(t._id) ?? 0
+    if (poolSize >= 5) topicsWithPool.push({ _id: t._id, name: t.name, poolSize })
   }
+  const topicIdSet = new Set(topicsWithPool.map(t => t._id))
+  const assignmentsByCell = new Map<string, (typeof allAssignments)[number][]>()
+  for (const a of allAssignments) {
+    if (!topicIdSet.has(a.topicId)) continue
+    const k = cellKey(a.userId, a.topicId)
+    const list = assignmentsByCell.get(k)
+    if (list) list.push(a)
+    else assignmentsByCell.set(k, [a])
+  }
+  const assignedPassByCell = new Set<string>()
+  for (const p of allPasses)
+    if (p.kind === 'assigned' && topicIdSet.has(p.topicId)) assignedPassByCell.add(cellKey(p.userId, p.topicId))
+  const failedCountByUser = new Map<string, number>()
+  for (const a of allFailedAttempts)
+    if ((a.finishedAt ?? a.startedAt) >= cycleStartMs)
+      failedCountByUser.set(a.userId, (failedCountByUser.get(a.userId) ?? 0) + 1)
   const users: UserTrain[] = userRows.map(u => ({
     assigned: 0,
     department: u.department,
     details: [],
-    failedAttempts: 0,
+    failedAttempts: failedCountByUser.get(u.userId) ?? 0,
     overdue: 0,
     passed: 0,
     userId: u.userId
@@ -251,51 +313,8 @@ const computeTrain = async (ctx: QueryCtx): Promise<{ now: number; topics: Topic
     poolSize: t.poolSize,
     topicId: t._id
   }))
-  for (const u of users)
-    for (const t of topics) {
-      const passRows = await ctx.db
-        .query('testPasses')
-        .withIndex('by_user_topic_kind', q =>
-          q
-            .eq('userId', u.userId)
-            .eq('topicId', t.topicId as never)
-            .eq('kind', 'assigned')
-        )
-        .collect()
-      const assignmentRows = await ctx.db
-        .query('testAssignments')
-        .withIndex('by_user_topic', q => q.eq('userId', u.userId).eq('topicId', t.topicId as never))
-        .filter(q => q.eq(q.field('deletedAt'), undefined))
-        .collect()
-      if (assignmentRows.length === 0) continue
-      u.assigned += 1
-      t.assigned += 1
-      if (passRows[0]) {
-        u.passed += 1
-        t.passed += 1
-        u.details.push({ name: t.name, overdueDays: 0, status: 'passed' })
-        continue
-      }
-      const effectiveDue = Math.min(...assignmentRows.map(r => r.dueAtMs ?? r.createdAt + dueMs))
-      if (now > effectiveDue) {
-        u.overdue += 1
-        t.overdue += 1
-        u.details.push({
-          name: t.name,
-          overdueDays: Math.max(1, Math.ceil((now - effectiveDue) / DAY_MS)),
-          status: 'overdue'
-        })
-      } else u.details.push({ name: t.name, overdueDays: 0, status: 'open' })
-    }
-  const cycleStartMs = Date.now() - 30 * DAY_MS
-  for (const u of users) {
-    const failed = await ctx.db
-      .query('testAttempts')
-      .withIndex('by_user_topic', q => q.eq('userId', u.userId))
-      .filter(q => q.eq(q.field('status'), 'failed'))
-      .take(500)
-    u.failedAttempts = failed.filter(a => (a.finishedAt ?? a.startedAt ?? 0) >= cycleStartMs).length
-  }
+  const cctx: CellCtx = { assignedPassByCell, assignmentsByCell, dueMs, now }
+  for (const u of users) for (const t of topics) tallyCell(u, t, cctx)
   return { now, topics, users }
 }
 const trainingSummary = query({
@@ -318,8 +337,12 @@ const trainingSummary = query({
     const compliant = withAssignments.filter(u => u.passed === u.assigned).length
     const usersFullyCompliantPct =
       withAssignments.length === 0 ? 0 : Math.round((compliant / withAssignments.length) * 100)
-    const sumAssigned = topics.reduce((s, t) => s + t.assigned, 0)
-    const sumPassed = topics.reduce((s, t) => s + t.passed, 0)
+    let sumAssigned = 0
+    let sumPassed = 0
+    for (const t of topics) {
+      sumAssigned += t.assigned
+      sumPassed += t.passed
+    }
     const overallPassRate = sumAssigned === 0 ? 0 : Math.round((sumPassed / sumAssigned) * 100)
     const atRiskCount = users.filter(u => u.assigned - u.passed > 0).length
     const assignedTopics = topics.filter(t => t.assigned > 0)
@@ -537,7 +560,7 @@ const userAttemptHistory = query({
       .query('testAttempts')
       .withIndex('by_user_topic', q => q.eq('userId', userId))
       .take(500)
-    const sorted = attemptRows.toSorted((a, b) => (b.startedAt ?? 0) - (a.startedAt ?? 0))
+    const sorted = attemptRows.toSorted((a, b) => b.startedAt - a.startedAt)
     const topicNames = new Map<string, string>()
     const attempts: AttemptHistoryRow[] = []
     for (const a of sorted) {
@@ -566,8 +589,8 @@ interface UserSummaryFullRow {
   lastAttemptMs?: number
   mostFailedTopic?: string
   overdue: number
-  passRate: number
   passed: number
+  passRate: number
   role: string
   userId: string
 }
@@ -593,7 +616,7 @@ const userSummaryFull = query({
         .take(500)
       const rec = { failedByTopic: new Map<string, number>(), lastAt: 0 }
       for (const a of rows) {
-        const at = a.finishedAt ?? a.startedAt ?? 0
+        const at = a.finishedAt ?? a.startedAt
         if (at > rec.lastAt) rec.lastAt = at
         if (a.status === 'failed') {
           const topic = await ctx.db.get(a.topicId)
@@ -638,11 +661,16 @@ const userSummaryFull = query({
     return { departments: allDepartments, rows: sorted, total: sorted.length }
   }
 })
-interface TestDetailQuestion {
-  choices: string[]
-  correctIndex: number
-  prompt: string
-  questionId: string
+type CellClass =
+  | { bucket: 'never'; isOverdue: boolean; row: TestDetailPersonRow }
+  | { bucket: 'pass'; isOverdue: false; row: TestDetailPersonRow }
+  | { bucket: 'skip'; isOverdue: false }
+  | { bucket: 'struggle'; isOverdue: boolean; row: TestDetailPersonRow }
+interface ClassifyArgs {
+  dueMs: number
+  now: number
+  topicId: Id<'topics'>
+  u: { department?: string; userId: string }
 }
 interface TestDetailPersonRow {
   attemptCount: number
@@ -651,6 +679,68 @@ interface TestDetailPersonRow {
   lastScore?: number
   status: 'failed' | 'in-progress' | 'never-started' | 'passed'
   userId: string
+}
+interface TestDetailQuestion {
+  choices: string[]
+  correctIndex: number
+  prompt: string
+  questionId: string
+}
+const classifyUserForTest = async (ctx: QueryCtx, args: ClassifyArgs): Promise<CellClass> => {
+  const { u, topicId, dueMs, now } = args
+  const dept = u.department ?? '—'
+  const assignmentRows = await ctx.db
+    .query('testAssignments')
+    .withIndex('by_user_topic', q => q.eq('userId', u.userId).eq('topicId', topicId))
+    .filter(q => q.eq(q.field('deletedAt'), undefined))
+    .collect()
+  if (assignmentRows.length === 0) return { bucket: 'skip', isOverdue: false }
+  const passRows = await ctx.db
+    .query('testPasses')
+    .withIndex('by_user_topic_kind', q => q.eq('userId', u.userId).eq('topicId', topicId).eq('kind', 'assigned'))
+    .collect()
+  const attemptRows = await ctx.db
+    .query('testAttempts')
+    .withIndex('by_user_topic', q => q.eq('userId', u.userId).eq('topicId', topicId))
+    .collect()
+  const sortedAttempts = attemptRows.toSorted((a, b) => (b.finishedAt ?? b.startedAt) - (a.finishedAt ?? a.startedAt))
+  const last = sortedAttempts[0]
+  if (passRows[0]) {
+    const passAttempt = sortedAttempts.find(a => a.status === 'passed') ?? last
+    return {
+      bucket: 'pass',
+      isOverdue: false,
+      row: {
+        attemptCount: attemptRows.length,
+        department: dept,
+        lastAt: passAttempt?.finishedAt ?? passAttempt?.startedAt,
+        lastScore: passAttempt?.score,
+        status: 'passed',
+        userId: u.userId
+      }
+    }
+  }
+  const effectiveDue = Math.min(...assignmentRows.map(r => r.dueAtMs ?? r.createdAt + dueMs))
+  const isOverdue = now > effectiveDue
+  if (attemptRows.length === 0)
+    return {
+      bucket: 'never',
+      isOverdue,
+      row: { attemptCount: 0, department: dept, lastAt: effectiveDue, status: 'never-started', userId: u.userId }
+    }
+  const failedCount = attemptRows.filter(a => a.status === 'failed').length
+  return {
+    bucket: 'struggle',
+    isOverdue,
+    row: {
+      attemptCount: failedCount,
+      department: dept,
+      lastAt: last?.finishedAt ?? last?.startedAt,
+      lastScore: last?.score,
+      status: last?.status === 'in-progress' ? 'in-progress' : 'failed',
+      userId: u.userId
+    }
+  }
 }
 const testDetail = query({
   args: { slug: v.string() },
@@ -663,8 +753,8 @@ const testDetail = query({
     name: string
     notStarted: TestDetailPersonRow[]
     overdueCount: number
-    passRate: number
     passedCount: number
+    passRate: number
     questions: TestDetailQuestion[]
     sourceDocs: { _id: string; filename: string }[]
     strugglers: TestDetailPersonRow[]
@@ -704,65 +794,24 @@ const testDetail = query({
     let overdueCount = 0
     let totalAssigned = 0
     for (const u of userRows) {
-      const dept = u.department ?? '—'
-      const assignmentRows = await ctx.db
-        .query('testAssignments')
-        .withIndex('by_user_topic', q => q.eq('userId', u.userId).eq('topicId', topic._id))
-        .filter(q => q.eq(q.field('deletedAt'), undefined))
-        .collect()
-      if (assignmentRows.length === 0) continue
+      const c = await classifyUserForTest(ctx, { dueMs, now, topicId: topic._id, u })
+      if (c.bucket === 'skip') continue
       totalAssigned += 1
-      const passRows = await ctx.db
-        .query('testPasses')
-        .withIndex('by_user_topic_kind', q => q.eq('userId', u.userId).eq('topicId', topic._id).eq('kind', 'assigned'))
-        .collect()
-      const attemptRows = await ctx.db
-        .query('testAttempts')
-        .withIndex('by_user_topic', q => q.eq('userId', u.userId).eq('topicId', topic._id))
-        .collect()
-      const sortedAttempts = attemptRows.toSorted((a, b) => (b.finishedAt ?? b.startedAt) - (a.finishedAt ?? a.startedAt))
-      const last = sortedAttempts[0]
-      if (passRows[0]) {
-        const passAttempt = sortedAttempts.find(a => a.status === 'passed') ?? last
-        winners.push({
-          attemptCount: attemptRows.length,
-          department: dept,
-          lastAt: passAttempt?.finishedAt ?? passAttempt?.startedAt,
-          lastScore: passAttempt?.score,
-          status: 'passed',
-          userId: u.userId
-        })
-        continue
-      }
-      const effectiveDue = Math.min(...assignmentRows.map(r => r.dueAtMs ?? r.createdAt + dueMs))
-      const isOverdue = now > effectiveDue
-      if (isOverdue) overdueCount += 1
-      if (attemptRows.length === 0) {
-        notStarted.push({
-          attemptCount: 0,
-          department: dept,
-          lastAt: effectiveDue,
-          status: 'never-started',
-          userId: u.userId
-        })
-        continue
-      }
-      const failedCount = attemptRows.filter(a => a.status === 'failed').length
-      strugglers.push({
-        attemptCount: failedCount,
-        department: dept,
-        lastAt: last?.finishedAt ?? last?.startedAt,
-        lastScore: last?.score,
-        status: last?.status === 'in-progress' ? 'in-progress' : 'failed',
-        userId: u.userId
-      })
+      if (c.isOverdue) overdueCount += 1
+      if (c.bucket === 'pass') winners.push(c.row)
+      else if (c.bucket === 'never') notStarted.push(c.row)
+      else strugglers.push(c.row)
     }
     winners.sort((a, b) => (b.lastAt ?? 0) - (a.lastAt ?? 0))
     strugglers.sort((a, b) => b.attemptCount - a.attemptCount || (b.lastAt ?? 0) - (a.lastAt ?? 0))
     notStarted.sort((a, b) => (a.lastAt ?? 0) - (b.lastAt ?? 0))
     return {
       createdAt: topic.createdAt,
-      failedCount: strugglers.reduce((s, r) => s + r.attemptCount, 0),
+      failedCount: ((): number => {
+        let s = 0
+        for (const r of strugglers) s += r.attemptCount
+        return s
+      })(),
       name: topic.name,
       notStarted,
       overdueCount,
@@ -818,7 +867,11 @@ const testsFull = query({
         .query('testAttempts')
         .withIndex('by_topic_status', q => q.eq('topicId', t.topicId as never))
         .take(500)
-      const lastAt = attemptRows.reduce((m, a) => Math.max(m, a.finishedAt ?? a.startedAt ?? 0), 0)
+      let lastAt = 0
+      for (const a of attemptRows) {
+        const at = a.finishedAt ?? a.startedAt
+        if (at > lastAt) lastAt = at
+      }
       out.push({
         assigned: t.assigned,
         createdAt: topic?.createdAt ?? 0,
@@ -864,8 +917,8 @@ export {
   costCyclePivot,
   testDetail,
   testsFull,
-  topStrip,
   topicSlugs,
+  topStrip,
   trainingSummary,
   userAttemptHistory,
   userSummary,

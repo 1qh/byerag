@@ -1,4 +1,3 @@
-/* oxlint-disable unicorn/no-useless-promise-resolve-reject */
 import { jsonRes } from '@a/cli'
 import { httpAction } from '../../_generated/server'
 import { REGISTRY } from '../generated/registry'

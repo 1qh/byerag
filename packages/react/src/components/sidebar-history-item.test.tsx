@@ -1,4 +1,3 @@
-/* oxlint-disable eslint-plugin-react-perf(jsx-no-new-object-as-prop), react-perf/jsx-no-new-object-as-prop */
 import type { Id } from 'backend/convex/_generated/dataModel'
 import { fireEvent, render } from '@testing-library/react'
 import { describe, expect, mock, test } from 'bun:test'
