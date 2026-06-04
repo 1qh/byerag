@@ -52,7 +52,27 @@ const TestQuestionsPage = (): React.ReactElement => {
     setBulkBusy(false)
   }
   if (rows === undefined) return <div className='p-6'>Loading…</div>
-  if (rows.length === 0) return <div className='p-6 text-muted-foreground'>No pending suggestions.</div>
+  if (rows.length === 0)
+    return (
+      <div className='space-y-6 p-6'>
+        <h2 className='font-semibold text-lg'>Question bank</h2>
+        <div className='rounded-xl border border-dashed p-8 text-center'>
+          <p className='font-medium'>Nothing waiting for review</p>
+          <p className='mt-2 text-muted-foreground text-sm'>
+            When you approve a shared document, the assistant automatically drafts 10 multiple-choice questions from it.
+            They land here for you to review before they go into the question bank used in Training.
+          </p>
+          <div className='mt-4 flex justify-center gap-2'>
+            <Link className='rounded-md border px-3 py-1.5 text-sm hover:bg-muted' href='/docs'>
+              Go to Docs
+            </Link>
+            <Link className='rounded-md border px-3 py-1.5 text-sm hover:bg-muted' href='/training'>
+              View Training
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
   const byTopic = new Map<string, typeof rows>()
   for (const r of rows) {
     const list = byTopic.get(r.topicName) ?? []
