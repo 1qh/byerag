@@ -123,6 +123,8 @@ interface TrainingStatusResult {
     assignedAtMs?: number
     dueInDays?: number
     effectiveDueAtMs?: number
+    estimatedMinutes: number
+    humanDueDate?: string
     name: string
     overdueDays?: number
     poolSize: number

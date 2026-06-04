@@ -30,11 +30,21 @@ const action = defineQuery({
       assignedAtMs?: number
       dueInDays?: number
       effectiveDueAtMs?: number
+      estimatedMinutes: number
+      humanDueDate?: string
       name: string
       overdueDays?: number
       poolSize: number
       startUrl: string
       urgency: ReturnType<typeof deriveUrgency>['urgency']
+    }
+    const QUESTIONS_PER_ATTEMPT = 5
+    const MINUTES_PER_QUESTION = 0.6
+    const VN_TZ_OFFSET_MS = 7 * 3_600_000
+    const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    const fmtVNDate = (ms: number): string => {
+      const d = new Date(ms + VN_TZ_OFFSET_MS)
+      return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`
     }
     const out: Row[] = []
     for (const t of topics) {
@@ -70,6 +80,8 @@ const action = defineQuery({
         assignedAtMs: earliestAssignedAt,
         dueInDays: u.dueInDays,
         effectiveDueAtMs: u.effectiveDueAtMs,
+        estimatedMinutes: Math.max(1, Math.ceil(QUESTIONS_PER_ATTEMPT * MINUTES_PER_QUESTION)),
+        humanDueDate: u.effectiveDueAtMs === undefined ? undefined : fmtVNDate(u.effectiveDueAtMs),
         name: t.name,
         overdueDays: u.overdueDays,
         poolSize: pool.length,
