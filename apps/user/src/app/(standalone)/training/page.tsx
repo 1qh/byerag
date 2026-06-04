@@ -99,11 +99,15 @@ const TrainingPage = (): React.ReactElement => {
         <h1 className='font-semibold text-xl'>
           {assigned.length > 0
             ? `You have ${assigned.length} test${assigned.length === 1 ? '' : 's'} to complete`
-            : 'No tests assigned to you'}
+            : completed.length > 0
+              ? "Nice work — you're all caught up this cycle"
+              : 'No tests assigned to you'}
         </h1>
         {assigned.length === 0 ? (
           <p className='text-muted-foreground text-sm'>
-            When an admin assigns a test it appears here.
+            {completed.length > 0
+              ? 'New assignments will appear here when an admin posts them.'
+              : 'When an admin assigns a test it appears here.'}
             {practice.length > 0 ? ' You can also practice any topic below.' : ''}
           </p>
         ) : (
