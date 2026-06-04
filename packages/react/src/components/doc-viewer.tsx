@@ -3,14 +3,11 @@ import type { Id } from 'backend/convex/_generated/dataModel'
 import { MessageResponse } from '@a/ui/components/ai-elements/message'
 import { Button, buttonVariants } from '@a/ui/components/button'
 import { api } from 'backend/convex/_generated/api'
-import { useMutation, useQuery } from 'convex/react'
-import { Download, Loader2, MessageSquare } from 'lucide-react'
+import { useQuery } from 'convex/react'
+import { Download, MessageSquare } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { useRef, useState } from 'react'
-import { toast } from 'sonner'
-import { useApp } from '../app-context'
 import { useDocSheet } from './doc-sheet-context'
 
 const PdfPreview = dynamic(async () => import('./pdf-preview'), {
@@ -29,12 +26,8 @@ const OFFICE_MIMES = new Set([
 ])
 const DocViewer = ({ docId }: DocViewerProps): React.ReactElement => {
   const result = useQuery(api.docs.read, { docId })
-  const { id: app } = useApp()
   const { close: closeDocSheet } = useDocSheet()
-  const sendMessage = useMutation(api.messages.send)
   const router = useRouter()
-  const [asking, setAsking] = useState(false)
-  const askInFlightRef = useRef(false)
   if (result === undefined) return <p className='p-6 text-muted-foreground'>Loading…</p>
   if (result === null) return <p className='p-6 text-destructive'>Doc not found or access denied.</p>
   const { mime, url, content } = result
@@ -42,21 +35,16 @@ const DocViewer = ({ docId }: DocViewerProps): React.ReactElement => {
   const isImage = mime.startsWith('image/')
   const isMarkdown = mime === 'text/markdown'
   const isOffice = OFFICE_MIMES.has(mime)
-  const askAboutThis = async (): Promise<void> => {
-    if (askInFlightRef.current) return
-    askInFlightRef.current = true
-    setAsking(true)
+  const askAboutThis = (): void => {
     const scopeHint = result.scope === 'shared' ? 'shared' : 'mine'
-    const text = `Summarize the most important points in ${result.filename}. (Read it with the docs tools — id ${docId} in the ${scopeHint} scope.)`
+    const draft = `Summarize the most important points in ${result.filename}. (Read it with the docs tools — id ${docId} in the ${scopeHint} scope.)`
     try {
-      const chatId = await sendMessage({ app, chatId: undefined, content: text })
-      closeDocSheet()
-      router.push(`/chat/${chatId}`)
-    } catch (error: unknown) {
-      toast.error(`Could not start the chat: ${String(error).slice(0, 120)}`)
-      askInFlightRef.current = false
-      setAsking(false)
+      globalThis.localStorage.setItem('draft-new', draft)
+    } catch {
+      /* Private-browsing storage rejection: nav still proceeds */
     }
+    closeDocSheet()
+    router.push('/')
   }
   return (
     <article className='space-y-3 p-6'>
@@ -70,15 +58,9 @@ const DocViewer = ({ docId }: DocViewerProps): React.ReactElement => {
               {result.scope === 'shared' ? 'In the shared library' : 'Only you'} · v{result.version}
             </p>
           </div>
-          <Button
-            disabled={asking}
-            onClick={() => {
-              // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
-              askAboutThis().catch((error: unknown) => toast.error(String(error)))
-            }}
-            size='sm'>
-            {asking ? <Loader2 className='size-4 animate-spin' /> : <MessageSquare className='size-4' />}
-            {asking ? 'Starting…' : 'Ask about this'}
+          <Button onClick={askAboutThis} size='sm'>
+            <MessageSquare className='size-4' />
+            Ask about this
           </Button>
           {url ? (
             <a className={buttonVariants({ size: 'sm', variant: 'outline' })} download={result.filename} href={url}>
