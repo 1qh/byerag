@@ -19,7 +19,18 @@ import { Checkbox } from '@a/ui/components/checkbox'
 import { Input } from '@a/ui/components/input'
 import { api } from 'backend/convex/_generated/api'
 import { useMutation, useQuery } from 'convex/react'
-import { File, FileImage, FileSpreadsheet, FileText, Loader2, Presentation, Search, Sparkles, Trash2 } from 'lucide-react'
+import {
+  File,
+  FileImage,
+  FileSpreadsheet,
+  FileText,
+  Loader2,
+  MessageSquare,
+  Presentation,
+  Search,
+  Sparkles,
+  Trash2
+} from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
@@ -175,6 +186,20 @@ const DocsPage = (): React.ReactElement => {
     setDeleting(false)
     exitSelectMode()
   }
+  const askAboutSelected = (): void => {
+    const picked = (shared ?? []).filter(d => selected.has(d._id as string))
+    if (picked.length === 0) return
+    const names = picked.map(p => p.filename).join(', ')
+    const ids = picked.map(p => p._id).join(', ')
+    const draft = `Tell me about: ${names}. (Read with the docs tools — ids ${ids} in the shared scope.)`
+    try {
+      globalThis.localStorage.setItem('draft-new', draft)
+    } catch {
+      /* Private-browsing storage rejection: nav still proceeds */
+    }
+    exitSelectMode()
+    router.push('/')
+  }
   const q = query.trim().toLowerCase()
   const sharedFiltered = useMemo(
     () => shared?.filter(d => q === '' || d.filename.toLowerCase().includes(q)) ?? [],
@@ -250,6 +275,10 @@ const DocsPage = (): React.ReactElement => {
             selectMode ? (
               <div className='flex items-center gap-2 text-sm'>
                 <span className='text-muted-foreground'>{selected.size} selected</span>
+                <Button disabled={selected.size === 0 || deleting} onClick={askAboutSelected} size='sm'>
+                  <MessageSquare className='size-4' />
+                  Ask about {selected.size > 0 ? selected.size : ''}
+                </Button>
                 <Button
                   disabled={selected.size === 0 || deleting}
                   onClick={() => setConfirmOpen(true)}

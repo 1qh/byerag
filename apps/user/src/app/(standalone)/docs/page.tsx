@@ -28,6 +28,7 @@ import {
   FileSpreadsheet,
   FileText,
   Loader2,
+  MessageSquare,
   Presentation,
   Search,
   ShieldAlert,
@@ -234,8 +235,8 @@ const DocsPage = (): React.ReactElement => {
   const [deleting, setDeleting] = useState(false)
   const [sharedExpanded, setSharedExpanded] = useState(false)
   const [mineExpanded, setMineExpanded] = useState(false)
-  const [mineSelectMode, setMineSelectMode] = useState(false)
-  const [mineSelected, setMineSelected] = useState<Set<string>>(() => new Set())
+  const [selectMode, setSelectMode] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(() => new Set())
   const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false)
   const [bulkDeleting, setBulkDeleting] = useState(false)
   const onOpen = (id: Id<'docs'>): void => {
@@ -250,8 +251,8 @@ const DocsPage = (): React.ReactElement => {
     }
   }
   const onDeleteClick = (id: Id<'docs'>, filename: string): void => setPendingDelete({ filename, id })
-  const onToggleSelectMine = (id: Id<'docs'>): void =>
-    setMineSelected(prev => {
+  const onToggleSelect = (id: Id<'docs'>): void =>
+    setSelected(prev => {
       const next = new Set(prev)
       const key = id as string
       if (next.has(key)) next.delete(key)
@@ -259,21 +260,21 @@ const DocsPage = (): React.ReactElement => {
       return next
     })
   const exitSelectMode = (): void => {
-    setMineSelectMode(false)
-    setMineSelected(new Set())
+    setSelectMode(false)
+    setSelected(new Set())
   }
   const runBulkDelete = async (): Promise<void> => {
     setBulkDeleting(true)
-    const ids = [...mineSelected]
+    const ids = mine?.filter(d => selected.has(d._id)).map(d => d._id) ?? []
     let ok = 0
     let fail = 0
     for (const id of ids)
       try {
-        await deleteMine({ docId: id as Id<'docs'> })
+        await deleteMine({ docId: id })
         ok += 1
       } catch (error: unknown) {
         fail += 1
-        toast.error(`${id.slice(-6)}: ${String(error).slice(0, 80)}`)
+        toast.error(`${String(id).slice(-6)}: ${String(error).slice(0, 80)}`)
       }
     toast.success(`Deleted ${ok}/${ids.length}${fail > 0 ? ` (${fail} failed)` : ''}`)
     setBulkConfirmOpen(false)
@@ -303,12 +304,36 @@ const DocsPage = (): React.ReactElement => {
     () => shared?.filter(d => q === '' || d.filename.toLowerCase().includes(q)) ?? [],
     [shared, q]
   )
-  const bulkPreviewNames = mineActive
-    .filter(d => mineSelected.has(d._id as string))
+  const selectedMine = useMemo(() => mineActive.filter(d => selected.has(d._id as string)), [mineActive, selected])
+  const selectedShared = useMemo(
+    () => sharedFiltered.filter(d => selected.has(d._id as string)),
+    [sharedFiltered, selected]
+  )
+  const bulkPreviewNames = selectedMine
     .slice(0, 5)
     .map(d => d.filename)
     .join(', ')
-  const bulkMoreCount = mineSelected.size > 5 ? mineSelected.size - 5 : 0
+  const bulkMoreCount = selectedMine.length > 5 ? selectedMine.length - 5 : 0
+  const askAboutSelected = (): void => {
+    if (selected.size === 0) return
+    const sharedPart =
+      selectedShared.length > 0
+        ? ` (Read ${selectedShared.map(p => p.filename).join(', ')} with the docs tools — ids ${selectedShared.map(p => p._id).join(', ')} in the shared scope.)`
+        : ''
+    const minePart =
+      selectedMine.length > 0
+        ? ` (Read ${selectedMine.map(p => p.filename).join(', ')} with the docs tools — ids ${selectedMine.map(p => p._id).join(', ')} in the mine scope.)`
+        : ''
+    const allNames = [...selectedShared, ...selectedMine].map(p => p.filename).join(', ')
+    const draft = `Tell me about: ${allNames}.${sharedPart}${minePart}`
+    try {
+      globalThis.localStorage.setItem('draft-new', draft)
+    } catch {
+      /* Private-browsing storage rejection: nav still proceeds */
+    }
+    exitSelectMode()
+    router.push('/')
+  }
   const firstName = (me?.name ?? me?.email ?? '').split(NAME_SPLIT_RE)[0] ?? ''
   const submitHeroAsk = (): void => {
     const v = query.trim()
@@ -366,6 +391,35 @@ const DocsPage = (): React.ReactElement => {
           </ul>
         </section>
       ) : null}
+      {sharedFiltered.length + mineActive.length > 0 ? (
+        <div className='sticky top-0 z-10 -mt-2 flex items-center justify-end gap-2 bg-background/90 py-1 backdrop-blur'>
+          {selectMode ? (
+            <>
+              <span className='mr-auto text-muted-foreground text-sm'>{selected.size} selected</span>
+              <Button disabled={selected.size === 0 || bulkDeleting} onClick={askAboutSelected} size='sm'>
+                <MessageSquare className='size-4' />
+                Ask about {selected.size > 0 ? selected.size : ''}
+              </Button>
+              <Button
+                disabled={selectedMine.length === 0 || selectedShared.length > 0 || bulkDeleting}
+                onClick={() => setBulkConfirmOpen(true)}
+                size='sm'
+                title={selectedShared.length > 0 ? 'Only your private files can be deleted from here.' : undefined}
+                variant='destructive'>
+                <Trash2 className='size-4' />
+                Delete {selectedMine.length > 0 ? selectedMine.length : ''}
+              </Button>
+              <Button disabled={bulkDeleting} onClick={exitSelectMode} size='sm' variant='ghost'>
+                Done
+              </Button>
+            </>
+          ) : (
+            <Button onClick={() => setSelectMode(true)} size='sm' variant='outline'>
+              Select to ask or delete
+            </Button>
+          )}
+        </div>
+      ) : null}
       <section className='space-y-3'>
         <SectionHeader count={sharedFiltered.length} label='Shared with your team' />
         <p className='text-muted-foreground text-xs'>The assistant cites these when it answers.</p>
@@ -379,7 +433,16 @@ const DocsPage = (): React.ReactElement => {
           <>
             <ul className='space-y-2'>
               {(q || sharedExpanded ? sharedFiltered : sharedFiltered.slice(0, 5)).map(d => (
-                <DocCard doc={d} key={d._id} now={now} onOpen={onOpen} showUploader />
+                <DocCard
+                  doc={d}
+                  key={d._id}
+                  now={now}
+                  onOpen={onOpen}
+                  onToggleSelect={onToggleSelect}
+                  selected={selected.has(d._id as string)}
+                  selectMode={selectMode}
+                  showUploader
+                />
               ))}
             </ul>
             {!q && sharedFiltered.length > 5 ? (
@@ -391,31 +454,7 @@ const DocsPage = (): React.ReactElement => {
         )}
       </section>
       <section className='space-y-3'>
-        <div className='flex items-center justify-between gap-2'>
-          <SectionHeader count={mineActive.length} label='Your private files' />
-          {mineActive.length > 0 ? (
-            mineSelectMode ? (
-              <div className='flex items-center gap-2 text-sm'>
-                <span className='text-muted-foreground'>{mineSelected.size} selected</span>
-                <Button
-                  disabled={mineSelected.size === 0 || bulkDeleting}
-                  onClick={() => setBulkConfirmOpen(true)}
-                  size='sm'
-                  variant='destructive'>
-                  <Trash2 className='size-4' />
-                  Delete {mineSelected.size > 0 ? mineSelected.size : ''}
-                </Button>
-                <Button disabled={bulkDeleting} onClick={exitSelectMode} size='sm' variant='ghost'>
-                  Done
-                </Button>
-              </div>
-            ) : (
-              <Button onClick={() => setMineSelectMode(true)} size='sm' variant='outline'>
-                Select
-              </Button>
-            )
-          ) : null}
-        </div>
+        <SectionHeader count={mineActive.length} label='Your private files' />
         <p className='text-muted-foreground text-xs'>Only you can see these. The assistant reads them when you ask.</p>
         <DocUpload scope='mine' />
         {mine === undefined ? (
@@ -436,9 +475,9 @@ const DocsPage = (): React.ReactElement => {
                   now={now}
                   onDelete={onDeleteClick}
                   onOpen={onOpen}
-                  onToggleSelect={onToggleSelectMine}
-                  selected={mineSelected.has(d._id as string)}
-                  selectMode={mineSelectMode}
+                  onToggleSelect={onToggleSelect}
+                  selected={selected.has(d._id as string)}
+                  selectMode={selectMode}
                   showUploader={false}
                 />
               ))}
@@ -487,7 +526,7 @@ const DocsPage = (): React.ReactElement => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Delete {mineSelected.size} document{mineSelected.size === 1 ? '' : 's'}?
+              Delete {selectedMine.length} document{selectedMine.length === 1 ? '' : 's'}?
             </AlertDialogTitle>
             <AlertDialogDescription>
               Removed from your uploads and from anything the assistant can see: {bulkPreviewNames}
