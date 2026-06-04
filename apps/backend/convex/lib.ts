@@ -142,14 +142,16 @@ const requireAdminEmail = async (ctx: QueryCtx): Promise<null | string> => {
   return profile?.role === 'admin' ? email : null
 }
 const listUserProfilesForAdmin = query({
-  args: {},
-  handler: async ctx => {
+  args: { includeTest: v.optional(v.boolean()) },
+  handler: async (ctx, { includeTest }) => {
     const adminEmail = await requireAdminEmail(ctx)
     if (!adminEmail) return []
     const rows = await ctx.db.query('userProfiles').take(2000)
-    return rows.map(r => ({
+    const filtered = includeTest === true ? rows : rows.filter(r => r.kind !== 'test')
+    return filtered.map(r => ({
       _id: r._id,
       department: r.department,
+      kind: r.kind ?? 'real',
       role: r.role,
       updatedAt: r.updatedAt,
       updatedBy: r.updatedBy,

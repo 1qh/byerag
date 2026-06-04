@@ -10,9 +10,34 @@ import { query } from './_generated/server'
 import { filterRealProfiles, isRealProfile } from './lib/userKind'
 
 const BILLING_CYCLE_ANCHOR_DAY = 5
+const SYNTHETIC_NON_USER_OWNERS = ['system']
+const ORPHAN_TEST_OWNER_PATTERNS = [
+  '@example.com',
+  '@user.test',
+  '@example.org',
+  '@test.com',
+  'gdpr-admin@',
+  'perf-test',
+  'proxy-test',
+  'u1@',
+  'u2@'
+]
+const matchesOrphanTestPattern = (owner: string): boolean => {
+  const lower = owner.toLowerCase()
+  return ORPHAN_TEST_OWNER_PATTERNS.some(p => lower.includes(p))
+}
 const testOwnersSet = async (ctx: QueryCtx): Promise<Set<string>> => {
   const profiles = await ctx.db.query('userProfiles').take(10_000)
-  return new Set(profiles.filter(p => p.kind === 'test').map(p => p.userId.toLowerCase()))
+  const out = new Set<string>(SYNTHETIC_NON_USER_OWNERS)
+  const realByEmail = new Set(profiles.filter(p => p.kind !== 'test').map(p => p.userId.toLowerCase()))
+  for (const p of profiles) if (p.kind === 'test') out.add(p.userId.toLowerCase())
+  const costRows = await ctx.db.query('costRecords').take(10_000)
+  for (const r of costRows) {
+    const owner = r.owner.toLowerCase()
+    if (out.has(owner) || realByEmail.has(owner)) continue
+    if (matchesOrphanTestPattern(owner)) out.add(owner)
+  }
+  return out
 }
 const isTestOwner = (owner: string, testOwners: Set<string>): boolean => testOwners.has(owner.toLowerCase())
 const has = (arr: string[] | undefined, v2: string): boolean => !arr || arr.length === 0 || arr.includes(v2)
