@@ -103,19 +103,28 @@ const blocksToParts = (
   flushSources()
   return parts
 }
+const mergeAssistantRuns = (messages: readonly UIMessage[]): UIMessage[] => {
+  const out: UIMessage[] = []
+  for (const m of messages) {
+    const last = out.at(-1)
+    if (m.role === 'assistant' && last?.role === 'assistant') last.parts.push(...m.parts)
+    else out.push({ id: m.id, parts: [...m.parts], role: m.role })
+  }
+  return out
+}
 const chunksToMessages = (chunks: readonly ChatChunk[]): UIMessage[] => {
   const { resultsById, allToolUseIds } = collectResultsAndToolUseIds(chunks)
-  const out: UIMessage[] = []
+  const raw: UIMessage[] = []
   for (const c of chunks)
-    if (c.kind === 'user-text') out.push({ id: c.id, parts: [{ text: c.text, type: 'text' }], role: 'user' })
-    else if (c.kind === 'partial') out.push({ id: c.id, parts: [{ text: c.text, type: 'text' }], role: 'assistant' })
+    if (c.kind === 'user-text') raw.push({ id: c.id, parts: [{ text: c.text, type: 'text' }], role: 'user' })
+    else if (c.kind === 'partial') raw.push({ id: c.id, parts: [{ text: c.text, type: 'text' }], role: 'assistant' })
     else if (c.kind === 'status')
-      out.push({ id: c.id, parts: [{ text: c.text, tone: c.tone, type: 'status' }], role: 'assistant' })
+      raw.push({ id: c.id, parts: [{ text: c.text, tone: c.tone, type: 'status' }], role: 'assistant' })
     else {
       const parts = blocksToParts(c.blocks, resultsById, allToolUseIds)
-      if (parts.length > 0) out.push({ id: c.id, parts, role: 'assistant' })
+      if (parts.length > 0) raw.push({ id: c.id, parts, role: 'assistant' })
     }
-  return out
+  return mergeAssistantRuns(raw)
 }
 export { chunksToMessages }
 export type { SearchItem, ToolState, UIMessage, UIPart }

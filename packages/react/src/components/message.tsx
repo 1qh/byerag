@@ -5,8 +5,8 @@ import type { ReactNode } from 'react'
 import { extractSources, parseToolPath } from '@a/react/lib'
 import { cn } from '@a/ui'
 import { Source, Sources, SourcesContent, SourcesTrigger } from '@a/ui/components/ai-elements/sources'
-import { ChevronRight } from 'lucide-react'
-import { Fragment, memo, useState } from 'react'
+import { ChevronDown, Loader2 } from 'lucide-react'
+import { Fragment, memo, useEffect, useRef, useState } from 'react'
 import { useMessagePartRegistry, useToolCard } from '../registries'
 import { Actions } from './message-actions'
 import { MessageTextPart } from './message-text-part'
@@ -81,36 +81,44 @@ type ActivityPart =
   | Extract<UIMessage['parts'][number], { type: 'data-tool-x' }>
   | Extract<UIMessage['parts'][number], { type: 'reasoning' }>
   | Extract<UIMessage['parts'][number], { type: 'status' }>
-const isActivity = (t: string): boolean => t === 'reasoning' || t === 'status' || t === 'data-tool-x'
+  | Extract<UIMessage['parts'][number], { type: 'text' }>
+const isActivity = (t: string): boolean => t === 'reasoning' || t === 'status' || t === 'data-tool-x' || t === 'text'
+const lastActivityIndex = (parts: UIMessage['parts']): number => {
+  let lastReasoningOrTool = -1
+  for (const [i, p] of parts.entries())
+    if (p.type === 'reasoning' || p.type === 'status' || p.type === 'data-tool-x') lastReasoningOrTool = i
+  return lastReasoningOrTool
+}
 const ActivityRow = ({ part }: { part: ActivityPart }): ReactNode => {
   if (part.type === 'reasoning')
-    return <div className='py-0.5 text-muted-foreground/80 text-xs italic'>{oneLine(part.text)}</div>
+    return <p className='text-muted-foreground text-sm leading-relaxed italic'>{oneLine(part.text)}</p>
+  if (part.type === 'text') return <p className='text-muted-foreground text-sm leading-relaxed'>{oneLine(part.text)}</p>
   if (part.type === 'status')
     return (
-      <div
+      <p
         className={cn(
-          'py-0.5 text-xs',
+          'text-sm leading-relaxed italic',
           part.tone === 'error'
             ? 'text-destructive'
             : part.tone === 'warn'
               ? 'text-yellow-700 dark:text-yellow-400'
-              : 'text-muted-foreground/80'
+              : 'text-muted-foreground'
         )}>
         {oneLine(part.text)}
-      </div>
+      </p>
     )
-  const out = part.output === undefined ? '' : oneLine(formatOutput(part.output)).slice(0, 120)
+  const out = part.output === undefined ? '' : oneLine(formatOutput(part.output)).slice(0, 160)
   return (
-    <div className='py-0.5 text-xs'>
-      <span className='font-mono text-muted-foreground'>{toolLabel(part.toolName, part.input)}</span>
-      {out ? <span className='ml-2 text-muted-foreground/60'>{out}</span> : null}
+    <div className='rounded-md border border-muted-foreground/15 bg-background/60 px-2 py-1.5 text-xs'>
+      <div className='font-mono text-muted-foreground'>→ {toolLabel(part.toolName, part.input)}</div>
+      {out ? <div className='mt-0.5 truncate text-muted-foreground/70'>{out}</div> : null}
     </div>
   )
 }
-const activityKey = (part: ActivityPart): string =>
-  part.type === 'data-tool-x'
-    ? `x:${toolLabel(part.toolName, part.input)}`
-    : `${part.type}:${oneLine(part.text).slice(0, 24)}`
+const activityKey = (part: ActivityPart): string => {
+  if (part.type === 'data-tool-x') return `x:${toolLabel(part.toolName, part.input)}`
+  return `${part.type}:${oneLine(part.text).slice(0, 24)}`
+}
 const ActivityRows = ({ parts }: { parts: ActivityPart[] }): ReactNode => {
   const seen = new Map<string, number>()
   return parts.map(part => {
@@ -120,19 +128,51 @@ const ActivityRows = ({ parts }: { parts: ActivityPart[] }): ReactNode => {
     return <ActivityRow key={`${base}#${n}`} part={part} />
   })
 }
-const ActivityGroup = ({ initiallyOpen, parts }: { initiallyOpen: boolean; parts: ActivityPart[] }): ReactNode => {
-  const [open, setOpen] = useState(initiallyOpen)
+const summarizeTools = (parts: ActivityPart[]): string => {
+  const seen = new Set<string>()
+  for (const p of parts)
+    if (p.type === 'data-tool-x') {
+      const path = parseToolPath(p.input)
+      const label = path ? path.join(' ') : p.toolName
+      seen.add(label)
+    }
+  return [...seen].slice(0, 3).join(', ')
+}
+const ThinkingBlock = ({ isLoading, parts }: { isLoading: boolean; parts: ActivityPart[] }): ReactNode => {
+  // eslint-disable-next-line react/hook-use-state -- one-shot render-time snapshot of when this block first mounted
+  const [startedAt] = useState(() => Date.now())
+  const [elapsedSec, setElapsedSec] = useState<null | number>(null)
+  const wasLoadingRef = useRef(isLoading)
+  useEffect(() => {
+    if (wasLoadingRef.current && !isLoading)
+      // eslint-disable-next-line @eslint-react/hooks-extra/no-direct-set-state-in-use-effect -- snapshot elapsed time on transition
+      setElapsedSec(Math.max(1, Math.round((Date.now() - startedAt) / 1000)))
+    wasLoadingRef.current = isLoading
+  }, [isLoading, startedAt])
+  const [manuallyOpen, setManuallyOpen] = useState<boolean | null>(null)
+  const open = manuallyOpen ?? isLoading
+  const toolSummary = summarizeTools(parts)
+  const pillSuffix = toolSummary ? ` · ${toolSummary}` : ''
+  const pillLabel = isLoading
+    ? 'Thinking…'
+    : elapsedSec === null
+      ? `Thought${pillSuffix}`
+      : `Thought for ${elapsedSec}s${pillSuffix}`
   return (
-    <div className='my-1.5'>
+    <div className='my-2 rounded-xl bg-muted/40 px-3 py-2 transition-colors'>
       <button
-        className='flex items-center gap-1 text-muted-foreground text-xs hover:text-foreground'
-        onClick={() => setOpen(o => !o)}
+        className='flex w-full items-center gap-2 text-left text-muted-foreground text-sm hover:text-foreground'
+        onClick={() => setManuallyOpen(o => !(o ?? isLoading))}
         type='button'>
-        <ChevronRight aria-hidden className={cn('size-3 transition-transform', open && 'rotate-90')} />
-        Worked through {parts.length} step{parts.length === 1 ? '' : 's'}
+        {isLoading ? (
+          <Loader2 aria-hidden className='size-3 animate-spin' />
+        ) : (
+          <ChevronDown aria-hidden className={cn('size-3 transition-transform', !open && '-rotate-90')} />
+        )}
+        <span className='truncate'>{pillLabel}</span>
       </button>
       {open ? (
-        <div className='mt-1 ml-4 space-y-0.5 border-muted border-l pl-3'>
+        <div className='mt-2 space-y-1.5 border-muted-foreground/20 border-l pl-3'>
           <ActivityRows parts={parts} />
         </div>
       ) : null}
@@ -140,8 +180,8 @@ const ActivityGroup = ({ initiallyOpen, parts }: { initiallyOpen: boolean; parts
   )
 }
 const PurePreviewMessage = ({ chatId, isLoading, message }: PreviewMessageProps) => {
-  const ToolCard = useToolCard()
   const customRenderers = useMessagePartRegistry()
+  useToolCard()
   const nodes: ReactNode[] = []
   let buffer: ActivityPart[] = []
   const flush = (idx: number): void => {
@@ -149,20 +189,20 @@ const PurePreviewMessage = ({ chatId, isLoading, message }: PreviewMessageProps)
     const grouped = buffer
     nodes.push(
       // oxlint-disable-next-line react-perf/jsx-no-new-array-as-prop
-      <ActivityGroup initiallyOpen={isLoading} key={`${message.id}-act-${idx}`} parts={grouped} />
+      <ThinkingBlock isLoading={isLoading} key={`${message.id}-think-${idx}`} parts={grouped} />
     )
     buffer = []
   }
+  const cutoff = lastActivityIndex(message.parts)
   for (const [index, part] of message.parts.entries()) {
     const key = `${message.id}-part-${index}`
     const custom = customRenderers?.[part.type]
-    const toolCardNode =
-      !custom && part.type === 'data-tool-x' && ToolCard ? ToolCard({ input: part.input, output: part.output }) : null
-    if (!(custom || toolCardNode) && isActivity(part.type)) buffer.push(part as ActivityPart)
+    const isTextBeforeCutoff = part.type === 'text' && index < cutoff
+    if (!custom && (isActivity(part.type) ? part.type !== 'text' || isTextBeforeCutoff : false))
+      buffer.push(part as ActivityPart)
     else {
       flush(index)
       if (custom) nodes.push(<Fragment key={key}>{custom(part, { isLoading, message })}</Fragment>)
-      else if (toolCardNode) nodes.push(<Fragment key={key}>{toolCardNode}</Fragment>)
       else if (part.type === 'text')
         nodes.push(<MessageTextPart key={key} messageId={message.id} messageRole={message.role} text={part.text} />)
       else if (part.type === 'data-sources') {
