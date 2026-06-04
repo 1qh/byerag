@@ -352,7 +352,7 @@ const TrainingPage = (): React.ReactElement => {
       <section className='grid gap-3 md:grid-cols-2 lg:grid-cols-4'>
         <Card onClick={() => summaryRef.current?.scrollIntoView({ behavior: 'smooth' })} title='Overview'>
           <div className='font-bold text-3xl'>{summary.totalUsers}</div>
-          <div className='mt-1 text-muted-foreground text-sm'>users — view summary</div>
+          <div className='mt-1 text-muted-foreground text-sm'>trainees — view summary</div>
           <div className='mt-3 space-y-1 text-sm'>
             <div>
               <span className='font-semibold'>{summary.usersFullyCompliantPct}%</span> passed all assigned
@@ -503,7 +503,7 @@ const TrainingPage = (): React.ReactElement => {
       </section>
       <section className='space-y-2' ref={summaryRef}>
         <div className='flex flex-wrap items-center gap-3'>
-          <h2 className='font-semibold text-lg'>User summary</h2>
+          <h2 className='font-semibold text-lg'>Trainee summary</h2>
           <Link className='text-muted-foreground text-sm hover:text-foreground hover:underline' href='/training/users'>
             View all →
           </Link>
@@ -531,7 +531,7 @@ const TrainingPage = (): React.ReactElement => {
         {userSum === undefined ? (
           <div className='text-muted-foreground'>Loading…</div>
         ) : userSum === null || userSum.rows.length === 0 ? (
-          <div className='text-muted-foreground'>No users match.</div>
+          <div className='text-muted-foreground'>No trainees match.</div>
         ) : (
           <>
             <Table>
@@ -579,7 +579,7 @@ const TrainingPage = (): React.ReactElement => {
               </TableBody>
             </Table>
             <div className='flex items-center justify-between text-muted-foreground text-sm'>
-              <span>{userSum.total} users</span>
+              <span>{userSum.total} trainees</span>
               <div className='flex items-center gap-2'>
                 <Button disabled={sPage === 0} onClick={() => setSPage(p => p - 1)} size='sm' variant='outline'>
                   Prev
@@ -794,7 +794,7 @@ const TrainingPage = (): React.ReactElement => {
                   ))}
                 </div>
                 <p className='text-muted-foreground text-xs'>
-                  Showing this page of users (search to filter via the User summary table).
+                  Showing this page of trainees (search to filter via the Trainee summary table).
                 </p>
               </div>
             ) : null}

@@ -124,7 +124,9 @@ const DashboardPage = (): React.ReactElement => {
           <div className='mt-2 flex items-baseline gap-4'>
             <div>
               <div className='font-semibold text-2xl'>{top.totalUsers}</div>
-              <div className='text-muted-foreground text-xs'>users</div>
+              <div className='text-muted-foreground text-xs' title='Real employees with role=user. Admins excluded.'>
+                trainees
+              </div>
             </div>
             <div>
               <div className='font-semibold text-2xl'>{top.docsInCorpus}</div>

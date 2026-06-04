@@ -116,7 +116,7 @@ const TrainingUsersPage = (): React.ReactElement => {
       </div>
       <div className='flex flex-wrap items-baseline justify-between gap-3'>
         <h1 className='font-semibold text-2xl'>
-          Users <span className='text-muted-foreground text-sm'>({data?.total ?? 0} total)</span>
+          Trainees <span className='text-muted-foreground text-sm'>({data?.total ?? 0} total)</span>
         </h1>
         <Button onClick={onExport} size='sm' variant='outline'>
           <Download className='size-4' />
@@ -182,7 +182,7 @@ const TrainingUsersPage = (): React.ReactElement => {
       ) : data === null ? (
         <div className='text-destructive'>Admin only.</div>
       ) : sorted.length === 0 ? (
-        <div className='text-muted-foreground'>No users match.</div>
+        <div className='text-muted-foreground'>No trainees match.</div>
       ) : (
         <>
           <Table>
