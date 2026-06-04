@@ -451,6 +451,18 @@ const assignmentsTable = query({
     }
   }
 })
+const VN_DIACRITIC_RE = /[̀-ͯ]/gu
+const NON_SLUG_RE = /[^a-z0-9]+/gu
+const TRIM_HYPHEN_RE = /^-+|-+$/gu
+const slugify = (s: string): string =>
+  s
+    .normalize('NFD')
+    .replaceAll(VN_DIACRITIC_RE, '')
+    .replaceAll('đ', 'd')
+    .replaceAll('Đ', 'D')
+    .toLowerCase()
+    .replaceAll(NON_SLUG_RE, '-')
+    .replaceAll(TRIM_HYPHEN_RE, '')
 interface UserSummaryRow {
   assigned: number
   department: string
@@ -547,13 +559,315 @@ const userAttemptHistory = query({
     return { attempts, failedTopics, userId }
   }
 })
+interface UserSummaryFullRow {
+  assigned: number
+  department: string
+  failedAttempts: number
+  lastAttemptMs?: number
+  mostFailedTopic?: string
+  overdue: number
+  passRate: number
+  passed: number
+  role: string
+  userId: string
+}
+const userSummaryFull = query({
+  args: {
+    departments: v.optional(v.array(v.string())),
+    needsCoaching: v.optional(v.boolean()),
+    search: v.optional(v.string())
+  },
+  handler: async (
+    ctx,
+    { search, departments, needsCoaching }
+  ): Promise<null | { departments: string[]; rows: UserSummaryFullRow[]; total: number }> => {
+    const adminEmail = await requireAdmin(ctx)
+    if (!adminEmail) return null
+    const { users } = await computeTrain(ctx)
+    const allDepartments = [...new Set(users.map(u => u.department ?? '—'))].toSorted((a, b) => a.localeCompare(b))
+    const attemptsByUser = new Map<string, { failedByTopic: Map<string, number>; lastAt: number }>()
+    for (const u of users) {
+      const rows = await ctx.db
+        .query('testAttempts')
+        .withIndex('by_user_topic', q => q.eq('userId', u.userId))
+        .take(500)
+      const rec = { failedByTopic: new Map<string, number>(), lastAt: 0 }
+      for (const a of rows) {
+        const at = a.finishedAt ?? a.startedAt ?? 0
+        if (at > rec.lastAt) rec.lastAt = at
+        if (a.status === 'failed') {
+          const topic = await ctx.db.get(a.topicId)
+          const name = (topic && 'name' in topic ? (topic as { name?: string }).name : undefined) ?? '?'
+          rec.failedByTopic.set(name, (rec.failedByTopic.get(name) ?? 0) + 1)
+        }
+      }
+      attemptsByUser.set(u.userId, rec)
+    }
+    const term = (search ?? '').trim().toLowerCase()
+    const projected: UserSummaryFullRow[] = users.map(u => {
+      const dept = u.department ?? '—'
+      const rec = attemptsByUser.get(u.userId)
+      const topFailed =
+        rec && rec.failedByTopic.size > 0
+          ? [...rec.failedByTopic.entries()].toSorted((a, b) => b[1] - a[1])[0]?.[0]
+          : undefined
+      return {
+        assigned: u.assigned,
+        department: dept,
+        failedAttempts: u.failedAttempts,
+        lastAttemptMs: rec && rec.lastAt > 0 ? rec.lastAt : undefined,
+        mostFailedTopic: topFailed,
+        overdue: u.overdue,
+        passRate: u.assigned > 0 ? Math.round((u.passed / u.assigned) * 100) : 0,
+        passed: u.passed,
+        role: 'user',
+        userId: u.userId
+      }
+    })
+    const filtered = projected
+      .filter(r => term === '' || r.userId.toLowerCase().includes(term))
+      .filter(r => !departments || departments.length === 0 || departments.includes(r.department))
+      .filter(r => !needsCoaching || r.failedAttempts >= COACHING_THRESHOLD)
+    const sorted = filtered.toSorted(
+      (a, b) =>
+        b.failedAttempts - a.failedAttempts ||
+        b.overdue - a.overdue ||
+        a.passRate - b.passRate ||
+        a.userId.localeCompare(b.userId)
+    )
+    return { departments: allDepartments, rows: sorted, total: sorted.length }
+  }
+})
+interface TestDetailQuestion {
+  choices: string[]
+  correctIndex: number
+  prompt: string
+  questionId: string
+}
+interface TestDetailPersonRow {
+  attemptCount: number
+  department: string
+  lastAt?: number
+  lastScore?: number
+  status: 'failed' | 'in-progress' | 'never-started' | 'passed'
+  userId: string
+}
+const testDetail = query({
+  args: { slug: v.string() },
+  handler: async (
+    ctx,
+    { slug }
+  ): Promise<null | {
+    createdAt: number
+    failedCount: number
+    name: string
+    notStarted: TestDetailPersonRow[]
+    overdueCount: number
+    passRate: number
+    passedCount: number
+    questions: TestDetailQuestion[]
+    sourceDocs: { _id: string; filename: string }[]
+    strugglers: TestDetailPersonRow[]
+    topicId: string
+    totalAssigned: number
+    winners: TestDetailPersonRow[]
+  }> => {
+    const adminEmail = await requireAdmin(ctx)
+    if (!adminEmail) return null
+    const topicRows = await ctx.db
+      .query('topics')
+      .withIndex('by_deletedAt', q => q.eq('deletedAt', undefined))
+      .take(500)
+    const topic = topicRows.find(t => slugify(t.name) === slug)
+    if (!topic) return null
+    const questions = await ctx.db
+      .query('testQuestions')
+      .withIndex('by_topic_deletedAt', q => q.eq('topicId', topic._id).eq('deletedAt', undefined))
+      .take(200)
+    const sourceDocIds = new Set<string>()
+    for (const q of questions) for (const id of q.sourceDocIds) sourceDocIds.add(id)
+    const sourceDocs: { _id: string; filename: string }[] = []
+    for (const id of sourceDocIds) {
+      const d = await ctx.db.get(id as never)
+      if (d && 'filename' in d && !(d as { deletedAt?: number }).deletedAt)
+        sourceDocs.push({ _id: id, filename: (d as { filename: string }).filename })
+    }
+    const userRows = await ctx.db
+      .query('userProfiles')
+      .withIndex('by_role', q => q.eq('role', 'user'))
+      .take(2000)
+    const dueMs = (await getDueDays(ctx)) * DAY_MS
+    const now = Date.now()
+    const winners: TestDetailPersonRow[] = []
+    const strugglers: TestDetailPersonRow[] = []
+    const notStarted: TestDetailPersonRow[] = []
+    let overdueCount = 0
+    let totalAssigned = 0
+    for (const u of userRows) {
+      const dept = u.department ?? '—'
+      const assignmentRows = await ctx.db
+        .query('testAssignments')
+        .withIndex('by_user_topic', q => q.eq('userId', u.userId).eq('topicId', topic._id))
+        .filter(q => q.eq(q.field('deletedAt'), undefined))
+        .collect()
+      if (assignmentRows.length === 0) continue
+      totalAssigned += 1
+      const passRows = await ctx.db
+        .query('testPasses')
+        .withIndex('by_user_topic_kind', q => q.eq('userId', u.userId).eq('topicId', topic._id).eq('kind', 'assigned'))
+        .collect()
+      const attemptRows = await ctx.db
+        .query('testAttempts')
+        .withIndex('by_user_topic', q => q.eq('userId', u.userId).eq('topicId', topic._id))
+        .collect()
+      const sortedAttempts = attemptRows.toSorted((a, b) => (b.finishedAt ?? b.startedAt) - (a.finishedAt ?? a.startedAt))
+      const last = sortedAttempts[0]
+      if (passRows[0]) {
+        const passAttempt = sortedAttempts.find(a => a.status === 'passed') ?? last
+        winners.push({
+          attemptCount: attemptRows.length,
+          department: dept,
+          lastAt: passAttempt?.finishedAt ?? passAttempt?.startedAt,
+          lastScore: passAttempt?.score,
+          status: 'passed',
+          userId: u.userId
+        })
+        continue
+      }
+      const effectiveDue = Math.min(...assignmentRows.map(r => r.dueAtMs ?? r.createdAt + dueMs))
+      const isOverdue = now > effectiveDue
+      if (isOverdue) overdueCount += 1
+      if (attemptRows.length === 0) {
+        notStarted.push({
+          attemptCount: 0,
+          department: dept,
+          lastAt: effectiveDue,
+          status: 'never-started',
+          userId: u.userId
+        })
+        continue
+      }
+      const failedCount = attemptRows.filter(a => a.status === 'failed').length
+      strugglers.push({
+        attemptCount: failedCount,
+        department: dept,
+        lastAt: last?.finishedAt ?? last?.startedAt,
+        lastScore: last?.score,
+        status: last?.status === 'in-progress' ? 'in-progress' : 'failed',
+        userId: u.userId
+      })
+    }
+    winners.sort((a, b) => (b.lastAt ?? 0) - (a.lastAt ?? 0))
+    strugglers.sort((a, b) => b.attemptCount - a.attemptCount || (b.lastAt ?? 0) - (a.lastAt ?? 0))
+    notStarted.sort((a, b) => (a.lastAt ?? 0) - (b.lastAt ?? 0))
+    return {
+      createdAt: topic.createdAt,
+      failedCount: strugglers.reduce((s, r) => s + r.attemptCount, 0),
+      name: topic.name,
+      notStarted,
+      overdueCount,
+      passRate: totalAssigned > 0 ? Math.round((winners.length / totalAssigned) * 100) : 0,
+      passedCount: winners.length,
+      questions: questions.map(q => ({
+        choices: q.choices,
+        correctIndex: q.correctIndex,
+        prompt: q.prompt,
+        questionId: q._id
+      })),
+      sourceDocs,
+      strugglers,
+      topicId: topic._id,
+      totalAssigned,
+      winners
+    }
+  }
+})
+interface TestsFullRow {
+  assigned: number
+  createdAt: number
+  lastActivityMs?: number
+  name: string
+  overdue: number
+  passRate: number
+  poolSize: number
+  slug: string
+  sourceDocsCount: number
+  topicId: string
+}
+const testsFull = query({
+  args: { search: v.optional(v.string()) },
+  handler: async (ctx, { search }): Promise<null | { rows: TestsFullRow[]; total: number }> => {
+    const adminEmail = await requireAdmin(ctx)
+    if (!adminEmail) return null
+    const { topics } = await computeTrain(ctx)
+    const topicRowsAll = await ctx.db
+      .query('topics')
+      .withIndex('by_deletedAt', q => q.eq('deletedAt', undefined))
+      .take(500)
+    const topicsById = new Map(topicRowsAll.map(t => [t._id, t]))
+    const out: TestsFullRow[] = []
+    for (const t of topics) {
+      const topic = topicsById.get(t.topicId as never)
+      const questions = await ctx.db
+        .query('testQuestions')
+        .withIndex('by_topic_deletedAt', q => q.eq('topicId', t.topicId as never).eq('deletedAt', undefined))
+        .take(200)
+      const sourceIds = new Set<string>()
+      for (const q of questions) for (const id of q.sourceDocIds) sourceIds.add(id)
+      const attemptRows = await ctx.db
+        .query('testAttempts')
+        .withIndex('by_topic_status', q => q.eq('topicId', t.topicId as never))
+        .take(500)
+      const lastAt = attemptRows.reduce((m, a) => Math.max(m, a.finishedAt ?? a.startedAt ?? 0), 0)
+      out.push({
+        assigned: t.assigned,
+        createdAt: topic?.createdAt ?? 0,
+        lastActivityMs: lastAt > 0 ? lastAt : undefined,
+        name: t.name,
+        overdue: t.overdue,
+        passRate: t.assigned > 0 ? Math.round((t.passed / t.assigned) * 100) : 0,
+        poolSize: t.poolSize,
+        slug: slugify(t.name),
+        sourceDocsCount: sourceIds.size,
+        topicId: t.topicId
+      })
+    }
+    const term = (search ?? '').trim().toLowerCase()
+    const filtered = term ? out.filter(r => r.name.toLowerCase().includes(term)) : out
+    return { rows: filtered, total: filtered.length }
+  }
+})
+const topicSlugs = query({
+  args: {},
+  handler: async (ctx): Promise<{ name: string; poolSize: number; slug: string }[]> => {
+    const adminEmail = await requireAdmin(ctx)
+    if (!adminEmail) return []
+    const topicRows = await ctx.db
+      .query('topics')
+      .withIndex('by_deletedAt', q => q.eq('deletedAt', undefined))
+      .take(500)
+    const out: { name: string; poolSize: number; slug: string }[] = []
+    for (const t of topicRows) {
+      const pool = await ctx.db
+        .query('testQuestions')
+        .withIndex('by_topic_deletedAt', q => q.eq('topicId', t._id).eq('deletedAt', undefined))
+        .take(200)
+      out.push({ name: t.name, poolSize: pool.length, slug: slugify(t.name) })
+    }
+    return out
+  }
+})
 export {
   assignmentsTable,
   coachingSummary,
   costCycleHistory,
   costCyclePivot,
+  testDetail,
+  testsFull,
   topStrip,
+  topicSlugs,
   trainingSummary,
   userAttemptHistory,
-  userSummary
+  userSummary,
+  userSummaryFull
 }

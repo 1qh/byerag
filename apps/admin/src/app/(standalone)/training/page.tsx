@@ -16,7 +16,6 @@ import { Checkbox } from '@a/ui/components/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@a/ui/components/dialog'
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
@@ -29,9 +28,23 @@ import { Switch } from '@a/ui/components/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@a/ui/components/table'
 import { api } from 'backend/convex/_generated/api'
 import { useAction, useMutation, useQuery } from 'convex/react'
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useId, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
+const VN_DIACRITIC_RE = /[̀-ͯ]/gu
+const NON_SLUG_RE = /[^a-z0-9]+/gu
+const TRIM_HYPHEN_RE = /^-+|-+$/gu
+const slugify = (s: string): string =>
+  s
+    .normalize('NFD')
+    .replaceAll(VN_DIACRITIC_RE, '')
+    .replaceAll('đ', 'd')
+    .replaceAll('Đ', 'D')
+    .toLowerCase()
+    .replaceAll(NON_SLUG_RE, '-')
+    .replaceAll(TRIM_HYPHEN_RE, '')
 const ACTIONS_TRIGGER = <Button aria-label='Topic actions' size='icon-sm' variant='ghost' />
 const FILTER_TRIGGER = <Button className='-ml-2 h-auto gap-1 px-2 py-1 font-medium' size='sm' variant='ghost' />
 const DEPARTMENTS = ['Safety, Health and Environment'] as const
@@ -144,49 +157,9 @@ const Card = ({
     {children}
   </button>
 )
-const FilterHeader = ({
-  label,
-  onChange,
-  options,
-  selected
-}: {
-  label: string
-  onChange: (v: string[]) => void
-  options: string[]
-  selected: string[]
-}): React.ReactElement => (
-  <DropdownMenu>
-    <DropdownMenuTrigger render={FILTER_TRIGGER}>
-      {label}
-      {selected.length > 0 ? (
-        <span className='rounded bg-primary/15 px-1 text-primary text-xs'>{selected.length}</span>
-      ) : null}
-      <span className='text-muted-foreground text-xs'>▾</span>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent align='start' className='max-h-72 overflow-auto'>
-      {options.length === 0 ? (
-        <DropdownMenuItem disabled>No options</DropdownMenuItem>
-      ) : (
-        options.map(o => (
-          <DropdownMenuCheckboxItem
-            checked={selected.includes(o)}
-            key={o}
-            onCheckedChange={() => onChange(selected.includes(o) ? selected.filter(x => x !== o) : [...selected, o])}>
-            {o}
-          </DropdownMenuCheckboxItem>
-        ))
-      )}
-      {selected.length > 0 ? (
-        <>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => onChange([])}>Clear</DropdownMenuItem>
-        </>
-      ) : null}
-    </DropdownMenuContent>
-  </DropdownMenu>
-)
 // oxlint-disable-next-line complexity
 const TrainingPage = (): React.ReactElement => {
+  const router = useRouter()
   const summary = useQuery(api.dashboard.trainingSummary, {})
   const autoAssign = useQuery(api.settings.getForAdmin, { key: 'agent_auto_assign_enabled' })
   const dueSetting = useQuery(api.settings.getForAdmin, { key: 'assignment_due_days' })
@@ -198,25 +171,6 @@ const TrainingPage = (): React.ReactElement => {
   const rearm = useMutation(api.training.markTopicSubstantive)
   const assignNow = useAction(api.training.assignEligibleNow)
   const assignComposer = useMutation(api.training.assignComposer)
-  const [aPage, setAPage] = useState(0)
-  const [fDept, setFDept] = useState<string[]>([])
-  const [fTest, setFTest] = useState<string[]>([])
-  const [fStatus, setFStatus] = useState<string[]>([])
-  const [fDeadline, setFDeadline] = useState<string[]>([])
-  const [fAssigned, setFAssigned] = useState<string[]>([])
-  const at = useQuery(api.dashboard.assignmentsTable, {
-    assigneds: fAssigned,
-    deadlines: fDeadline,
-    departments: fDept,
-    page: aPage,
-    statuses: fStatus,
-    tests: fTest
-  })
-  const deptOptions = useMemo(() => at?.facets.departments ?? [], [at?.facets.departments])
-  const testOptions = useMemo(() => at?.facets.tests ?? [], [at?.facets.tests])
-  const statusOptions = useMemo(() => at?.facets.statuses ?? [], [at?.facets.statuses])
-  const deadlineOptions = useMemo(() => at?.facets.deadlines ?? [], [at?.facets.deadlines])
-  const assignedOptions = useMemo(() => at?.facets.assigneds ?? [], [at?.facets.assigneds])
   const [sSearch, setSSearch] = useState('')
   const [sPage, setSPage] = useState(0)
   const [sCoaching, setSCoaching] = useState(false)
@@ -242,9 +196,7 @@ const TrainingPage = (): React.ReactElement => {
   const [hourDraft, setHourDraft] = useState<null | string>(null)
   const [wdDraft, setWdDraft] = useState<null | Set<string>>(null)
   const [schedBusy, setSchedBusy] = useState(false)
-  const assignmentsRef = useRef<HTMLElement>(null)
   const summaryRef = useRef<HTMLElement>(null)
-  const seenAtRef = useRef<null | number>(null)
   const switchId = useId()
   const dueId = useId()
   const hourId = useId()
@@ -252,18 +204,6 @@ const TrainingPage = (): React.ReactElement => {
   const cAudienceId = useId()
   const cDeptId = useId()
   const cDueId = useId()
-  useEffect(() => {
-    const l = at?.latest
-    if (!l) return
-    if (seenAtRef.current === null) {
-      seenAtRef.current = l.at
-      return
-    }
-    if (l.at > seenAtRef.current) {
-      seenAtRef.current = l.at
-      if (l.source === 'agent') toast.message(`Agent assigned ${l.test} to ${l.userId}`)
-    }
-  }, [at?.latest])
   const toggleAuto = async (next: boolean): Promise<void> => {
     setAutoBusy(true)
     try {
@@ -375,24 +315,13 @@ const TrainingPage = (): React.ReactElement => {
   const tPageCount = Math.max(1, Math.ceil(tFiltered.length / TESTS_PER_PAGE))
   const tClamped = Math.min(tPage, tPageCount - 1)
   const pagedTests = tFiltered.slice(tClamped * TESTS_PER_PAGE, tClamped * TESTS_PER_PAGE + TESTS_PER_PAGE)
-  const resetFilters = (): void => {
-    setFDept([])
-    setFTest([])
-    setFStatus([])
-    setFDeadline([])
-    setFAssigned([])
-    setAPage(0)
-  }
   const goAtRisk = (): void => {
-    resetFilters()
-    setFStatus(['Overdue', 'Not passed'])
-    assignmentsRef.current?.scrollIntoView({ behavior: 'smooth' })
+    setSCoaching(false)
+    summaryRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
   const goWeakest = (): void => {
     if (!summary.weakestTest) return
-    resetFilters()
-    setFTest([summary.weakestTest.name])
-    assignmentsRef.current?.scrollIntoView({ behavior: 'smooth' })
+    router.push(`/training/tests/${slugify(summary.weakestTest.name)}`)
   }
   return (
     <div className='space-y-6 p-6'>
@@ -480,6 +409,9 @@ const TrainingPage = (): React.ReactElement => {
       <section className='space-y-2'>
         <div className='flex flex-wrap items-center gap-3'>
           <h2 className='font-semibold text-lg'>Tests</h2>
+          <Link className='text-muted-foreground text-sm hover:text-foreground hover:underline' href='/training/tests'>
+            View all →
+          </Link>
           <Input
             className='h-8 w-64'
             onChange={e => {
@@ -510,7 +442,11 @@ const TrainingPage = (): React.ReactElement => {
               <TableBody>
                 {pagedTests.map(t => (
                   <TableRow key={t.topicId}>
-                    <TableCell className='font-medium'>{t.name}</TableCell>
+                    <TableCell className='font-medium'>
+                      <Link className='hover:underline' href={`/training/tests/${slugify(t.name)}`}>
+                        {t.name}
+                      </Link>
+                    </TableCell>
                     <TableCell className='text-right tabular-nums'>{t.poolSize}</TableCell>
                     <TableCell className='text-right tabular-nums'>{t.assigned}</TableCell>
                     <TableCell className='text-right tabular-nums'>
@@ -569,6 +505,9 @@ const TrainingPage = (): React.ReactElement => {
       <section className='space-y-2' ref={summaryRef}>
         <div className='flex flex-wrap items-center gap-3'>
           <h2 className='font-semibold text-lg'>User summary</h2>
+          <Link className='text-muted-foreground text-sm hover:text-foreground hover:underline' href='/training/users'>
+            View all →
+          </Link>
           <Input
             className='h-8 w-56'
             onChange={e => {
@@ -660,133 +599,6 @@ const TrainingPage = (): React.ReactElement => {
             </div>
           </>
         )}
-      </section>
-      <section className='space-y-2' ref={assignmentsRef}>
-        <h2 className='font-semibold text-lg'>Assignments</h2>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>User</TableHead>
-              <TableHead>
-                <FilterHeader
-                  label='Department'
-                  onChange={v => {
-                    setFDept(v)
-                    setAPage(0)
-                  }}
-                  options={deptOptions}
-                  selected={fDept}
-                />
-              </TableHead>
-              <TableHead>
-                <FilterHeader
-                  label='Test'
-                  onChange={v => {
-                    setFTest(v)
-                    setAPage(0)
-                  }}
-                  options={testOptions}
-                  selected={fTest}
-                />
-              </TableHead>
-              <TableHead>
-                <FilterHeader
-                  label='Status'
-                  onChange={v => {
-                    setFStatus(v)
-                    setAPage(0)
-                  }}
-                  options={statusOptions}
-                  selected={fStatus}
-                />
-              </TableHead>
-              <TableHead>
-                <FilterHeader
-                  label='Deadline'
-                  onChange={v => {
-                    setFDeadline(v)
-                    setAPage(0)
-                  }}
-                  options={deadlineOptions}
-                  selected={fDeadline}
-                />
-              </TableHead>
-              <TableHead>
-                <FilterHeader
-                  label='Assigned at'
-                  onChange={v => {
-                    setFAssigned(v)
-                    setAPage(0)
-                  }}
-                  options={assignedOptions}
-                  selected={fAssigned}
-                />
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {at === undefined ? (
-              <TableRow>
-                <TableCell className='text-muted-foreground' colSpan={6}>
-                  Loading…
-                </TableCell>
-              </TableRow>
-            ) : at === null || at.rows.length === 0 ? (
-              <TableRow>
-                <TableCell className='text-muted-foreground' colSpan={6}>
-                  No assignments match.
-                </TableCell>
-              </TableRow>
-            ) : (
-              at.rows.map(r => (
-                <TableRow key={`${r.userId}-${r.test}-${r.at}`}>
-                  <TableCell className='font-medium'>{r.userId}</TableCell>
-                  <TableCell className='text-muted-foreground'>{r.department}</TableCell>
-                  <TableCell>{r.test}</TableCell>
-                  <TableCell>
-                    {r.status === 'passed' ? (
-                      <span className='text-green-600'>✓ Passed</span>
-                    ) : r.status === 'overdue' ? (
-                      <span className='font-medium text-yellow-700 dark:text-yellow-400'>
-                        ⏰ Overdue {r.overdueDays} {r.overdueDays === 1 ? 'day' : 'days'}
-                      </span>
-                    ) : (
-                      <span className='text-muted-foreground'>Not passed</span>
-                    )}
-                  </TableCell>
-                  <TableCell
-                    className={cn(
-                      'text-muted-foreground tabular-nums',
-                      r.status === 'overdue' && 'font-medium text-yellow-700 dark:text-yellow-400'
-                    )}>
-                    {r.deadline}
-                  </TableCell>
-                  <TableCell className='text-muted-foreground tabular-nums'>{fmtVN(r.at)}</TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-        {at && at.rows.length > 0 ? (
-          <div className='flex items-center justify-between text-muted-foreground text-sm'>
-            <span>{at.total} assignments</span>
-            <div className='flex items-center gap-2'>
-              <Button disabled={aPage === 0} onClick={() => setAPage(p => p - 1)} size='sm' variant='outline'>
-                Prev
-              </Button>
-              <span>
-                {aPage + 1} / {at.pageCount}
-              </span>
-              <Button
-                disabled={aPage + 1 >= at.pageCount}
-                onClick={() => setAPage(p => p + 1)}
-                size='sm'
-                variant='outline'>
-                Next
-              </Button>
-            </div>
-          </div>
-        ) : null}
       </section>
       <AlertDialog
         onOpenChange={open => {
