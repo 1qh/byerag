@@ -22,14 +22,7 @@ import {
   SKIP_RES_HEADERS
 } from './messages/proxyHelpers'
 import { sendCore, VALID_SESSION_ID, verifySecret } from './messages/sendCore'
-import {
-  boundedBody,
-  computeActualCents,
-  DEFAULT_RATES,
-  MODEL_RATES,
-  sseCostTap,
-  withCancelHook
-} from './messages/streamHelpers'
+import { boundedBody, computeActualCents, ratesFor, sseCostTap, withCancelHook } from './messages/streamHelpers'
 import { redactSecrets } from './redactor'
 import { generateSecret, hashSecret } from './secretHash'
 import { errorEventEnvelope } from './streamProtocol'
@@ -565,7 +558,13 @@ const anthropicProxy = httpAction(async (ctx, req) => {
       } catch {
         /* Non-JSON — upstream will reject */
       }
-    const rates = (modelName ? MODEL_RATES[modelName] : undefined) ?? DEFAULT_RATES
+    let rates: ReturnType<typeof ratesFor>
+    try {
+      rates = ratesFor(modelName)
+    } catch (rateError) {
+      const reason = rateError instanceof Error ? rateError.message : 'unknown model'
+      return jsonErr(`model not priced: ${reason}`, 400)
+    }
     const inputTokensWorst = Math.min(buffered ? buffered.byteLength / 3 : 8000, 200_000)
     const inputCents = Math.ceil((rates.inputUSDPerMtok * 1.25 * inputTokensWorst) / 10_000)
     const outputCents = Math.ceil((rates.outputUSDPerMtok * maxTokens) / 10_000)

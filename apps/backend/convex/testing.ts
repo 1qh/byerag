@@ -10,6 +10,7 @@ import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
 import { internal } from './_generated/api'
 import { action, internalMutation, internalQuery, mutation, query } from './_generated/server'
+import { computeActualCents } from './messages/streamHelpers'
 import { constantTimeEqual } from './utils'
 
 const verifyTestSecret = (secret: string) => {
@@ -1306,6 +1307,34 @@ const seedTopicWithPool = mutation({
     return topicId
   }
 })
+const rebillCostRecords = mutation({
+  args: { testSecret: v.string() },
+  handler: async (ctx, { testSecret }): Promise<{ centsDelta: number; patched: number; scanned: number }> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db.query('costRecords').take(10_000)
+    let patched = 0
+    let centsDelta = 0
+    for (const r of rows) {
+      let next: number
+      try {
+        next = computeActualCents({
+          cacheCreationInputTokens: 0,
+          cacheReadInputTokens: 0,
+          inputTokens: r.inputTokens,
+          model: r.model,
+          outputTokens: r.outputTokens
+        })
+      } catch {
+        continue
+      }
+      if (next === r.cents) continue
+      centsDelta += next - r.cents
+      await ctx.db.patch(r._id, { cents: next })
+      patched += 1
+    }
+    return { centsDelta, patched, scanned: rows.length }
+  }
+})
 const listProfilesForTest = query({
   args: { testSecret: v.string() },
   handler: async (ctx, { testSecret }): Promise<{ kind?: 'real' | 'test'; role: 'admin' | 'user'; userId: string }[]> => {
@@ -2070,6 +2099,7 @@ export {
   markTopicSubstantiveProbe,
   purgeUserProbe,
   readFile,
+  rebillCostRecords,
   removeChat,
   requestReviewProbe,
   reRunGenerationProbe,

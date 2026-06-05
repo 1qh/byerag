@@ -53,7 +53,7 @@ describe('computeActualCents', () => {
     }
     expect(computeActualCents(u)).toBe(1500 + 7500)
   })
-  test('uses default rates for unknown model', () => {
+  test('throws on unknown model', () => {
     const u: UsageReport = {
       cacheCreationInputTokens: 0,
       cacheReadInputTokens: 0,
@@ -61,9 +61,14 @@ describe('computeActualCents', () => {
       model: 'gpt-9000',
       outputTokens: 1_000_000
     }
-    expect(computeActualCents(u)).toBe(300 + 1500)
+    expect(() => computeActualCents(u)).toThrow(/no rate for model "gpt-9000"/u)
   })
-  test('cache_creation 1.25x premium, cache_read 0.1x', () => {
+  test('throws on missing model', () => {
+    expect(() =>
+      computeActualCents({ cacheCreationInputTokens: 0, cacheReadInputTokens: 0, inputTokens: 0, outputTokens: 0 })
+    ).toThrow(/model is required/u)
+  })
+  test('cache_creation 1.25x premium, cache_read 0.1x (claude default)', () => {
     const u: UsageReport = {
       cacheCreationInputTokens: 1_000_000,
       cacheReadInputTokens: 1_000_000,
@@ -73,9 +78,35 @@ describe('computeActualCents', () => {
     }
     expect(computeActualCents(u)).toBe(375 + 30)
   })
-  test('zero usage returns 0', () => {
+  test('kimi rates: 0.684 input / 3.40 output / 0.16 cache-read / 0.684 cache-create', () => {
+    const u: UsageReport = {
+      cacheCreationInputTokens: 0,
+      cacheReadInputTokens: 0,
+      inputTokens: 1_000_000,
+      model: 'kimi-for-coding',
+      outputTokens: 1_000_000
+    }
+    expect(computeActualCents(u)).toBe(Math.ceil(68.4 + 340))
+  })
+  test('kimi cache: read 16 cents, create 68.4 cents per Mtok', () => {
+    const u: UsageReport = {
+      cacheCreationInputTokens: 1_000_000,
+      cacheReadInputTokens: 1_000_000,
+      inputTokens: 0,
+      model: 'kimi-for-coding',
+      outputTokens: 0
+    }
+    expect(computeActualCents(u)).toBe(Math.ceil(68.4 + 16))
+  })
+  test('zero usage with valid model returns 0', () => {
     expect(
-      computeActualCents({ cacheCreationInputTokens: 0, cacheReadInputTokens: 0, inputTokens: 0, outputTokens: 0 })
+      computeActualCents({
+        cacheCreationInputTokens: 0,
+        cacheReadInputTokens: 0,
+        inputTokens: 0,
+        model: 'kimi-for-coding',
+        outputTokens: 0
+      })
     ).toBe(0)
   })
 })

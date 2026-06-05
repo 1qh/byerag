@@ -1,4 +1,6 @@
 interface ModelRates {
+  cacheCreateUSDPerMtok?: number
+  cacheReadUSDPerMtok?: number
   inputUSDPerMtok: number
   outputUSDPerMtok: number
 }
@@ -6,9 +8,14 @@ const MODEL_RATES: Record<string, ModelRates> = {
   'claude-haiku-4-5': { inputUSDPerMtok: 1, outputUSDPerMtok: 5 },
   'claude-haiku-4-5-20251001': { inputUSDPerMtok: 1, outputUSDPerMtok: 5 },
   'claude-opus-4-7': { inputUSDPerMtok: 15, outputUSDPerMtok: 75 },
-  'claude-sonnet-4-6': { inputUSDPerMtok: 3, outputUSDPerMtok: 15 }
+  'claude-sonnet-4-6': { inputUSDPerMtok: 3, outputUSDPerMtok: 15 },
+  'kimi-for-coding': {
+    cacheCreateUSDPerMtok: 0.684,
+    cacheReadUSDPerMtok: 0.16,
+    inputUSDPerMtok: 0.684,
+    outputUSDPerMtok: 3.4
+  }
 }
-const DEFAULT_RATES: ModelRates = { inputUSDPerMtok: 3, outputUSDPerMtok: 15 }
 interface UsageReport {
   cacheCreationInputTokens: number
   cacheReadInputTokens: number
@@ -16,11 +23,19 @@ interface UsageReport {
   model?: string
   outputTokens: number
 }
+const ratesFor = (model: string | undefined): ModelRates => {
+  if (!model) throw new Error('computeActualCents: model is required')
+  const r = MODEL_RATES[model]
+  if (!r) throw new Error(`computeActualCents: no rate for model "${model}" — add to MODEL_RATES`)
+  return r
+}
 const computeActualCents = (u: UsageReport): number => {
-  const r = u.model ? (MODEL_RATES[u.model] ?? DEFAULT_RATES) : DEFAULT_RATES
+  const r = ratesFor(u.model)
+  const cacheCreateRate = r.cacheCreateUSDPerMtok ?? r.inputUSDPerMtok * 1.25
+  const cacheReadRate = r.cacheReadUSDPerMtok ?? r.inputUSDPerMtok * 0.1
   const input = (u.inputTokens * r.inputUSDPerMtok * 100) / 1_000_000
-  const cacheCreate = (u.cacheCreationInputTokens * r.inputUSDPerMtok * 1.25 * 100) / 1_000_000
-  const cacheRead = (u.cacheReadInputTokens * r.inputUSDPerMtok * 0.1 * 100) / 1_000_000
+  const cacheCreate = (u.cacheCreationInputTokens * cacheCreateRate * 100) / 1_000_000
+  const cacheRead = (u.cacheReadInputTokens * cacheReadRate * 100) / 1_000_000
   const output = (u.outputTokens * r.outputUSDPerMtok * 100) / 1_000_000
   return Math.ceil(input + cacheCreate + cacheRead + output)
 }
@@ -172,4 +187,4 @@ const sseCostTap = (body: ReadableStream<Uint8Array>, onUsage: (usage: UsageRepo
   return { body: piped, getUsage: () => usage, hasUsage: () => sawUsage }
 }
 export type { BoundedBodyOpts, ModelRates, SseTap, UsageReport }
-export { boundedBody, computeActualCents, DEFAULT_RATES, MODEL_RATES, sseCostTap, withCancelHook }
+export { boundedBody, computeActualCents, MODEL_RATES, ratesFor, sseCostTap, withCancelHook }
