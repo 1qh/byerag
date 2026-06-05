@@ -4,6 +4,7 @@ import { internal } from './_generated/api'
 const crons = cronJobs()
 crons.daily('audit retention purge', { hourUTC: 4, minuteUTC: 0 }, internal.lib.pruneAuditLogs, {})
 crons.daily('owner-spend stale pruning', { hourUTC: 4, minuteUTC: 5 }, internal.ownerSpend.pruneStaleSpend, {})
+crons.interval('owner-spend stale inflight audit', { minutes: 5 }, internal.ownerSpend.auditInvariants, {})
 crons.hourly('rate-limit stale pruning', { minuteUTC: 0 }, internal.lib.pruneStaleRateLimits, {})
 crons.daily('xTraces expiry purge', { hourUTC: 4, minuteUTC: 10 }, internal.tools._app.dispatch.pruneExpiredTraces, {})
 crons.interval('agent auto-assign scheduler', { minutes: 5 }, internal.training.autoAssign, {})

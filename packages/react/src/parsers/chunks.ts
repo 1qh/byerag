@@ -33,12 +33,29 @@ type PerEventOutput =
   | { kind: 'status'; text: string; tone: 'error' | 'info' | 'warn' }
   | { kind: 'user-text'; text: string }
 const API_ERROR_RE = /^API Error:\s*(?<status>\d{3})\s*(?<rest>.*)$/u
+const TOO_MANY_RE = /too many concurrent/iu
+const BUDGET_RE = /daily owner USD budget|budget exhausted/iu
+const TURN_BUDGET_RE = /turn budget exhausted/iu
+const NOT_PRICED_RE = /model not priced/iu
+const UPSTREAM_TIMEOUT_RE = /upstream timeout/iu
 const detectApiError = (text: string): null | string => {
   const m = API_ERROR_RE.exec(text.trim())
   const status = m?.groups?.status
   const rest = m?.groups?.rest ?? ''
   if (!status) return null
-  return `API Error ${status} — ${rest.slice(0, 200).trim()}`
+  if (TOO_MANY_RE.test(rest))
+    return 'Sorry — too many requests in flight on your account right now. Give it a minute and try again. If it keeps happening, your admin can clear the queue.'
+  if (BUDGET_RE.test(rest))
+    return "You've reached today's usage limit. New questions will work again tomorrow, or ask your admin to raise your daily limit."
+  if (TURN_BUDGET_RE.test(rest)) return 'This conversation has reached its message limit. Start a new chat to keep going.'
+  if (NOT_PRICED_RE.test(rest))
+    return 'The assistant ran into a configuration problem (model pricing missing). Please tell your admin.'
+  if (UPSTREAM_TIMEOUT_RE.test(rest))
+    return 'The assistant took too long to answer this one. Try rephrasing or breaking the question into smaller parts.'
+  if (status === '402') return 'Sorry — your usage cap was reached. Try again later, or ask your admin to raise the limit.'
+  if (status === '429') return 'The assistant is busy. Give it a few seconds and try again.'
+  if (status.startsWith('5')) return 'The assistant is having trouble responding right now. Please try again in a moment.'
+  return `Something went wrong (${status}). Please try again or tell your admin if it keeps happening.`
 }
 const perEventCache = new WeakMap<RawEvent, PerEventOutput>()
 const computePerEventOutput = (e: StreamEvent): PerEventOutput => {

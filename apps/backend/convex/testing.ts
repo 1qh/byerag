@@ -1776,6 +1776,40 @@ const countOwnerSpend = query({
     return { count: rows.length, totalCents: total }
   }
 })
+const resetOwnerInflight = mutation({
+  args: { owner: v.string(), testSecret: v.string() },
+  handler: async (
+    ctx,
+    { owner, testSecret }
+  ): Promise<{ centsBefore: number; inflightBefore: number; patched: number }> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db
+      .query('ownerSpend')
+      .withIndex('by_owner', q => q.eq('owner', owner))
+      .take(200)
+    let patched = 0
+    let centsBefore = 0
+    let inflightBefore = 0
+    for (const r of rows) {
+      centsBefore += r.centsToday
+      inflightBefore += r.inflight ?? 0
+      await ctx.db.patch(r._id, { centsToday: 0, inflight: 0, lastActivityAtMs: Date.now() })
+      patched += 1
+    }
+    return { centsBefore, inflightBefore, patched }
+  }
+})
+const inspectOwnerSpend = query({
+  args: { owner: v.string(), testSecret: v.string() },
+  handler: async (ctx, { owner, testSecret }): Promise<{ centsToday: number; dayKey: string; inflight: number }[]> => {
+    verifyTestSecret(testSecret)
+    const rows = await ctx.db
+      .query('ownerSpend')
+      .withIndex('by_owner', q => q.eq('owner', owner))
+      .take(200)
+    return rows.map(r => ({ centsToday: r.centsToday, dayKey: r.dayKey, inflight: r.inflight ?? 0 }))
+  }
+})
 const reRunGenerationProbe = action({
   args: { filename: v.string(), testSecret: v.string() },
   handler: async (
@@ -2083,6 +2117,7 @@ export {
   gradebookWithDeptProbe,
   heartbeatProbe,
   insertStreamEventProbe,
+  inspectOwnerSpend,
   listChats,
   listDocsByOwner,
   listFiles,
@@ -2104,6 +2139,7 @@ export {
   requestReviewProbe,
   reRunGenerationProbe,
   reserveBudgetProbe,
+  resetOwnerInflight,
   resetPolicyPending,
   retireQuestionProbe,
   runAutoAssign,

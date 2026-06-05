@@ -179,6 +179,7 @@ export default defineSchema({
     centsToday: v.number(),
     dayKey: v.string(),
     inflight: v.optional(v.number()),
+    lastActivityAtMs: v.optional(v.number()),
     owner: v.string()
   })
     .index('by_owner', ['owner'])

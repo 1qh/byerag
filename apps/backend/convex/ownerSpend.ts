@@ -20,6 +20,7 @@ const isAdmin = (owner: string): boolean => {
 const CAP_OVERSHOOT_TOLERANCE = DAILY_CENTS_CAP * 1.1
 const MAX_INFLIGHT_PER_OWNER = 8
 const ESTIMATE_CENTS_PER_CALL = 100
+const STALE_INFLIGHT_MS = 15 * 60 * 1000
 const dayKey = (now: number): string => new Date(now).toISOString().slice(0, 10)
 const getRows = async (ctx: MutationCtx | QueryCtx, owner: string) =>
   ctx.db
@@ -48,7 +49,21 @@ const consolidate = async (
   const stale = rows.filter(r => r._id !== todayRow?._id && r.dayKey < today && (r.inflight ?? 0) === 0)
   for (const d of stale) await ctx.db.delete(d._id)
   if (!todayRow) return { centsToday: 0, id: null, inflight: 0 }
-  return { centsToday: todayRow.centsToday, id: todayRow._id, inflight: todayRow.inflight ?? 0 }
+  const inflight = todayRow.inflight ?? 0
+  const lastActivityAtMs = todayRow.lastActivityAtMs ?? 0
+  const inflightStale = inflight > 0 && Date.now() - lastActivityAtMs > STALE_INFLIGHT_MS
+  if (inflightStale) {
+    log('warn', 'spend.inflight.stale-auto-reset', {
+      centsToday: todayRow.centsToday,
+      inflight,
+      lastActivityAtMs,
+      owner,
+      sinceMs: Date.now() - lastActivityAtMs
+    })
+    await ctx.db.patch(todayRow._id, { inflight: 0 })
+    return { centsToday: todayRow.centsToday, id: todayRow._id, inflight: 0 }
+  }
+  return { centsToday: todayRow.centsToday, id: todayRow._id, inflight }
 }
 interface InvariantCheck {
   centsToday: number
@@ -96,9 +111,16 @@ const reserveBudget = internalMutation({
     }
     const next = before.centsToday + reserve
     const nextInflight = before.inflight + 1
+    const nowMs = Date.now()
     await (before.id
-      ? ctx.db.patch(before.id, { centsToday: next, inflight: nextInflight })
-      : ctx.db.insert('ownerSpend', { centsToday: next, dayKey: today, inflight: 1, owner }))
+      ? ctx.db.patch(before.id, { centsToday: next, inflight: nextInflight, lastActivityAtMs: nowMs })
+      : ctx.db.insert('ownerSpend', {
+          centsToday: next,
+          dayKey: today,
+          inflight: 1,
+          lastActivityAtMs: nowMs,
+          owner
+        }))
     checkInvariants({ centsToday: next, inflight: nextInflight, owner, where: 'reserveBudget' })
     log('info', 'spend.reserve', {
       afterCents: next,
@@ -229,10 +251,11 @@ const settleReservation = internalMutation({
       return
     }
     const inflight = Math.max(0, reserved.inflight - 1)
+    const nowMs = Date.now()
     if (rDay === today) {
       const delta = actualCents - reservedCents
       const next = Math.max(0, reserved.centsToday + delta)
-      await ctx.db.patch(reserved.id, { centsToday: next, inflight })
+      await ctx.db.patch(reserved.id, { centsToday: next, inflight, lastActivityAtMs: nowMs })
       checkInvariants({ centsToday: next, inflight, owner, where: 'settleReservation/same-day' })
       log('info', 'spend.settle', {
         actualCents,
@@ -251,7 +274,7 @@ const settleReservation = internalMutation({
     }
     const refundOldDay = Math.min(actualCents, reservedCents) - reservedCents
     const oldNext = Math.max(0, reserved.centsToday + refundOldDay)
-    await ctx.db.patch(reserved.id, { centsToday: oldNext, inflight })
+    await ctx.db.patch(reserved.id, { centsToday: oldNext, inflight, lastActivityAtMs: nowMs })
     checkInvariants({ centsToday: oldNext, inflight, owner, where: 'settleReservation/cross-midnight-old' })
     const overage = Math.max(0, actualCents - reservedCents)
     let todayAfter = 0
@@ -316,6 +339,23 @@ const auditInvariants = internalMutation({
           owner: r.owner
         })
         await ctx.db.patch(r._id, { centsToday: 0, inflight: 0 })
+        continue
+      }
+      if (
+        (r.inflight ?? 0) > 0 &&
+        r.lastActivityAtMs !== undefined &&
+        Date.now() - r.lastActivityAtMs > STALE_INFLIGHT_MS
+      ) {
+        stuckInflight += 1
+        log('warn', 'audit.inflight.today-stale.reset', {
+          centsToday: r.centsToday,
+          dayKey: r.dayKey,
+          inflight: r.inflight,
+          lastActivityAtMs: r.lastActivityAtMs,
+          owner: r.owner,
+          sinceMs: Date.now() - r.lastActivityAtMs
+        })
+        await ctx.db.patch(r._id, { inflight: 0 })
       }
     }
     log('info', 'audit.summary', {
