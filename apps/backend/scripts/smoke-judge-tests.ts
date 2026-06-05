@@ -44,7 +44,7 @@ const ghRepo = async (slug: string): Promise<{ defaultBranchRef?: { name?: strin
     return {}
   }
 }
-for (const slug of ['1qh/byerag', '1qh/byerag-docs']) {
+for (const slug of ['1qh/byerag', '1qh/byerag-doc']) {
   const r = await ghRepo(slug)
   record(
     `A.repo-${slug.split('/')[1]}`,
@@ -170,7 +170,7 @@ try {
 }
 record('J.probe-log', '≥5 accepted docs in probe-log.jsonl', probeAccepted >= 5, `accepted=${probeAccepted}`)
 console.log('\n[judge] K — Final promise')
-const ledgerPath = join(import.meta.dir, '..', '..', '..', '..', 'byerag-docs', 'ledger.jsonl')
+const ledgerPath = join(import.meta.dir, '..', '..', '..', '..', 'byerag-doc', 'ledger.jsonl')
 let promiseFound = false
 try {
   const ledgerTail = readFileSync(ledgerPath, 'utf8').split('\n').findLast(Boolean) ?? ''

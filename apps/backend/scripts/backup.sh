@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Daily pg_dump of Convex's backing Postgres + age-encrypted output.
-# Per byerag-docs/docs/adr/backups-pg-dump-and-restore-drill.md.
+# Per byerag-doc/docs/adr/backups-pg-dump-and-restore-drill.md.
 # Reads operator-local secrets/env. Encrypted dump lands in BACKUP_DEST.
 set -euo pipefail
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)

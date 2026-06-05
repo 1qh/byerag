@@ -20,7 +20,7 @@ const secretLeaks = secretGrep
 check('no real sk-ant or JWT in tracked code', secretLeaks.length === 0, `hits=${secretLeaks.join(',') || 'none'}`)
 console.log('[lint-leaks] grep for product-domain leak in code repo')
 const domainGrep =
-  await $`cd ${ROOT} && git ls-files apps packages | grep -v -E 'readonly|\\.test\\.ts|smoke|VERIFY|byerag-docs' | xargs grep -l -E 'internal docs platform|doc Q&A|knowledge base assistant|product narrative' 2>/dev/null || true`.text()
+  await $`cd ${ROOT} && git ls-files apps packages | grep -v -E 'readonly|\\.test\\.ts|smoke|VERIFY|byerag-doc' | xargs grep -l -E 'internal docs platform|doc Q&A|knowledge base assistant|product narrative' 2>/dev/null || true`.text()
 const domainLeaks = domainGrep.trim().split('\n').filter(Boolean)
 check('no banned product-domain phrases in code', domainLeaks.length === 0, `hits=${domainLeaks.join(',') || 'none'}`)
 console.log('[lint-leaks] grep for banned TS escape hatches')

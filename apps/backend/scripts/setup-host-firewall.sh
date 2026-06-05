@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Apply host nft ruleset per byerag-docs/docs/adr/network-bridge-rules.md.
+# Apply host nft ruleset per byerag-doc/docs/adr/network-bridge-rules.md.
 # Runs inside Colima Linux VM (operator's Mac dev) or directly on prod Linux host.
 # Output policy drop + kimi_ips allowlist + DNS + RFC1918/docker bridges.
 set -euo pipefail

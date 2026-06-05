@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Restore latest age-encrypted dump into a parallel test database inside the
 # byerag-postgres container and verify table-count parity. Per
-# byerag-docs/docs/adr/backups-pg-dump-and-restore-drill.md. Operator runs
+# byerag-doc/docs/adr/backups-pg-dump-and-restore-drill.md. Operator runs
 # monthly to assert backups are restorable.
 set -euo pipefail
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
