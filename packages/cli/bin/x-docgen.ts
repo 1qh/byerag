@@ -1,6 +1,5 @@
 #!/usr/bin/env bun
-/* eslint-disable no-console, no-continue */
-/** biome-ignore-all lint/nursery/noContinue: classify-or-skip loop */
+/* eslint-disable no-console */
 /** biome-ignore-all lint/performance/noAwaitInLoops: small N (apps), fs IO ordered */
 /* eslint-disable no-await-in-loop */
 import { mkdir, readdir, writeFile } from 'node:fs/promises'
@@ -16,19 +15,31 @@ const escapeMd = (s: string): string => s.replaceAll('|', String.raw`\|`).replac
 const discoverApps = async (): Promise<{ name: string; root: string }[]> => {
   const out: { name: string; root: string }[] = []
   const entries = await readdir(APPS_DIR, { withFileTypes: true })
-  for (const e of entries) {
-    if (!e.isDirectory()) continue
-    if (e.name === 'backend') continue
-    const root = resolve(APPS_DIR, e.name, 'server/tools')
-    try {
-      const stat = await readdir(root)
-      if (stat.length === 0) continue
-    } catch {
-      continue
+  for (const e of entries)
+    if (e.isDirectory() && e.name !== 'backend') {
+      const root = resolve(APPS_DIR, e.name, 'server/tools')
+      try {
+        const stat = await readdir(root)
+        if (stat.length > 0) out.push({ name: e.name, root })
+      } catch {
+        /* No tools dir — skip */
+      }
     }
-    out.push({ name: e.name, root })
-  }
   return out
+}
+const pushToolDetail = (lines: string[], t: { cliPath: string[]; meta: ExtractedMeta; tier: 'admin' | 'user' }): void => {
+  if (t.meta.examples.length === 0 && Object.keys(t.meta.argDescriptions).length === 0) return
+  lines.push(`### \`${t.cliPath.join(' ').replace(PROVIDER_PREFIX_RE, '')}\``, '')
+  if (Object.keys(t.meta.argDescriptions).length > 0) {
+    lines.push('Args:', '')
+    for (const [name, desc] of Object.entries(t.meta.argDescriptions)) lines.push(`- \`--${name}\` — ${escapeMd(desc)}`)
+    lines.push('')
+  }
+  if (t.meta.examples.length > 0) {
+    lines.push('Examples:', '', '```sh')
+    for (const ex of t.meta.examples) lines.push(ex)
+    lines.push('```', '')
+  }
 }
 const renderInventory = (
   appName: string,
@@ -70,21 +81,7 @@ const renderInventory = (
       )
     }
     lines.push('')
-    for (const t of list) {
-      if (t.meta.examples.length === 0 && Object.keys(t.meta.argDescriptions).length === 0) continue
-      lines.push(`### \`${t.cliPath.join(' ').replace(PROVIDER_PREFIX_RE, '')}\``, '')
-      if (Object.keys(t.meta.argDescriptions).length > 0) {
-        lines.push('Args:', '')
-        for (const [name, desc] of Object.entries(t.meta.argDescriptions))
-          lines.push(`- \`--${name}\` — ${escapeMd(desc)}`)
-        lines.push('')
-      }
-      if (t.meta.examples.length > 0) {
-        lines.push('Examples:', '', '```sh')
-        for (const ex of t.meta.examples) lines.push(ex)
-        lines.push('```', '')
-      }
-    }
+    for (const t of list) pushToolDetail(lines, t)
   }
   return `${lines.join('\n')}\n`
 }
@@ -100,8 +97,7 @@ const main = async (): Promise<void> => {
     const tools: { cliPath: string[]; meta: ExtractedMeta; tier: 'admin' | 'user' }[] = []
     for (const t of data.tools) {
       const m = metas.get(t.absPath)
-      if (!m) continue
-      tools.push({ cliPath: t.cliPath, meta: m, tier: t.tier })
+      if (m) tools.push({ cliPath: t.cliPath, meta: m, tier: t.tier })
     }
     const out = resolve(APPS_DIR, app.name, 'server', 'INVENTORY.md')
     await mkdir(dirname(out), { recursive: true })

@@ -1,8 +1,7 @@
-/** biome-ignore-all lint/nursery/noContinue: classify-or-skip loop */
 /** biome-ignore-all lint/nursery/noComponentHookFactories: codegen helper, not a React hook */
 /** biome-ignore-all lint/performance/useTopLevelRegex: codegen script */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential per-root scan */
-/* eslint-disable no-continue, no-await-in-loop */
+/* eslint-disable no-await-in-loop */
 import { Glob } from 'bun'
 import { readFile } from 'node:fs/promises'
 import { relative, resolve } from 'node:path'
@@ -70,37 +69,42 @@ const collectOne = async (
     const segments = rel.split('/')
     const [provider] = segments
     const filename = segments.at(-1)
-    if (!(provider && filename) || segments.length < 2) continue
-    if (SKIP_DIRS.has(provider)) continue
-    if (segments.slice(1).some(s => s.startsWith('_'))) continue
-    const baseName = filename.replace(/\.ts$/u, '')
-    const moduleSegs = [...segments.slice(0, -1), baseName]
-    const cliSegs = moduleSegs.map((s, i) => (i === 0 ? camelToKebab(s.replace(/^_/u, '')) : camelToKebab(s)))
-    const tier = provider.startsWith(TIER_ADMIN_PREFIX) ? 'admin' : 'user'
-    const importTarget = emitShim && shimsDir ? resolve(shimsDir, ...moduleSegs) : resolve(spec.root, ...moduleSegs)
-    const relImp = relative(outDir, importTarget).replaceAll('\\', '/')
-    const importPath = relImp.startsWith('.') ? relImp : `./${relImp}`
-    const importVar = `${moduleSegs.map((s, i) => (i === 0 ? s : s.charAt(0).toUpperCase() + s.slice(1))).join('')}_mod`
-    const absPath = resolve(spec.root, rel)
-    const detected = await detectKind(absPath)
-    if (!detected) continue
-    providers.add(provider)
-    const fnAccessor = `internal.tools.${moduleSegs.join('.')}.${detected.exportName}`
-    tools.push({
-      absPath,
-      allExports: detected.allExports,
-      cliPath: cliSegs,
-      exportName: detected.exportName,
-      fnAccessor,
-      importBase: emitShim ? spec.importBase : null,
-      importPath,
-      importVar,
-      kind: detected.kind,
-      modulePath: moduleSegs,
-      registryKey: cliSegs.join('.'),
-      tier,
-      useNode: detected.useNode
-    })
+    const skip =
+      !(provider && filename) ||
+      segments.length < 2 ||
+      SKIP_DIRS.has(provider) ||
+      segments.slice(1).some(s => s.startsWith('_'))
+    if (!skip && provider && filename) {
+      const baseName = filename.replace(/\.ts$/u, '')
+      const moduleSegs = [...segments.slice(0, -1), baseName]
+      const cliSegs = moduleSegs.map((s, i) => (i === 0 ? camelToKebab(s.replace(/^_/u, '')) : camelToKebab(s)))
+      const tier = provider.startsWith(TIER_ADMIN_PREFIX) ? 'admin' : 'user'
+      const importTarget = emitShim && shimsDir ? resolve(shimsDir, ...moduleSegs) : resolve(spec.root, ...moduleSegs)
+      const relImp = relative(outDir, importTarget).replaceAll('\\', '/')
+      const importPath = relImp.startsWith('.') ? relImp : `./${relImp}`
+      const importVar = `${moduleSegs.map((s, i) => (i === 0 ? s : s.charAt(0).toUpperCase() + s.slice(1))).join('')}_mod`
+      const absPath = resolve(spec.root, rel)
+      const detected = await detectKind(absPath)
+      if (detected) {
+        providers.add(provider)
+        const fnAccessor = `internal.tools.${moduleSegs.join('.')}.${detected.exportName}`
+        tools.push({
+          absPath,
+          allExports: detected.allExports,
+          cliPath: cliSegs,
+          exportName: detected.exportName,
+          fnAccessor,
+          importBase: emitShim ? spec.importBase : null,
+          importPath,
+          importVar,
+          kind: detected.kind,
+          modulePath: moduleSegs,
+          registryKey: cliSegs.join('.'),
+          tier,
+          useNode: detected.useNode
+        })
+      }
+    }
   }
   return { providers: [...providers], tools }
 }

@@ -1,6 +1,4 @@
-/* eslint-disable no-continue */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops */
-/** biome-ignore-all lint/nursery/noContinue: control flow shape */
 /** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
 /* eslint-disable no-await-in-loop */
 import { v } from 'convex/values'
@@ -34,8 +32,7 @@ const testOwnersSet = async (ctx: QueryCtx): Promise<Set<string>> => {
   const costRows = await ctx.db.query('costRecords').take(10_000)
   for (const r of costRows) {
     const owner = r.owner.toLowerCase()
-    if (out.has(owner) || realByEmail.has(owner)) continue
-    if (matchesOrphanTestPattern(owner)) out.add(owner)
+    if (!(out.has(owner) || realByEmail.has(owner)) && matchesOrphanTestPattern(owner)) out.add(owner)
   }
   return out
 }
@@ -189,24 +186,23 @@ const costCyclePivot = query({
       string,
       { cents: number; inputTokens: number; model: string; outputTokens: number; owner: string }
     >()
-    for (const r of rows) {
-      if (r.dayKey < cycle.start || r.dayKey > cycle.end) continue
-      if (isTestOwner(r.owner, testOwners)) continue
-      const key = `${r.owner}|${r.model}`
-      const e = agg.get(key)
-      if (e) {
-        e.cents += r.cents
-        e.inputTokens += r.inputTokens
-        e.outputTokens += r.outputTokens
-      } else
-        agg.set(key, {
-          cents: r.cents,
-          inputTokens: r.inputTokens,
-          model: r.model,
-          outputTokens: r.outputTokens,
-          owner: r.owner
-        })
-    }
+    for (const r of rows)
+      if (r.dayKey >= cycle.start && r.dayKey <= cycle.end && !isTestOwner(r.owner, testOwners)) {
+        const key = `${r.owner}|${r.model}`
+        const e = agg.get(key)
+        if (e) {
+          e.cents += r.cents
+          e.inputTokens += r.inputTokens
+          e.outputTokens += r.outputTokens
+        } else
+          agg.set(key, {
+            cents: r.cents,
+            inputTokens: r.inputTokens,
+            model: r.model,
+            outputTokens: r.outputTokens,
+            owner: r.owner
+          })
+      }
     return [...agg.values()].toSorted((a, b) => b.cents - a.cents)
   }
 })
@@ -311,13 +307,13 @@ const computeTrain = async (ctx: QueryCtx): Promise<{ now: number; topics: Topic
   }
   const topicIdSet = new Set(topicsWithPool.map(t => t._id))
   const assignmentsByCell = new Map<string, (typeof allAssignments)[number][]>()
-  for (const a of allAssignments) {
-    if (!topicIdSet.has(a.topicId)) continue
-    const k = cellKey(a.userId, a.topicId)
-    const list = assignmentsByCell.get(k)
-    if (list) list.push(a)
-    else assignmentsByCell.set(k, [a])
-  }
+  for (const a of allAssignments)
+    if (topicIdSet.has(a.topicId)) {
+      const k = cellKey(a.userId, a.topicId)
+      const list = assignmentsByCell.get(k)
+      if (list) list.push(a)
+      else assignmentsByCell.set(k, [a])
+    }
   const assignedPassByCell = new Set<string>()
   for (const p of allPasses)
     if (p.kind === 'assigned' && topicIdSet.has(p.topicId)) assignedPassByCell.add(cellKey(p.userId, p.topicId))
@@ -443,38 +439,38 @@ const assignmentsTable = query({
       .take(5000)
     const topicNames = new Map<string, string>()
     const all: AssignRow[] = []
-    for (const a of live) {
-      if (!deptOf.has(a.userId)) continue
-      let name = topicNames.get(a.topicId)
-      if (name === undefined) {
-        const t = await ctx.db.get(a.topicId)
-        name = t?.name ?? '(deleted test)'
-        topicNames.set(a.topicId, name)
+    for (const a of live)
+      if (deptOf.has(a.userId)) {
+        let name = topicNames.get(a.topicId)
+        if (name === undefined) {
+          const t = await ctx.db.get(a.topicId)
+          name = t?.name ?? '(deleted test)'
+          topicNames.set(a.topicId, name)
+        }
+        const passed = await ctx.db
+          .query('testPasses')
+          .withIndex('by_user_topic_kind', q => q.eq('userId', a.userId).eq('topicId', a.topicId).eq('kind', 'assigned'))
+          .collect()
+        const dueAt = a.dueAtMs ?? a.createdAt + dueMs
+        let st: AssignRow['status'] = 'open'
+        let overdueDays = 0
+        if (passed[0]) st = 'passed'
+        else if (now > dueAt) {
+          st = 'overdue'
+          overdueDays = Math.max(1, Math.ceil((now - dueAt) / DAY_MS))
+        }
+        all.push({
+          assigned: vnDate(a.createdAt),
+          at: a.createdAt,
+          deadline: vnDate(dueAt),
+          department: deptOf.get(a.userId) ?? '—',
+          overdueDays,
+          source: a.createdBy === 'agent' ? 'agent' : 'admin',
+          status: st,
+          test: name,
+          userId: a.userId
+        })
       }
-      const passed = await ctx.db
-        .query('testPasses')
-        .withIndex('by_user_topic_kind', q => q.eq('userId', a.userId).eq('topicId', a.topicId).eq('kind', 'assigned'))
-        .collect()
-      const dueAt = a.dueAtMs ?? a.createdAt + dueMs
-      let st: AssignRow['status'] = 'open'
-      let overdueDays = 0
-      if (passed[0]) st = 'passed'
-      else if (now > dueAt) {
-        st = 'overdue'
-        overdueDays = Math.max(1, Math.ceil((now - dueAt) / DAY_MS))
-      }
-      all.push({
-        assigned: vnDate(a.createdAt),
-        at: a.createdAt,
-        deadline: vnDate(dueAt),
-        department: deptOf.get(a.userId) ?? '—',
-        overdueDays,
-        source: a.createdBy === 'agent' ? 'agent' : 'admin',
-        status: st,
-        test: name,
-        userId: a.userId
-      })
-    }
     const latest = all[0] ?? null
     const facets = {
       assigneds: uniqSorted(all.map(r => r.assigned)),
@@ -834,12 +830,13 @@ const testDetail = query({
     let totalAssigned = 0
     for (const u of userRows) {
       const c = await classifyUserForTest(ctx, { dueMs, now, topicId: topic._id, u })
-      if (c.bucket === 'skip') continue
-      totalAssigned += 1
-      if (c.isOverdue) overdueCount += 1
-      if (c.bucket === 'pass') winners.push(c.row)
-      else if (c.bucket === 'never') notStarted.push(c.row)
-      else strugglers.push(c.row)
+      if (c.bucket !== 'skip') {
+        totalAssigned += 1
+        if (c.isOverdue) overdueCount += 1
+        if (c.bucket === 'pass') winners.push(c.row)
+        else if (c.bucket === 'never') notStarted.push(c.row)
+        else strugglers.push(c.row)
+      }
     }
     winners.sort((a, b) => (b.lastAt ?? 0) - (a.lastAt ?? 0))
     strugglers.sort((a, b) => b.attemptCount - a.attemptCount || (b.lastAt ?? 0) - (a.lastAt ?? 0))

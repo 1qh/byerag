@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/nursery/noContinue: classify-or-skip loop */
-/* eslint-disable no-continue */
 'use client'
 import type { Id } from 'backend/convex/_generated/dataModel'
 import { api } from 'backend/convex/_generated/api'
@@ -147,12 +145,13 @@ const useChatConvex = ({ chatId }: { chatId: Id<'chats'> | null }): UseChatResul
   const lastUserText = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i -= 1) {
       const m = messages[i]
-      if (m?.role !== 'user') continue
-      const txt = m.parts
-        .filter((p): p is Extract<typeof p, { type: 'text' }> => p.type === 'text')
-        .map(p => p.text)
-        .join('\n')
-      if (txt.trim()) return txt
+      if (m?.role === 'user') {
+        const txt = m.parts
+          .filter((p): p is Extract<typeof p, { type: 'text' }> => p.type === 'text')
+          .map(p => p.text)
+          .join('\n')
+        if (txt.trim()) return txt
+      }
     }
     return null
   }, [messages])

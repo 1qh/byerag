@@ -1,7 +1,6 @@
 #!/usr/bin/env bun
-/* eslint-disable no-console, no-await-in-loop, no-continue */
+/* eslint-disable no-console, no-await-in-loop */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential script ops */
-/** biome-ignore-all lint/nursery/noContinue: skip-when-already-tagged */
 import { ConvexHttpClient } from 'convex/browser'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -31,9 +30,10 @@ for (const u of users) {
   const lower = u.userId.toLowerCase()
   const isTest = TEST_PATTERNS.some(p => lower.includes(p))
   const kind: 'real' | 'test' = isTest ? 'test' : 'real'
-  if (u.kind === kind) continue
-  await c.mutation(api.testing.markProfileKind, { kind, testSecret: ts, userId: u.userId })
-  tagged.push({ kind, userId: u.userId })
+  if (u.kind !== kind) {
+    await c.mutation(api.testing.markProfileKind, { kind, testSecret: ts, userId: u.userId })
+    tagged.push({ kind, userId: u.userId })
+  }
 }
 console.log(`tagged ${tagged.length} profile(s):`)
 for (const t of tagged) console.log(`  ${t.kind === 'test' ? '[test]' : '[real]'} ${t.userId}`)

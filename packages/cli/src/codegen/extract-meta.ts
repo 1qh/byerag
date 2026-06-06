@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/nursery/noContinue: walker */
-/* eslint-disable no-continue */
 import ts from 'typescript'
 
 const DEFINE_RE = /^define(?<kind>Tool|Query|Mutation)$/u
@@ -33,19 +31,20 @@ const findProp = (obj: ts.ObjectLiteralExpression, name: string): ts.Expression 
   for (const p of obj.properties)
     if (ts.isPropertyAssignment(p) && ts.isIdentifier(p.name) && p.name.text === name) return p.initializer
 }
+const collectArgDescription = (out: Record<string, string>, p: ts.ObjectLiteralElementLike): void => {
+  if (!(ts.isPropertyAssignment(p) && ts.isIdentifier(p.name))) return
+  const call = p.initializer
+  if (!ts.isCallExpression(call)) return
+  const optsArg = call.arguments.find(ts.isObjectLiteralExpression)
+  if (!optsArg) return
+  const desc = readString(findProp(optsArg, 'description'))
+  if (desc) out[p.name.text] = desc
+}
 const extractArgDescriptions = (defineArgs: ts.ObjectLiteralExpression): Record<string, string> => {
   const out: Record<string, string> = {}
   const argsObj = readObject(findProp(defineArgs, 'args'))
   if (!argsObj) return out
-  for (const p of argsObj.properties) {
-    if (!(ts.isPropertyAssignment(p) && ts.isIdentifier(p.name))) continue
-    const call = p.initializer
-    if (!ts.isCallExpression(call)) continue
-    const optsArg = call.arguments.find(ts.isObjectLiteralExpression)
-    if (!optsArg) continue
-    const desc = readString(findProp(optsArg, 'description'))
-    if (desc) out[p.name.text] = desc
-  }
+  for (const p of argsObj.properties) collectArgDescription(out, p)
   return out
 }
 const findDefineCall = (source: ts.SourceFile): ts.CallExpression | undefined => {
@@ -62,22 +61,21 @@ const extractMeta = (toolFiles: string[]): Map<string, ExtractedMeta> => {
   const out = new Map<string, ExtractedMeta>()
   for (const file of toolFiles) {
     const text = ts.sys.readFile(file)
-    if (!text) continue
-    const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true)
-    const call = findDefineCall(source)
-    const defineArgs = call?.arguments[0]
-    if (!(defineArgs && ts.isObjectLiteralExpression(defineArgs))) continue
-    const description = readString(findProp(defineArgs, 'description')) ?? ''
-    const examples = readStringArray(findProp(defineArgs, 'examples')) ?? []
-    const version = readNumber(findProp(defineArgs, 'version')) ?? 1
-    const deprecated = readString(findProp(defineArgs, 'deprecated'))
-    out.set(file, {
-      argDescriptions: extractArgDescriptions(defineArgs),
-      ...(deprecated ? { deprecated } : {}),
-      description,
-      examples,
-      version
-    })
+    const source = text ? ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true) : null
+    const defineArgs = source ? findDefineCall(source)?.arguments[0] : null
+    if (defineArgs && ts.isObjectLiteralExpression(defineArgs)) {
+      const description = readString(findProp(defineArgs, 'description')) ?? ''
+      const examples = readStringArray(findProp(defineArgs, 'examples')) ?? []
+      const version = readNumber(findProp(defineArgs, 'version')) ?? 1
+      const deprecated = readString(findProp(defineArgs, 'deprecated'))
+      out.set(file, {
+        argDescriptions: extractArgDescriptions(defineArgs),
+        ...(deprecated ? { deprecated } : {}),
+        description,
+        examples,
+        version
+      })
+    }
   }
   return out
 }

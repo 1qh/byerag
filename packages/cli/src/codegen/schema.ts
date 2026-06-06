@@ -1,6 +1,5 @@
-/** biome-ignore-all lint/nursery/noContinue: recursive walker */
 /** biome-ignore-all lint/suspicious/noBitwiseOperators: ts.TypeFlags needs bitwise */
-/* eslint-disable complexity, no-bitwise, no-continue, @typescript-eslint/no-unnecessary-condition */
+/* eslint-disable complexity, no-bitwise, @typescript-eslint/no-unnecessary-condition */
 import { resolve } from 'node:path'
 import ts from 'typescript'
 
@@ -91,11 +90,12 @@ const extractSchemas = (toolFiles: string[]): Map<string, Extracted> => {
       const props = type.getProperties().toSorted((a, b) => a.name.localeCompare(b.name))
       for (const prop of props) {
         const decl = prop.valueDeclaration ?? prop.declarations?.[0]
-        if (!decl) continue
-        const propType = checker.getTypeOfSymbolAtLocation(prop, decl)
-        const hasUndef = propType.isUnion() && propType.types.some(t => Boolean(t.flags & ts.TypeFlags.Undefined))
-        const optional = (prop.flags & ts.SymbolFlags.Optional) !== 0 || hasUndef
-        shape[prop.name] = { optional, schema: typeToSchema(propType, depth + 1) }
+        if (decl) {
+          const propType = checker.getTypeOfSymbolAtLocation(prop, decl)
+          const hasUndef = propType.isUnion() && propType.types.some(t => Boolean(t.flags & ts.TypeFlags.Undefined))
+          const optional = (prop.flags & ts.SymbolFlags.Optional) !== 0 || hasUndef
+          shape[prop.name] = { optional, schema: typeToSchema(propType, depth + 1) }
+        }
       }
       return { kind: 'object', shape }
     }
@@ -104,38 +104,39 @@ const extractSchemas = (toolFiles: string[]): Map<string, Extracted> => {
   const out = new Map<string, Extracted>()
   for (const file of toolFiles) {
     const src = program.getSourceFile(file)
-    if (!src) continue
-    ts.forEachChild(src, node => {
-      if (!ts.isVariableStatement(node)) return
-      for (const decl of node.declarationList.declarations) {
-        if (!ts.isIdentifier(decl.name)) continue
-        if (!['action', 'mutation', 'query'].includes(decl.name.text)) continue
-        if (!(decl.initializer && ts.isCallExpression(decl.initializer))) continue
-        const opts = decl.initializer.arguments[0]
-        if (!(opts && ts.isObjectLiteralExpression(opts))) continue
-        const handlerProp = opts.properties.find(
-          p => ts.isPropertyAssignment(p) && ts.isIdentifier(p.name) && p.name.text === 'handler'
-        )
-        if (!(handlerProp && ts.isPropertyAssignment(handlerProp))) continue
-        const sigs = checker.getTypeAtLocation(handlerProp.initializer).getCallSignatures()
-        const [firstSig] = sigs
-        if (!firstSig) continue
-        const returnType = checker.getReturnTypeOfSignature(firstSig)
-        const awaited = checker.getAwaitedType?.(returnType) ?? returnType
-        const params = firstSig.getParameters()
-        const argsParam = params[1]
-        let argsSchema: null | SchemaNode = null
-        if (argsParam?.valueDeclaration) {
-          const argsType = checker.getTypeOfSymbolAtLocation(argsParam, argsParam.valueDeclaration)
-          argsSchema = typeToSchema(argsType)
-        }
-        const jsdocs = ts.getJSDocCommentsAndTags(node)
-        const jsdocNode = jsdocs.find(d => ts.isJSDoc(d))
-        const commentText = jsdocNode?.comment
-        const jsdoc = typeof commentText === 'string' ? commentText.trim() : null
-        out.set(file, { args: argsSchema, jsdoc, schema: typeToSchema(awaited) })
+    const processDecl = (node: ts.VariableStatement, decl: ts.VariableDeclaration): void => {
+      if (!ts.isIdentifier(decl.name)) return
+      if (!['action', 'mutation', 'query'].includes(decl.name.text)) return
+      if (!(decl.initializer && ts.isCallExpression(decl.initializer))) return
+      const opts = decl.initializer.arguments[0]
+      if (!(opts && ts.isObjectLiteralExpression(opts))) return
+      const handlerProp = opts.properties.find(
+        p => ts.isPropertyAssignment(p) && ts.isIdentifier(p.name) && p.name.text === 'handler'
+      )
+      if (!(handlerProp && ts.isPropertyAssignment(handlerProp))) return
+      const sigs = checker.getTypeAtLocation(handlerProp.initializer).getCallSignatures()
+      const [firstSig] = sigs
+      if (!firstSig) return
+      const returnType = checker.getReturnTypeOfSignature(firstSig)
+      const awaited = checker.getAwaitedType?.(returnType) ?? returnType
+      const params = firstSig.getParameters()
+      const argsParam = params[1]
+      let argsSchema: null | SchemaNode = null
+      if (argsParam?.valueDeclaration) {
+        const argsType = checker.getTypeOfSymbolAtLocation(argsParam, argsParam.valueDeclaration)
+        argsSchema = typeToSchema(argsType)
       }
-    })
+      const jsdocs = ts.getJSDocCommentsAndTags(node)
+      const jsdocNode = jsdocs.find(d => ts.isJSDoc(d))
+      const commentText = jsdocNode?.comment
+      const jsdoc = typeof commentText === 'string' ? commentText.trim() : null
+      out.set(file, { args: argsSchema, jsdoc, schema: typeToSchema(awaited) })
+    }
+    if (src)
+      ts.forEachChild(src, node => {
+        if (!ts.isVariableStatement(node)) return
+        for (const decl of node.declarationList.declarations) processDecl(node, decl)
+      })
   }
   return out
 }

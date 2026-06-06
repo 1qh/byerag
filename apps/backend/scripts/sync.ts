@@ -1,7 +1,6 @@
 #!/usr/bin/env bun
-/* eslint-disable no-console, no-await-in-loop, no-continue, max-depth */
+/* eslint-disable no-console, no-await-in-loop, max-depth */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential env push by design */
-/** biome-ignore-all lint/nursery/noContinue: env parser */
 import { $, file } from 'bun'
 import { createPrivateKey, createPublicKey, generateKeyPairSync } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
@@ -46,36 +45,35 @@ const parseDotEnv = (text: string): Record<string, string> => {
   const lines = text.split('\n')
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i] ?? ''
-    if (!line.trim() || line.trim().startsWith('#')) continue
-    const m = ENV_KEY_RE.exec(line)
-    if (!m?.groups) continue
-    const { key } = m.groups
-    let rest = m.groups.rest ?? ''
-    if (!key) continue
-    const quote = rest.startsWith('"') ? '"' : rest.startsWith("'") ? "'" : null
-    let value: string
-    if (quote) {
-      rest = rest.slice(1)
-      const closeOnSame = rest.indexOf(quote)
-      if (closeOnSame !== -1 && !rest.slice(0, closeOnSame).endsWith('\\')) value = rest.slice(0, closeOnSame)
-      else {
-        const buf = [rest]
-        i += 1
-        while (i < lines.length) {
-          const next = lines[i] ?? ''
-          const close = next.indexOf(quote)
-          if (close !== -1) {
-            buf.push(next.slice(0, close))
-            break
-          }
-          buf.push(next)
+    const m = line.trim() && !line.trim().startsWith('#') ? ENV_KEY_RE.exec(line) : null
+    const key = m?.groups?.key
+    let rest = m?.groups?.rest ?? ''
+    if (key) {
+      const quote = rest.startsWith('"') ? '"' : rest.startsWith("'") ? "'" : null
+      let value: string
+      if (quote) {
+        rest = rest.slice(1)
+        const closeOnSame = rest.indexOf(quote)
+        if (closeOnSame !== -1 && !rest.slice(0, closeOnSame).endsWith('\\')) value = rest.slice(0, closeOnSame)
+        else {
+          const buf = [rest]
           i += 1
+          while (i < lines.length) {
+            const next = lines[i] ?? ''
+            const close = next.indexOf(quote)
+            if (close !== -1) {
+              buf.push(next.slice(0, close))
+              break
+            }
+            buf.push(next)
+            i += 1
+          }
+          value = buf.join('\n')
         }
-        value = buf.join('\n')
-      }
-    } else value = rest.trim()
-    if (key in out) throw new Error(`duplicate key '${key}' in .env`)
-    out[key] = value
+      } else value = rest.trim()
+      if (key in out) throw new Error(`duplicate key '${key}' in .env`)
+      out[key] = value
+    }
   }
   return out
 }

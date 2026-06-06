@@ -1,5 +1,4 @@
-/* eslint-disable no-await-in-loop, no-continue */
-/** biome-ignore-all lint/nursery/noContinue: control flow shape */
+/* eslint-disable no-await-in-loop */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
 /** biome-ignore-all lint/nursery/noPlaywrightUselessAwait: Convex .first() is thenable */
 import { v } from 'convex/values'
@@ -179,15 +178,15 @@ const persistChunks = internalMutation({
     for (const e of existing) await ctx.db.delete(e._id)
     for (let i = 0; i < chunks.length; i += 1) {
       const ch = chunks[i]
-      if (!ch) continue
-      await ctx.db.insert('docChunks', {
-        docId,
-        embedding: ch.embedding,
-        end: ch.end,
-        seq: i,
-        start: ch.start,
-        text: ch.text
-      })
+      if (ch)
+        await ctx.db.insert('docChunks', {
+          docId,
+          embedding: ch.embedding,
+          end: ch.end,
+          seq: i,
+          start: ch.start,
+          text: ch.text
+        })
     }
     await ctx.db.patch(docId, { embedding: c })
   }
@@ -274,10 +273,16 @@ const getChunkRows = internalQuery({
     const out: ChunkRow[] = []
     for (const id of ids) {
       const row = await ctx.db.get(id)
-      if (!row) continue
-      const parent = await ctx.db.get(row.docId)
-      if (parent && parent.deletedAt === undefined && parent.scanStatus === 'clean' && parent.policyStatus === 'approved')
-        out.push({ _id: row._id, docId: row.docId, seq: row.seq, text: row.text })
+      if (row) {
+        const parent = await ctx.db.get(row.docId)
+        if (
+          parent &&
+          parent.deletedAt === undefined &&
+          parent.scanStatus === 'clean' &&
+          parent.policyStatus === 'approved'
+        )
+          out.push({ _id: row._id, docId: row.docId, seq: row.seq, text: row.text })
+      }
     }
     return out
   }
@@ -735,20 +740,20 @@ const listPolicyPending = query({
     for (const r of pending) {
       const errored = r.policyReason?.startsWith('classifier-error:') ?? false
       const stuck = r.uploadedAt < stuckCutoff
-      if (!(errored || stuck)) continue
-      inbox.push({
-        _id: r._id,
-        filename: r.filename,
-        kind: errored ? 'errored' : 'stuck',
-        policyCategory: r.policyCategory,
-        policyReason: r.policyReason,
-        policyReviewRequestedAt: r.policyReviewRequestedAt,
-        policyStatus: r.policyStatus,
-        scope: r.scope,
-        uploadedAt: r.uploadedAt,
-        uploadedBy: r.uploadedBy,
-        version: r.version
-      })
+      if (errored || stuck)
+        inbox.push({
+          _id: r._id,
+          filename: r.filename,
+          kind: errored ? 'errored' : 'stuck',
+          policyCategory: r.policyCategory,
+          policyReason: r.policyReason,
+          policyReviewRequestedAt: r.policyReviewRequestedAt,
+          policyStatus: r.policyStatus,
+          scope: r.scope,
+          uploadedAt: r.uploadedAt,
+          uploadedBy: r.uploadedBy,
+          version: r.version
+        })
     }
     for (const r of appealed)
       inbox.push({

@@ -1,7 +1,6 @@
 /* oxlint-disable unicorn/no-process-exit, promise/param-names */
-/** biome-ignore-all lint/nursery/noContinue: env parser */
 /** biome-ignore-all lint/performance/noAwaitInLoops: polling */
-/* eslint-disable no-console, no-await-in-loop, no-continue */
+/* eslint-disable no-console, no-await-in-loop */
 import type { Id } from 'backend/convex/_generated/dataModel'
 import { api } from 'backend/convex/_generated/api'
 import { ConvexHttpClient } from 'convex/browser'
@@ -11,11 +10,11 @@ import { join, resolve } from 'node:path'
 const ENV_LINE_RE = /^\s*(?<key>[A-Z_][A-Z0-9_]*)\s*=(?<rest>.*)$/u
 const parseEnv = (text: string): Record<string, string> => {
   const out: Record<string, string> = {}
-  for (const line of text.split('\n')) {
-    if (!line.trim() || line.trim().startsWith('#')) continue
-    const m = ENV_LINE_RE.exec(line)
-    if (m?.groups?.key) out[m.groups.key] = (m.groups.rest ?? '').trim().replaceAll(/^["']|["']$/gu, '')
-  }
+  for (const line of text.split('\n'))
+    if (line.trim() && !line.trim().startsWith('#')) {
+      const m = ENV_LINE_RE.exec(line)
+      if (m?.groups?.key) out[m.groups.key] = (m.groups.rest ?? '').trim().replaceAll(/^["']|["']$/gu, '')
+    }
   return out
 }
 const sleep = async (ms: number): Promise<void> =>

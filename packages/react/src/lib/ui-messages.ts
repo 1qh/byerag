@@ -1,5 +1,4 @@
-/** biome-ignore-all lint/nursery/noContinue: state-machine loop, continue is clearest */
-/* eslint-disable complexity, no-continue */
+/* eslint-disable complexity */
 import type { ContentBlock } from 'backend/convex/streamProtocol'
 import type { ChatChunk } from '../parsers/chunks'
 
@@ -56,50 +55,47 @@ const blocksToParts = (
     parts.push({ items: [...sourceBuf], type: 'data-sources' })
     sourceBuf.length = 0
   }
-  for (const b of blocks) {
+  for (const b of blocks)
     if (b.type === 'text') {
       flushSources()
       const txt = 'text' in b ? (b.text ?? '') : ''
       if (txt.trim()) parts.push({ text: txt, type: 'text' })
-      continue
-    }
-    if (b.type === 'thinking') {
+    } else if (b.type === 'thinking') {
       flushSources()
       const txt = 'thinking' in b ? (b.thinking ?? '') : ''
       if (txt.trim()) parts.push({ text: txt, type: 'reasoning' })
-      continue
-    }
-    if (isToolUse(b)) {
-      if (!('id' in b && b.id)) continue
-      const match = resultsById.get(b.id)
-      if (b.type === 'server_tool_use' && match && isSearchResult(match)) {
-        sourceBuf.push({ content: 'content' in match ? match.content : undefined, type: match.type as SearchItem['type'] })
-        continue
+    } else if (isToolUse(b)) {
+      if ('id' in b && b.id) {
+        const match = resultsById.get(b.id)
+        if (b.type === 'server_tool_use' && match && isSearchResult(match))
+          sourceBuf.push({
+            content: 'content' in match ? match.content : undefined,
+            type: match.type as SearchItem['type']
+          })
+        else {
+          flushSources()
+          parts.push({
+            input: 'input' in b ? b.input : undefined,
+            output: match && 'content' in match ? match.content : undefined,
+            state: match ? 'output-available' : 'input-streaming',
+            toolName: 'name' in b ? (b.name ?? 'tool') : 'tool',
+            type: 'data-tool-x'
+          })
+        }
       }
-      flushSources()
-      parts.push({
-        input: 'input' in b ? b.input : undefined,
-        output: match && 'content' in match ? match.content : undefined,
-        state: match ? 'output-available' : 'input-streaming',
-        toolName: 'name' in b ? (b.name ?? 'tool') : 'tool',
-        type: 'data-tool-x'
-      })
-      continue
-    }
-    if (isAnyResult(b)) {
+    } else if (isAnyResult(b)) {
       const paired = 'tool_use_id' in b && b.tool_use_id ? allToolUseIds.has(b.tool_use_id) : false
-      if (paired) continue
-      if (isSearchResult(b)) {
-        sourceBuf.push({ content: 'content' in b ? b.content : undefined, type: b.type as SearchItem['type'] })
-        continue
-      }
+      if (!paired)
+        if (isSearchResult(b))
+          sourceBuf.push({ content: 'content' in b ? b.content : undefined, type: b.type as SearchItem['type'] })
+        else {
+          flushSources()
+          parts.push({ type: 'raw', value: b })
+        }
+    } else {
       flushSources()
       parts.push({ type: 'raw', value: b })
-      continue
     }
-    flushSources()
-    parts.push({ type: 'raw', value: b })
-  }
   flushSources()
   return parts
 }

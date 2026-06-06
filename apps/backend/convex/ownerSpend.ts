@@ -339,9 +339,7 @@ const auditInvariants = internalMutation({
           owner: r.owner
         })
         await ctx.db.patch(r._id, { centsToday: 0, inflight: 0 })
-        continue
-      }
-      if (
+      } else if (
         (r.inflight ?? 0) > 0 &&
         r.lastActivityAtMs !== undefined &&
         Date.now() - r.lastActivityAtMs > STALE_INFLIGHT_MS

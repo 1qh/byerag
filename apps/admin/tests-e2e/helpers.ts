@@ -1,7 +1,5 @@
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential test ops */
 /** biome-ignore-all lint/style/noProcessEnv: test env access */
-/** biome-ignore-all lint/nursery/noContinue: poll loop */
-/* eslint-disable no-continue */
 /* eslint-disable no-await-in-loop, no-console, @typescript-eslint/max-params, @typescript-eslint/prefer-destructuring, @typescript-eslint/prefer-nullish-coalescing */
 /* oxlint-disable unicorn/no-process-exit */
 import { api } from 'backend/convex/_generated/api'
@@ -91,22 +89,22 @@ const waitFor = async (chatId: string, minTurns = 1, timeoutS = 300) => {
         testSecret
       })
       if (!streaming) return true
-      continue
-    }
-    const events: { content: string }[] = await client.query(api.testing.listStreamEvents, {
-      chatId: chatId as never,
-      testSecret
-    })
-    if (
-      events.some((e: { content: string }) => {
-        try {
-          return (JSON.parse(e.content) as { type: string }).type === 'error'
-        } catch {
-          return false
-        }
+    } else {
+      const events: { content: string }[] = await client.query(api.testing.listStreamEvents, {
+        chatId: chatId as never,
+        testSecret
       })
-    )
-      return false
+      if (
+        events.some((e: { content: string }) => {
+          try {
+            return (JSON.parse(e.content) as { type: string }).type === 'error'
+          } catch {
+            return false
+          }
+        })
+      )
+        return false
+    }
   }
   return false
 }

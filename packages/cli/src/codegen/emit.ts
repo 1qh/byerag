@@ -1,6 +1,4 @@
-/** biome-ignore-all lint/nursery/noContinue: control flow */
 /** biome-ignore-all lint/performance/useTopLevelRegex: codegen helpers */
-/* eslint-disable no-continue */
 import { relative, resolve } from 'node:path'
 import type { ToolFile } from './scan'
 import type { Extracted, SchemaNode } from './schema'
@@ -44,16 +42,17 @@ const emitToolTypes = (tools: ToolFile[], schemas: Map<string, Extracted>): stri
   const exportedNames: string[] = []
   for (const t of tools) {
     const ex = schemas.get(t.absPath)
-    if (!ex) continue
-    const name = pascalCase(t.cliPath.join('-'))
-    const argsTs = ex.args ? schemaToTs(ex.args) : null
-    if (argsTs) {
-      lines.push(argsTs.startsWith('{') ? `interface ${name}Args ${argsTs}` : `type ${name}Args = ${argsTs}`, '')
-      exportedNames.push(`${name}Args`)
+    if (ex) {
+      const name = pascalCase(t.cliPath.join('-'))
+      const argsTs = ex.args ? schemaToTs(ex.args) : null
+      if (argsTs) {
+        lines.push(argsTs.startsWith('{') ? `interface ${name}Args ${argsTs}` : `type ${name}Args = ${argsTs}`, '')
+        exportedNames.push(`${name}Args`)
+      }
+      const resultTs = schemaToTs(ex.schema)
+      lines.push(resultTs.startsWith('{') ? `interface ${name}Result ${resultTs}` : `type ${name}Result = ${resultTs}`, '')
+      exportedNames.push(`${name}Result`)
     }
-    const resultTs = schemaToTs(ex.schema)
-    lines.push(resultTs.startsWith('{') ? `interface ${name}Result ${resultTs}` : `type ${name}Result = ${resultTs}`, '')
-    exportedNames.push(`${name}Result`)
   }
   lines.push(`export type { ${exportedNames.join(', ')} }`)
   return lines.join('\n')
@@ -96,17 +95,18 @@ const emitToolCallers = (tools: ToolFile[], schemas: Map<string, Extracted>): st
   const emits: Emit[] = []
   for (const t of tools) {
     const ex = schemas.get(t.absPath)
-    if (!ex) continue
-    const name = pascalCase(t.cliPath.join('-'))
-    const key = t.cliPath.join('.')
-    const ctxType = t.kind === 'query' ? 'QueryCtx' : t.kind === 'mutation' ? 'MutationCtx' : 'ActionCtx'
-    const argsType = ex.args ? `${name}Args` : 'Record<string, never>'
-    if (ex.args) typeImports.push(`${name}Args`)
-    typeImports.push(`${name}Result`)
-    tableEntries.push(
-      `  ${JSON.stringify(key)}: { args: ${argsType}; ctx: ${ctxType}; kind: '${t.kind}'; result: ${name}Result };`
-    )
-    emits.push({ args: argsType, ctxType, fn: t.fnAccessor, key, kind: t.kind, name, result: `${name}Result` })
+    if (ex) {
+      const name = pascalCase(t.cliPath.join('-'))
+      const key = t.cliPath.join('.')
+      const ctxType = t.kind === 'query' ? 'QueryCtx' : t.kind === 'mutation' ? 'MutationCtx' : 'ActionCtx'
+      const argsType = ex.args ? `${name}Args` : 'Record<string, never>'
+      if (ex.args) typeImports.push(`${name}Args`)
+      typeImports.push(`${name}Result`)
+      tableEntries.push(
+        `  ${JSON.stringify(key)}: { args: ${argsType}; ctx: ${ctxType}; kind: '${t.kind}'; result: ${name}Result };`
+      )
+      emits.push({ args: argsType, ctxType, fn: t.fnAccessor, key, kind: t.kind, name, result: `${name}Result` })
+    }
   }
   const internals: string[] = [`import type { ${typeImports.join(', ')} } from './toolTypes'`, '']
   const callerFns: string[] = []
@@ -212,17 +212,17 @@ interface ShimSpec {
 const emitShims = (tools: ToolFile[], shimsDir: string): ShimSpec[] => {
   const out: ShimSpec[] = []
   const seenProviders = new Map<string, string>()
-  for (const t of tools) {
-    if (t.importBase === null) continue
-    const absPath = `${resolve(shimsDir, ...t.modulePath)}.ts`
-    const importFrom = `${t.importBase}/${t.modulePath.join('/')}`
-    const exportList = t.allExports.join(', ')
-    const directive = t.useNode ? `'use node'\n` : ''
-    const source = `${directive}export { ${exportList} } from '${importFrom}'\n`
-    out.push({ absPath, source })
-    const provider = t.modulePath[0]
-    if (provider && !seenProviders.has(provider)) seenProviders.set(provider, t.importBase)
-  }
+  for (const t of tools)
+    if (t.importBase !== null) {
+      const absPath = `${resolve(shimsDir, ...t.modulePath)}.ts`
+      const importFrom = `${t.importBase}/${t.modulePath.join('/')}`
+      const exportList = t.allExports.join(', ')
+      const directive = t.useNode ? `'use node'\n` : ''
+      const source = `${directive}export { ${exportList} } from '${importFrom}'\n`
+      out.push({ absPath, source })
+      const provider = t.modulePath[0]
+      if (provider && !seenProviders.has(provider)) seenProviders.set(provider, t.importBase)
+    }
   for (const [provider, base] of seenProviders) {
     const absPath = `${resolve(shimsDir, provider, '_provider')}.ts`
     const importFrom = `${base}/${provider}/_provider`

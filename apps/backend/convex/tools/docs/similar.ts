@@ -1,6 +1,5 @@
-/* eslint-disable no-await-in-loop, no-continue */
+/* eslint-disable no-await-in-loop */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops */
-/** biome-ignore-all lint/nursery/noContinue: control flow shape */
 import type { Id } from '../../_generated/dataModel'
 import { internal } from '../../_generated/api'
 import { embedQuery, matryoshkaTruncate } from '../../docsEmbed'
@@ -80,15 +79,15 @@ const action = defineTool({
       }[] = []
       for (const h of topChunks) {
         const row = byChunkId.get(h._id)
-        if (!row) continue
-        granularOut.push({
-          _id: row.docId,
-          _score: h._score,
-          chunkSeq: row.seq,
-          filename: '',
-          scope: 'shared',
-          snippet: row.text.slice(0, 200)
-        })
+        if (row)
+          granularOut.push({
+            _id: row.docId,
+            _score: h._score,
+            chunkSeq: row.seq,
+            filename: '',
+            scope: 'shared',
+            snippet: row.text.slice(0, 200)
+          })
       }
       return granularOut
     }
@@ -122,15 +121,15 @@ const action = defineTool({
     }[] = []
     for (const h of top) {
       const row = byId.get(h._id)
-      if (!row) continue
-      out.push({
-        _id: h._id,
-        _score: h._score,
-        chunkSeq: 0,
-        filename: row.filename,
-        scope: row.scope,
-        snippet: row.snippet
-      })
+      if (row)
+        out.push({
+          _id: h._id,
+          _score: h._score,
+          chunkSeq: 0,
+          filename: row.filename,
+          scope: row.scope,
+          snippet: row.snippet
+        })
     }
     return out
   }

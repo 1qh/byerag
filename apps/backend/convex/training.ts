@@ -1,7 +1,6 @@
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops by design */
-/** biome-ignore-all lint/nursery/noContinue: control flow shape */
 /** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
-/* eslint-disable no-await-in-loop, complexity, no-continue -- sequential Convex DB ops by design; control flow shape; widened types from generated API */
+/* eslint-disable no-await-in-loop, complexity -- sequential Convex DB ops by design; control flow shape; widened types from generated API */
 import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
 import { internal } from './_generated/api'
@@ -229,10 +228,15 @@ const listMyTopics = query({
         .query('testQuestions')
         .withIndex('by_topic_deletedAt', q => q.eq('topicId', t._id).eq('deletedAt', undefined))
         .take(POOL_MIN + 1)
-      if (pool.length === 0) continue
-      const tid = t._id as string
-      const myStatus = assignedPassed.has(tid) ? 'passed-assigned' : selfPassed.has(tid) ? 'passed-self' : 'not-attempted'
-      out.push({ _id: t._id, myStatus, name: t.name, poolSize: pool.length })
+      if (pool.length > 0) {
+        const tid = t._id as string
+        const myStatus = assignedPassed.has(tid)
+          ? 'passed-assigned'
+          : selfPassed.has(tid)
+            ? 'passed-self'
+            : 'not-attempted'
+        out.push({ _id: t._id, myStatus, name: t.name, poolSize: pool.length })
+      }
     }
     return out
   }
@@ -253,6 +257,22 @@ const cosine = (a: number[], b: number[]): number => {
     nb += y * y
   }
   return na === 0 || nb === 0 ? 0 : dot / Math.sqrt(na * nb)
+}
+interface LiveTopic {
+  centroid: null | number[]
+  count: number
+  id: Id<'topics'>
+  name: string
+}
+const bestTopicMatch = (liveTopics: LiveTopic[], embedding: number[]): null | { id: Id<'topics'>; sim: number } => {
+  let best: null | { id: Id<'topics'>; sim: number } = null
+  const consider = (t: LiveTopic): void => {
+    if (!(t.centroid && t.centroid.length > 0)) return
+    const sim = cosine(t.centroid, embedding)
+    if (!best || sim > best.sim) best = { id: t.id, sim }
+  }
+  for (const t of liveTopics) consider(t)
+  return best
 }
 const persistSuggestionsWithEmbedding = internalMutation({
   args: {
@@ -283,12 +303,7 @@ const persistSuggestionsWithEmbedding = internalMutation({
     for (const q of questions) {
       let topicId: Id<'topics'> | undefined
       if (q.promptEmbedding.length > 0) {
-        let best: null | { id: Id<'topics'>; sim: number } = null
-        for (const t of liveTopics) {
-          if (!t.centroid || t.centroid.length === 0) continue
-          const sim = cosine(t.centroid, q.promptEmbedding)
-          if (!best || sim > best.sim) best = { id: t.id, sim }
-        }
+        const best = bestTopicMatch(liveTopics, q.promptEmbedding)
         if (best && best.sim >= TOPIC_MERGE_SIM) topicId = best.id
       } else {
         const named = liveTopics.find(t => t.name === q.topicName)
@@ -328,13 +343,11 @@ const persistSuggestionsWithEmbedding = internalMutation({
           .query('testQuestions')
           .withIndex('by_topic_deletedAt', x => x.eq('topicId', topicId as never).eq('deletedAt', undefined))
           .take(200)
-        for (const e of existingQs) {
-          const eqRows = await ctx.db
+        for (const e of existingQs)
+          await ctx.db
             .query('testQuestionSuggestions')
             .withIndex('by_target', x => x.eq('targetQuestionId', e._id))
             .collect()
-          if (eqRows[0]) continue
-        }
       }
       const currentPool = await ctx.db
         .query('testQuestions')
@@ -365,14 +378,16 @@ const persistSuggestionsWithEmbedding = internalMutation({
           .query('testQuestionSuggestions')
           .withIndex('by_topic_status', x => x.eq('topicId', topicId as never).eq('status', 'pending'))
           .take(500)
-        for (const p of peers) {
-          if (p._id === sid || !p.promptEmbedding || p.promptEmbedding.length === 0) continue
-          const c = cosine(p.promptEmbedding, q.promptEmbedding)
-          if (c >= DUP_COSINE_THRESHOLD) {
-            await ctx.db.patch(sid, { pairKind: 'conflict', pairedWith: p._id })
-            conflictsFlagged += 1
-            break
-          }
+        const conflict = peers.find(
+          p =>
+            p._id !== sid &&
+            p.promptEmbedding &&
+            p.promptEmbedding.length > 0 &&
+            cosine(p.promptEmbedding, q.promptEmbedding) >= DUP_COSINE_THRESHOLD
+        )
+        if (conflict) {
+          await ctx.db.patch(sid, { pairKind: 'conflict', pairedWith: conflict._id })
+          conflictsFlagged += 1
         }
       }
       suggestionsInserted += 1
@@ -836,14 +851,16 @@ const retireEmptyTopics = internalMutation({
         .query('testQuestions')
         .withIndex('by_topic_deletedAt', x => x.eq('topicId', t._id).eq('deletedAt', undefined))
         .take(1)
-      if (q1[0]) continue
-      const s1 = await ctx.db
-        .query('testQuestionSuggestions')
-        .withIndex('by_topic_status', x => x.eq('topicId', t._id).eq('status', 'pending'))
-        .take(1)
-      if (s1[0]) continue
-      await ctx.db.patch(t._id, { deletedAt: Date.now() })
-      retired += 1
+      if (!q1[0]) {
+        const s1 = await ctx.db
+          .query('testQuestionSuggestions')
+          .withIndex('by_topic_status', x => x.eq('topicId', t._id).eq('status', 'pending'))
+          .take(1)
+        if (!s1[0]) {
+          await ctx.db.patch(t._id, { deletedAt: Date.now() })
+          retired += 1
+        }
+      }
     }
     return { retired, scanned: topics.length }
   }
@@ -942,21 +959,19 @@ const assignComposer = mutation({
         .query('testPasses')
         .withIndex('by_user_topic_kind', q => q.eq('userId', userId).eq('topicId', topicId).eq('kind', 'assigned'))
         .collect()
-      if (passed[0]) {
-        skipped += 1
-        continue
+      if (passed[0]) skipped += 1
+      else {
+        const live = await ctx.db
+          .query('testAssignments')
+          .withIndex('by_user_topic', q => q.eq('userId', userId).eq('topicId', topicId))
+          .filter(q => q.eq(q.field('deletedAt'), undefined))
+          .collect()
+        if (live[0]) skipped += 1
+        else {
+          await ctx.db.insert('testAssignments', { createdAt: Date.now(), createdBy: email, dueAtMs, topicId, userId })
+          created += 1
+        }
       }
-      const live = await ctx.db
-        .query('testAssignments')
-        .withIndex('by_user_topic', q => q.eq('userId', userId).eq('topicId', topicId))
-        .filter(q => q.eq(q.field('deletedAt'), undefined))
-        .collect()
-      if (live[0]) {
-        skipped += 1
-        continue
-      }
-      await ctx.db.insert('testAssignments', { createdAt: Date.now(), createdBy: email, dueAtMs, topicId, userId })
-      created += 1
     }
     await ctx.db.insert('auditLogs', {
       args: JSON.stringify({

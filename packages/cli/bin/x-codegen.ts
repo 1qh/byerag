@@ -1,7 +1,6 @@
 #!/usr/bin/env bun
 /* eslint-disable no-console */
-/* eslint-disable no-continue, no-await-in-loop */
-/** biome-ignore-all lint/nursery/noContinue: classify loops */
+/* eslint-disable no-await-in-loop */
 /** biome-ignore-all lint/performance/noAwaitInLoops: small N (apps), fs IO ordered */
 import { createHash } from 'node:crypto'
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
@@ -16,16 +15,14 @@ const APPS_MANIFEST_OUT = resolve(process.cwd(), 'convex/apps/_apps.ts')
 const discoverAppsForManifest = async (): Promise<string[]> => {
   const out: string[] = []
   const entries = await readdir(APPS_DIR, { withFileTypes: true })
-  for (const e of entries) {
-    if (!e.isDirectory()) continue
-    if (e.name === 'backend') continue
-    try {
-      await readdir(resolve(APPS_DIR, e.name, 'server'))
-    } catch {
-      continue
-    }
-    out.push(e.name)
-  }
+  for (const e of entries)
+    if (e.isDirectory() && e.name !== 'backend')
+      try {
+        await readdir(resolve(APPS_DIR, e.name, 'server'))
+        out.push(e.name)
+      } catch {
+        /* No server dir — skip */
+      }
   return out.toSorted()
 }
 const emitAppsManifest = (apps: string[]): string => {
@@ -40,18 +37,16 @@ export { APPS }
 const discoverAppRoots = async (): Promise<{ importBase: string; root: string }[]> => {
   const out: { importBase: string; root: string }[] = []
   const entries = await readdir(APPS_DIR, { withFileTypes: true })
-  for (const e of entries) {
-    if (!e.isDirectory()) continue
-    if (e.name === 'backend') continue
-    const root = resolve(APPS_DIR, e.name, 'server/tools')
-    try {
-      const stat = await readdir(root)
-      if (stat.length === 0) continue
-    } catch {
-      continue
+  for (const e of entries)
+    if (e.isDirectory() && e.name !== 'backend') {
+      const root = resolve(APPS_DIR, e.name, 'server/tools')
+      try {
+        const stat = await readdir(root)
+        if (stat.length > 0) out.push({ importBase: `${e.name}/server/tools/`, root })
+      } catch {
+        /* No tools dir — skip */
+      }
     }
-    out.push({ importBase: `${e.name}/server/tools/`, root })
-  }
   return out
 }
 const GEN_DIR = resolve(PLATFORM_ROOT, 'generated')

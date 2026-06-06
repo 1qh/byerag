@@ -1,5 +1,3 @@
-/* eslint-disable no-continue */
-/** biome-ignore-all lint/nursery/noContinue: control flow shape */
 /* eslint-disable @typescript-eslint/only-throw-error -- fail() returns never (throws ToolError internally); rule misclassifies */
 import { arg, defineQuery, makeFail } from '../_api'
 
@@ -18,31 +16,29 @@ interface DocRow {
 }
 const visible = (r: DocRow): boolean =>
   r.deletedAt === undefined && r.scanStatus === 'clean' && r.policyStatus === 'approved'
+const emitHunkLine = (out: string[], av: string | undefined, bv: string | undefined): void => {
+  if (av === bv) {
+    out.push(` ${av ?? ''}`)
+    return
+  }
+  if (av !== undefined) out.push(`-${av}`)
+  if (bv !== undefined) out.push(`+${bv}`)
+}
 const unifiedDiff = (a: string[], b: string[], context: number): string => {
   const out: string[] = []
   const maxLen = Math.max(a.length, b.length)
   let i = 0
-  while (i < maxLen) {
-    if (a[i] === b[i]) {
-      i += 1
-      continue
+  while (i < maxLen)
+    if (a[i] === b[i]) i += 1
+    else {
+      const start = Math.max(0, i - context)
+      let end = i
+      while (end < maxLen && a[end] !== b[end]) end += 1
+      const stop = Math.min(maxLen, end + context)
+      out.push(`@@ ${start + 1},${stop - start} ${start + 1},${stop - start} @@`)
+      for (let k = start; k < stop; k += 1) emitHunkLine(out, a[k], b[k])
+      i = stop
     }
-    const start = Math.max(0, i - context)
-    let end = i
-    while (end < maxLen && a[end] !== b[end]) end += 1
-    const stop = Math.min(maxLen, end + context)
-    out.push(`@@ ${start + 1},${stop - start} ${start + 1},${stop - start} @@`)
-    for (let k = start; k < stop; k += 1) {
-      const av = a[k]
-      const bv = b[k]
-      if (av === bv) out.push(` ${av ?? ''}`)
-      else {
-        if (av !== undefined) out.push(`-${av}`)
-        if (bv !== undefined) out.push(`+${bv}`)
-      }
-    }
-    i = stop
-  }
   return out.join('\n')
 }
 const action = defineQuery({

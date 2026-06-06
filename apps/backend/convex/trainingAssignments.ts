@@ -1,6 +1,5 @@
-/* eslint-disable no-await-in-loop, no-continue */
+/* eslint-disable no-await-in-loop */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops */
-/** biome-ignore-all lint/nursery/noContinue: control flow shape */
 import { v } from 'convex/values'
 import type { MutationCtx } from './_generated/server'
 import { mutation, query } from './_generated/server'
@@ -37,15 +36,22 @@ const assignAllForTopic = mutation({
         .query('testPasses')
         .withIndex('by_user_topic_kind', q => q.eq('userId', u.userId).eq('topicId', topicId).eq('kind', 'assigned'))
         .collect()
-      if (passRows[0]) continue
-      const existingRows = await ctx.db
-        .query('testAssignments')
-        .withIndex('by_user_topic', q => q.eq('userId', u.userId).eq('topicId', topicId))
-        .filter(q => q.eq(q.field('deletedAt'), undefined))
-        .collect()
-      if (existingRows[0]) continue
-      await ctx.db.insert('testAssignments', { createdAt: Date.now(), createdBy: adminEmail, topicId, userId: u.userId })
-      created += 1
+      if (!passRows[0]) {
+        const existingRows = await ctx.db
+          .query('testAssignments')
+          .withIndex('by_user_topic', q => q.eq('userId', u.userId).eq('topicId', topicId))
+          .filter(q => q.eq(q.field('deletedAt'), undefined))
+          .collect()
+        if (!existingRows[0]) {
+          await ctx.db.insert('testAssignments', {
+            createdAt: Date.now(),
+            createdBy: adminEmail,
+            topicId,
+            userId: u.userId
+          })
+          created += 1
+        }
+      }
     }
     await ctx.db.insert('auditLogs', {
       args: JSON.stringify({ assignmentsCreated: created, topicId, users: users.length }),
@@ -74,29 +80,25 @@ const assignUsersForTopic = mutation({
         .query('userProfiles')
         .withIndex('by_userId', q => q.eq('userId', userId))
         .collect()
-      if (profileRows[0]?.role !== 'user') {
-        skipped += 1
-        continue
-      }
-      const passRows = await ctx.db
-        .query('testPasses')
-        .withIndex('by_user_topic_kind', q => q.eq('userId', userId).eq('topicId', topicId).eq('kind', 'assigned'))
-        .collect()
-      if (passRows[0]) {
-        skipped += 1
-        continue
-      }
-      const existingRows = await ctx.db
-        .query('testAssignments')
-        .withIndex('by_user_topic', q => q.eq('userId', userId).eq('topicId', topicId))
-        .filter(q => q.eq(q.field('deletedAt'), undefined))
-        .collect()
-      if (existingRows[0]) {
-        skipped += 1
-        continue
-      }
-      await ctx.db.insert('testAssignments', { createdAt: Date.now(), createdBy: adminEmail, topicId, userId })
-      created += 1
+      if (profileRows[0]?.role === 'user') {
+        const passRows = await ctx.db
+          .query('testPasses')
+          .withIndex('by_user_topic_kind', q => q.eq('userId', userId).eq('topicId', topicId).eq('kind', 'assigned'))
+          .collect()
+        if (passRows[0]) skipped += 1
+        else {
+          const existingRows = await ctx.db
+            .query('testAssignments')
+            .withIndex('by_user_topic', q => q.eq('userId', userId).eq('topicId', topicId))
+            .filter(q => q.eq(q.field('deletedAt'), undefined))
+            .collect()
+          if (existingRows[0]) skipped += 1
+          else {
+            await ctx.db.insert('testAssignments', { createdAt: Date.now(), createdBy: adminEmail, topicId, userId })
+            created += 1
+          }
+        }
+      } else skipped += 1
     }
     await ctx.db.insert('auditLogs', {
       args: JSON.stringify({ assignmentsCreated: created, requested: userIds.length, skipped, topicId }),

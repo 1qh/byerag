@@ -1,6 +1,5 @@
-/* eslint-disable no-continue, complexity */
+/* eslint-disable complexity */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops */
-/** biome-ignore-all lint/nursery/noContinue: control flow shape */
 /** biome-ignore-all lint/suspicious/useAwait: vitest async */
 /** biome-ignore-all lint/style/noProcessEnv: TEST_SECRET standalone test env */
 /** biome-ignore-all lint/complexity/useLiteralKeys: env bracket */
@@ -418,21 +417,17 @@ const gradebookProbe = query({
               .eq('kind', 'self')
           )
           .collect()
-        if (passes[0] || selfPasses[0]) {
-          cells.push({ glyph: '✓', topicId: t._id, userId: u.userId })
-          continue
+        if (passes[0] || selfPasses[0]) cells.push({ glyph: '✓', topicId: t._id, userId: u.userId })
+        else {
+          const assigns = await ctx.db
+            .query('testAssignments')
+            .withIndex('by_user_topic', q => q.eq('userId', u.userId).eq('topicId', t._id as never))
+            .filter(q => q.eq(q.field('deletedAt'), undefined))
+            .collect()
+          const a = assigns[0]
+          if (a) cells.push({ glyph: a.createdBy === 'agent' ? 'ⓐ' : '✗', topicId: t._id, userId: u.userId })
+          else cells.push({ glyph: '·', topicId: t._id, userId: u.userId })
         }
-        const assigns = await ctx.db
-          .query('testAssignments')
-          .withIndex('by_user_topic', q => q.eq('userId', u.userId).eq('topicId', t._id as never))
-          .filter(q => q.eq(q.field('deletedAt'), undefined))
-          .collect()
-        const a = assigns[0]
-        if (!a) {
-          cells.push({ glyph: '·', topicId: t._id, userId: u.userId })
-          continue
-        }
-        cells.push({ glyph: a.createdBy === 'agent' ? 'ⓐ' : '✗', topicId: t._id, userId: u.userId })
       }
     return { cells, topics: topicsWithPool, users }
   }
@@ -839,15 +834,22 @@ const assignAllForTopicProbe = mutation({
         .query('testPasses')
         .withIndex('by_user_topic_kind', q => q.eq('userId', u.userId).eq('topicId', topicId).eq('kind', 'assigned'))
         .collect()
-      if (passRows[0]) continue
-      const exRows = await ctx.db
-        .query('testAssignments')
-        .withIndex('by_user_topic', q => q.eq('userId', u.userId).eq('topicId', topicId))
-        .filter(q => q.eq(q.field('deletedAt'), undefined))
-        .collect()
-      if (exRows[0]) continue
-      await ctx.db.insert('testAssignments', { createdAt: Date.now(), createdBy: adminEmail, topicId, userId: u.userId })
-      created += 1
+      if (!passRows[0]) {
+        const exRows = await ctx.db
+          .query('testAssignments')
+          .withIndex('by_user_topic', q => q.eq('userId', u.userId).eq('topicId', topicId))
+          .filter(q => q.eq(q.field('deletedAt'), undefined))
+          .collect()
+        if (!exRows[0]) {
+          await ctx.db.insert('testAssignments', {
+            createdAt: Date.now(),
+            createdBy: adminEmail,
+            topicId,
+            userId: u.userId
+          })
+          created += 1
+        }
+      }
     }
     return { assignmentsCreated: created }
   }
@@ -1127,24 +1129,25 @@ const seedDepartmentCohort = mutation({
                 .eq('kind', 'assigned')
             )
             .first()
-          if (had) continue
-          const attemptId = await ctx.db.insert('testAttempts', {
-            kind: 'assigned',
-            questionSnapshots: [],
-            score: 5,
-            startedAt: Date.now(),
-            status: 'passed',
-            topicId: topicId as never,
-            userId
-          })
-          await ctx.db.insert('testPasses', {
-            attemptId,
-            kind: 'assigned',
-            passedAt: Date.now(),
-            topicId: topicId as never,
-            userId
-          })
-          passes += 1
+          if (!had) {
+            const attemptId = await ctx.db.insert('testAttempts', {
+              kind: 'assigned',
+              questionSnapshots: [],
+              score: 5,
+              startedAt: Date.now(),
+              status: 'passed',
+              topicId: topicId as never,
+              userId
+            })
+            await ctx.db.insert('testPasses', {
+              attemptId,
+              kind: 'assigned',
+              passedAt: Date.now(),
+              topicId: topicId as never,
+              userId
+            })
+            passes += 1
+          }
         }
     }
     return { assignments, passes, topics: topics.length, users: 10 }
@@ -1315,7 +1318,7 @@ const rebillCostRecords = mutation({
     let patched = 0
     let centsDelta = 0
     for (const r of rows) {
-      let next: number
+      let next: null | number
       try {
         next = computeActualCents({
           cacheCreationInputTokens: 0,
@@ -1325,12 +1328,13 @@ const rebillCostRecords = mutation({
           outputTokens: r.outputTokens
         })
       } catch {
-        continue
+        next = null
       }
-      if (next === r.cents) continue
-      centsDelta += next - r.cents
-      await ctx.db.patch(r._id, { cents: next })
-      patched += 1
+      if (next !== null && next !== r.cents) {
+        centsDelta += next - r.cents
+        await ctx.db.patch(r._id, { cents: next })
+        patched += 1
+      }
     }
     return { centsDelta, patched, scanned: rows.length }
   }

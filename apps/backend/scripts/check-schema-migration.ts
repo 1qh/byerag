@@ -1,6 +1,5 @@
 #!/usr/bin/env bun
-/** biome-ignore-all lint/nursery/noContinue: scan-skip pattern */
-/* eslint-disable no-console, no-continue */
+/* eslint-disable no-console */
 import { $ } from 'bun'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -32,25 +31,24 @@ const tBefore = tables(before)
 const tAfter = tables(after)
 for (const [name, body] of tAfter) {
   const oldBody = tBefore.get(name)
-  if (!oldBody) {
-    if (!body.includes('v.optional') && body.trim().length > 0)
-      issues.push(`new table '${name}' — verify deploy migrates existing rows or table starts empty`)
-    continue
-  }
-  const FIELD_RE = /(?<f>\w+):\s*(?<type>v\.[\w.]+\([^)]*\))/gu
-  const oldFields = new Set([...oldBody.matchAll(FIELD_RE)].map(m => m.groups?.f).filter(Boolean) as string[])
-  for (const m of body.matchAll(FIELD_RE)) {
-    const field = m.groups?.f
-    const type = m.groups?.type ?? ''
-    if (!field) continue
-    if (!(oldFields.has(field) || type.includes('v.optional')))
-      issues.push(
-        `'${name}.${field}' added as REQUIRED — existing rows will fail validation. Make optional or backfill before deploy.`
-      )
-  }
-  for (const f of oldFields)
-    if (!new RegExp(`\\b${f}\\b`, 'u').test(body))
-      issues.push(`'${name}.${f}' REMOVED — existing rows still have it. Use schema-changes-only deploy or migrate first.`)
+  if (oldBody) {
+    const FIELD_RE = /(?<f>\w+):\s*(?<type>v\.[\w.]+\([^)]*\))/gu
+    const oldFields = new Set([...oldBody.matchAll(FIELD_RE)].map(m => m.groups?.f).filter(Boolean) as string[])
+    for (const m of body.matchAll(FIELD_RE)) {
+      const field = m.groups?.f
+      const type = m.groups?.type ?? ''
+      if (field && !(oldFields.has(field) || type.includes('v.optional')))
+        issues.push(
+          `'${name}.${field}' added as REQUIRED — existing rows will fail validation. Make optional or backfill before deploy.`
+        )
+    }
+    for (const f of oldFields)
+      if (!new RegExp(`\\b${f}\\b`, 'u').test(body))
+        issues.push(
+          `'${name}.${f}' REMOVED — existing rows still have it. Use schema-changes-only deploy or migrate first.`
+        )
+  } else if (!body.includes('v.optional') && body.trim().length > 0)
+    issues.push(`new table '${name}' — verify deploy migrates existing rows or table starts empty`)
 }
 const INDEX_RE = /\.index\('(?<n>[^']+)',\s*\[(?<fields>[^\]]+)\]\)/gu
 const indexes = (src: string, table: string): Map<string, string> => {
@@ -64,18 +62,18 @@ const indexes = (src: string, table: string): Map<string, string> => {
   for (const m of block.matchAll(INDEX_RE)) if (m.groups?.n) out.set(m.groups.n, m.groups.fields ?? '')
   return out
 }
-for (const name of tAfter.keys()) {
-  if (!tBefore.has(name)) continue
-  const idxBefore = indexes(before, name)
-  const idxAfter = indexes(after, name)
-  for (const [n, fields] of idxAfter) {
-    const old = idxBefore.get(n)
-    if (old !== undefined && old !== fields)
-      issues.push(`'${name}' index '${n}' fields changed — index will rebuild; deploy may stall on large tables`)
+for (const name of tAfter.keys())
+  if (tBefore.has(name)) {
+    const idxBefore = indexes(before, name)
+    const idxAfter = indexes(after, name)
+    for (const [n, fields] of idxAfter) {
+      const old = idxBefore.get(n)
+      if (old !== undefined && old !== fields)
+        issues.push(`'${name}' index '${n}' fields changed — index will rebuild; deploy may stall on large tables`)
+    }
+    for (const n of idxBefore.keys())
+      if (!idxAfter.has(n)) issues.push(`'${name}' index '${n}' REMOVED — dependent queries will scan or fail`)
   }
-  for (const n of idxBefore.keys())
-    if (!idxAfter.has(n)) issues.push(`'${name}' index '${n}' REMOVED — dependent queries will scan or fail`)
-}
 if (issues.length === 0) {
   console.log('✔ schema diff appears safe')
   process.exit(0)

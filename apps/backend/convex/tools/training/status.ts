@@ -1,6 +1,5 @@
-/* eslint-disable no-await-in-loop, no-continue */
+/* eslint-disable no-await-in-loop */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops */
-/** biome-ignore-all lint/nursery/noContinue: pool-floor early-exit */
 import { DEFAULT_DUE_DAYS, deriveUrgency } from '../../lib/trainingUrgency'
 import { defineQuery } from '../_api'
 
@@ -53,42 +52,44 @@ const action = defineQuery({
         .query('testQuestions')
         .withIndex('by_topic_deletedAt', q => q.eq('topicId', t._id).eq('deletedAt', undefined))
         .take(6)
-      if (pool.length < 5) continue
-      const assignmentRows = await ctx.db
-        .query('testAssignments')
-        .withIndex('by_user_topic', q => q.eq('userId', userId).eq('topicId', t._id))
-        .filter(q => q.eq(q.field('deletedAt'), undefined))
-        .collect()
-      const assignedPasses = await ctx.db
-        .query('testPasses')
-        .withIndex('by_user_topic_kind', q => q.eq('userId', userId).eq('topicId', t._id).eq('kind', 'assigned'))
-        .collect()
-      const selfPasses = await ctx.db
-        .query('testPasses')
-        .withIndex('by_user_topic_kind', q => q.eq('userId', userId).eq('topicId', t._id).eq('kind', 'self'))
-        .collect()
-      const u = deriveUrgency({
-        assignedPassed: assignedPasses.length > 0,
-        assignmentRows,
-        dueMs,
-        now,
-        selfPassed: selfPasses.length > 0
-      })
-      const earliestAssignedAt = assignmentRows.length > 0 ? Math.min(...assignmentRows.map(r => r.createdAt)) : undefined
-      out.push({
-        _id: t._id,
-        assigned: assignmentRows.length > 0,
-        assignedAtMs: earliestAssignedAt,
-        dueInDays: u.dueInDays,
-        effectiveDueAtMs: u.effectiveDueAtMs,
-        estimatedMinutes: Math.max(1, Math.ceil(QUESTIONS_PER_ATTEMPT * MINUTES_PER_QUESTION)),
-        humanDueDate: u.effectiveDueAtMs === undefined ? undefined : fmtVNDate(u.effectiveDueAtMs),
-        name: t.name,
-        overdueDays: u.overdueDays,
-        poolSize: pool.length,
-        startUrl: '/training',
-        urgency: u.urgency
-      })
+      if (pool.length >= 5) {
+        const assignmentRows = await ctx.db
+          .query('testAssignments')
+          .withIndex('by_user_topic', q => q.eq('userId', userId).eq('topicId', t._id))
+          .filter(q => q.eq(q.field('deletedAt'), undefined))
+          .collect()
+        const assignedPasses = await ctx.db
+          .query('testPasses')
+          .withIndex('by_user_topic_kind', q => q.eq('userId', userId).eq('topicId', t._id).eq('kind', 'assigned'))
+          .collect()
+        const selfPasses = await ctx.db
+          .query('testPasses')
+          .withIndex('by_user_topic_kind', q => q.eq('userId', userId).eq('topicId', t._id).eq('kind', 'self'))
+          .collect()
+        const u = deriveUrgency({
+          assignedPassed: assignedPasses.length > 0,
+          assignmentRows,
+          dueMs,
+          now,
+          selfPassed: selfPasses.length > 0
+        })
+        const earliestAssignedAt =
+          assignmentRows.length > 0 ? Math.min(...assignmentRows.map(r => r.createdAt)) : undefined
+        out.push({
+          _id: t._id,
+          assigned: assignmentRows.length > 0,
+          assignedAtMs: earliestAssignedAt,
+          dueInDays: u.dueInDays,
+          effectiveDueAtMs: u.effectiveDueAtMs,
+          estimatedMinutes: Math.max(1, Math.ceil(QUESTIONS_PER_ATTEMPT * MINUTES_PER_QUESTION)),
+          humanDueDate: u.effectiveDueAtMs === undefined ? undefined : fmtVNDate(u.effectiveDueAtMs),
+          name: t.name,
+          overdueDays: u.overdueDays,
+          poolSize: pool.length,
+          startUrl: '/training',
+          urgency: u.urgency
+        })
+      }
     }
     const counts = {
       assigned: out.filter(r => r.assigned && r.urgency !== 'passed-assigned').length,

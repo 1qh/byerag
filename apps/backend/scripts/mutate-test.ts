@@ -1,7 +1,6 @@
 #!/usr/bin/env bun
-/* eslint-disable no-console, no-await-in-loop, no-continue */
+/* eslint-disable no-console, no-await-in-loop */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential mutation rounds by design */
-/** biome-ignore-all lint/nursery/noContinue: skip-when-not-applicable */
 import { $, file, write } from 'bun'
 import { join } from 'node:path'
 
@@ -24,27 +23,32 @@ let mutated = 0
 let killed = 0
 let survived = 0
 const survivors: string[] = []
-for (const target of TARGETS) {
+const runMutation = async (
+  target: { src: string; tests: string },
+  mut: { from: string; label: string; to: string }
+): Promise<void> => {
   const srcPath = join(ROOT, target.src)
   const original = await file(srcPath).text()
-  for (const mut of MUTATIONS) {
-    const idx = original.indexOf(mut.from)
-    if (idx === -1) continue
-    mutated += 1
-    const patched = original.slice(0, idx) + mut.to + original.slice(idx + mut.from.length)
-    await write(srcPath, patched)
-    const result = await $`bun test ${{ raw: target.tests }}`.cwd(ROOT).quiet().nothrow()
-    await write(srcPath, original)
-    if (result.exitCode === 0) {
-      const key = `${target.src} :: ${mut.label} (1st occurrence)`
-      if (KNOWN_DEFENSIVE.has(key)) killed += 1
-      else {
-        survived += 1
-        survivors.push(`  ${key} — tests passed despite mutation`)
-      }
-    } else killed += 1
+  const idx = original.indexOf(mut.from)
+  if (idx === -1) return
+  mutated += 1
+  const patched = original.slice(0, idx) + mut.to + original.slice(idx + mut.from.length)
+  await write(srcPath, patched)
+  const result = await $`bun test ${{ raw: target.tests }}`.cwd(ROOT).quiet().nothrow()
+  await write(srcPath, original)
+  if (result.exitCode !== 0) {
+    killed += 1
+    return
   }
+  const key = `${target.src} :: ${mut.label} (1st occurrence)`
+  if (KNOWN_DEFENSIVE.has(key)) {
+    killed += 1
+    return
+  }
+  survived += 1
+  survivors.push(`  ${key} — tests passed despite mutation`)
 }
+for (const target of TARGETS) for (const mut of MUTATIONS) await runMutation(target, mut)
 console.log(`\nmutation testing: ${mutated} mutations, ${killed} killed, ${survived} survived`)
 if (survivors.length > 0) {
   console.log('\nsurvivors (tests do not catch these mutations — strengthen assertions):')
