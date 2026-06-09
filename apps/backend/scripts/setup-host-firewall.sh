@@ -4,17 +4,17 @@
 # Output policy drop + kimi_ips allowlist + DNS + RFC1918/docker bridges.
 set -euo pipefail
 if [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null; then
-  exec sudo -E "$0" "$@"
+	exec sudo -E "$0" "$@"
 fi
 KIMI_IPS=${KIMI_IPS:-}
 if [ -z "$KIMI_IPS" ]; then
-  if command -v dig >/dev/null; then
-    KIMI_IPS=$(dig +short A api.kimi.com | grep -E '^[0-9.]+$' | paste -sd, -)
-  fi
+	if command -v dig >/dev/null; then
+		KIMI_IPS=$(dig +short A api.kimi.com | grep -E '^[0-9.]+$' | paste -sd, -)
+	fi
 fi
 if [ -z "$KIMI_IPS" ]; then
-  echo "[fw] FATAL: KIMI_IPS unset and dig unavailable" >&2
-  exit 2
+	echo "[fw] FATAL: KIMI_IPS unset and dig unavailable" >&2
+	exit 2
 fi
 nft -f - <<EOF
 table inet byerag-fw {
