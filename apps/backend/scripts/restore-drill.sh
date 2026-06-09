@@ -25,7 +25,13 @@ done <"$ENV_FILE"
 : "${BACKUP_AGE_IDENTITY:?BACKUP_AGE_IDENTITY required (path to age identity file)}"
 RESTORE_TEST_DB=${RESTORE_TEST_DB:-byerag_restore_test}
 PG_CONTAINER=${PG_CONTAINER:-byerag-postgres-1}
-LATEST=$(ls -t "$BACKUP_DEST"/byerag-*.sql.age 2>/dev/null | head -1)
+LATEST=
+for candidate in "$BACKUP_DEST"/byerag-*.sql.age; do
+	[ -e "$candidate" ] || continue
+	if [ -z "$LATEST" ] || [ "$candidate" -nt "$LATEST" ]; then
+		LATEST=$candidate
+	fi
+done
 [ -n "$LATEST" ] || {
 	echo "[restore-drill] FATAL: no dump in $BACKUP_DEST" >&2
 	exit 1

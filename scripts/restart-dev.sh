@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 set -e
 pkill -f 'next dev --turbo --port 3001' 2>/dev/null || true
 pkill -f 'next dev --turbo --port 3003' 2>/dev/null || true
