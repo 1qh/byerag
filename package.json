@@ -16,6 +16,7 @@
     "postinstall": "sherif",
     "new-app": "bun scripts/new-app.ts",
     "prepare": "bunx simple-git-hooks",
+    "prod": "sh prod.sh",
     "sync": "bun --filter=backend run sync",
     "test": "bun --env-file=apps/backend/.env test apps/backend packages/cli && bun --filter='./packages/react' run test && bun --filter='./apps/*' run test",
     "test:e2e": "bun --env-file=apps/backend/.env test --parallel=1 apps/*/tests-e2e/"
