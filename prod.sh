@@ -53,8 +53,8 @@ echo $! >>"$PORTS_FILE"
 
 deadline=$(($(date +%s) + 60))
 while
-	! curl -fsS -o /dev/null http://127.0.0.1:3001/ 2>/dev/null \
-	|| ! curl -fsS -o /dev/null http://127.0.0.1:3003/ 2>/dev/null
+	! curl -fsS -o /dev/null http://127.0.0.1:3001/ 2>/dev/null ||
+		! curl -fsS -o /dev/null http://127.0.0.1:3003/ 2>/dev/null
 do
 	[ "$(date +%s)" -gt "$deadline" ] && {
 		echo "ERROR: admin/user did not come up in 60s" >&2
