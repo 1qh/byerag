@@ -2,8 +2,8 @@
 set -eu
 
 ROOT=$(cd "$(dirname "$0")" && pwd)
-PORTS_FILE="$ROOT/.prod-pids"
-LOG_DIR="$ROOT/.prod-logs"
+PORTS_FILE="$ROOT/.cache/prod/pids"
+LOG_DIR="$ROOT/.cache/prod"
 mkdir -p "$LOG_DIR"
 
 cleanup() {
