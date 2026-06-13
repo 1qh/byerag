@@ -1,6 +1,6 @@
 #!/usr/bin/env node
+/** biome-ignore-all lint/suspicious/noUndeclaredEnvVars: CLI binary reads runtime env directly */
 /** biome-ignore-all lint/style/noProcessEnv: CLI binary reads env directly */
-/** biome-ignore-all lint/nursery/noUndeclaredEnvVars: CLI binary reads runtime env directly */
 /** biome-ignore-all lint/suspicious/noControlCharactersInRegex: sanitize strips control chars */
 /* eslint-disable no-console, no-control-regex, @typescript-eslint/no-unnecessary-condition */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'

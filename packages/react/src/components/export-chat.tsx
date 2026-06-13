@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/nursery/noUndeclaredClasses: standard tailwind v4 utilities biome cannot resolve */
 'use client'
 import type { ContentBlock } from 'backend/convex/streamProtocol'
 import { sourceToChunks } from '@a/react/parsers'

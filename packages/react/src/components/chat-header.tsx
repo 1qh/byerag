@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/nursery/noUndeclaredClasses: standard tailwind v4 utilities biome cannot resolve */
 'use client'
 import { Button } from '@a/ui/components/button'
 import { useSidebar } from '@a/ui/components/sidebar'

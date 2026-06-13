@@ -1,5 +1,5 @@
+/** biome-ignore-all lint/suspicious/noUndeclaredEnvVars: env loader reads all known vars */
 /** biome-ignore-all lint/style/noProcessEnv: env loader is the single allowed site */
-/** biome-ignore-all lint/nursery/noUndeclaredEnvVars: env loader reads all known vars */
 /* eslint-disable @typescript-eslint/no-unnecessary-type-parameters */
 import { z } from 'zod/v4'
 

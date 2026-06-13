@@ -1,5 +1,5 @@
+/** biome-ignore-all lint/suspicious/noUndeclaredEnvVars: test env reset */
 /** biome-ignore-all lint/style/noProcessEnv: test env reset */
-/** biome-ignore-all lint/nursery/noUndeclaredEnvVars: test env reset */
 import type { TestConvex } from 'convex-test'
 /**
  * Narrow-surface wrapper around convex-test. Pushes its `Record<string, () => Promise<any>>`

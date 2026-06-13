@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/nursery/noUndeclaredClasses: standard tailwind v4 utilities biome cannot resolve */
 /* oxlint-disable react-perf/jsx-no-jsx-as-prop */
 'use client'
 import { Badge } from '@a/ui/components/badge'

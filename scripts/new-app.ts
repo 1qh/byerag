@@ -1,8 +1,7 @@
 #!/usr/bin/env bun
 /** biome-ignore-all lint/style/noProcessEnv: scaffold reads env */
-/** biome-ignore-all lint/nursery/noContinue: classify-or-skip loops */
 /** biome-ignore-all lint/performance/noAwaitInLoops: small N (apps), fs IO ordered */
-/* eslint-disable no-console, no-await-in-loop, no-continue */
+/* eslint-disable no-console, no-await-in-loop */
 import { Vercel } from '@vercel/sdk'
 import { $ } from 'bun'
 import { copyFile, mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
@@ -35,22 +34,24 @@ const existingApps = new Set(
 )
 if (existingApps.has(appName)) die(`apps/${appName} already exists`)
 const target = join(APPS_DIR, appName)
-const usedPorts = new Set<number>()
-for (const e of await readdir(APPS_DIR, { withFileTypes: true })) {
-  if (!e.isDirectory()) continue
+const portsInScripts = (scripts: Record<string, string>): number[] =>
+  Object.values(scripts).flatMap(cmd => {
+    const found = PORT_RE.exec(cmd)?.groups?.port
+    return found ? [Number(found)] : []
+  })
+const readAppPorts = async (name: string): Promise<number[]> => {
   try {
-    const pkg = JSON.parse(await readFile(join(APPS_DIR, e.name, 'package.json'), 'utf8')) as {
+    const pkg = JSON.parse(await readFile(join(APPS_DIR, name, 'package.json'), 'utf8')) as {
       scripts?: Record<string, string>
     }
-    for (const cmd of Object.values(pkg.scripts ?? {})) {
-      const m = PORT_RE.exec(cmd)
-      const found = m?.groups?.port
-      if (found) usedPorts.add(Number(found))
-    }
+    return portsInScripts(pkg.scripts ?? {})
   } catch {
-    /* No package.json or unparseable — skip */
+    return []
   }
 }
+const usedPorts = new Set<number>()
+for (const e of await readdir(APPS_DIR, { withFileTypes: true }))
+  if (e.isDirectory()) for (const p of await readAppPorts(e.name)) usedPorts.add(p)
 let port = -1
 for (let p = PORT_MIN; p <= PORT_MAX; p += 1)
   if (!usedPorts.has(p)) {
@@ -61,12 +62,12 @@ if (port === -1) die(`no free port in ${PORT_MIN}-${PORT_MAX}`)
 const EXCLUDE = new Set(['.cache', '.next', '.turbo', '.vercel', 'node_modules', 'tests-e2e', 'tests-integration'])
 const copyTree = async (src: string, dst: string): Promise<void> => {
   await mkdir(dst, { recursive: true })
-  for (const e of await readdir(src, { withFileTypes: true })) {
-    if (EXCLUDE.has(e.name)) continue
-    const s = join(src, e.name)
-    const d = join(dst, e.name)
-    await (e.isDirectory() ? copyTree(s, d) : copyFile(s, d))
-  }
+  for (const e of await readdir(src, { withFileTypes: true }))
+    if (!EXCLUDE.has(e.name)) {
+      const s = join(src, e.name)
+      const d = join(dst, e.name)
+      await (e.isDirectory() ? copyTree(s, d) : copyFile(s, d))
+    }
 }
 console.log(`→ scaffolding apps/${appName} on port ${port}`)
 await copyTree(join(APPS_DIR, TEMPLATE), target)
@@ -85,16 +86,14 @@ await $`bun i`.cwd(REPO_ROOT).quiet()
 const authPath = `${process.env.HOME}/Library/Application Support/com.vercel.cli/auth.json`
 const auth = JSON.parse(await readFile(authPath, 'utf8')) as { token: string }
 const findSourceLink = async (): Promise<{ orgId: string; projectId: string }> => {
-  for (const e of await readdir(APPS_DIR, { withFileTypes: true })) {
-    if (!e.isDirectory()) continue
-    if (e.name === appName) continue
-    try {
-      const text = await readFile(join(APPS_DIR, e.name, '.vercel', 'project.json'), 'utf8')
-      return JSON.parse(text) as { orgId: string; projectId: string }
-    } catch {
-      /* No link in this app */
-    }
-  }
+  for (const e of await readdir(APPS_DIR, { withFileTypes: true }))
+    if (e.isDirectory() && e.name !== appName)
+      try {
+        const text = await readFile(join(APPS_DIR, e.name, '.vercel', 'project.json'), 'utf8')
+        return JSON.parse(text) as { orgId: string; projectId: string }
+      } catch {
+        /* No link in this app */
+      }
   throw new Error('no existing app has .vercel/project.json — scaffold needs one to clone git creds from')
 }
 const sourceLink = await findSourceLink()

@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/nursery/noUndeclaredClasses: standard tailwind v4 utilities biome cannot resolve */
 /* oxlint-disable promise/prefer-await-to-then */
 'use client'
 import type { UIMessage } from '@a/react/lib'

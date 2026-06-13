@@ -1,7 +1,8 @@
+/** biome-ignore-all lint/nursery/noUndeclaredClasses: standard tailwind v4 utilities biome cannot resolve */
+/** biome-ignore-all lint/suspicious/noUnnecessaryConditions: intentional while-true drain loop */
 /* oxlint-disable promise/prefer-await-to-then, promise/prefer-await-to-callbacks, promise/catch-or-return */
 /* eslint-disable no-await-in-loop */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential uploads */
-/** biome-ignore-all lint/nursery/noUnnecessaryConditions: intentional while-true drain loop */
 'use client'
 import { cn } from '@a/ui'
 import { Button } from '@a/ui/components/button'

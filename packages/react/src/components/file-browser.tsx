@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/nursery/noUndeclaredClasses: standard tailwind v4 utilities biome cannot resolve */
 /** biome-ignore-all lint/performance/noAwaitInLoops: bounded-concurrency tree walker */
 /* eslint-disable no-await-in-loop */
 'use client'

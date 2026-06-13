@@ -1,6 +1,6 @@
+/** biome-ignore-all lint/suspicious/noUndeclaredEnvVars: dev gate env */
 /** biome-ignore-all lint/performance/noAwaitInLoops: polling + sequential delete loops are intentional */
 /** biome-ignore-all lint/style/noProcessEnv: ALLOW_DEV_TOKENS env gate */
-/** biome-ignore-all lint/nursery/noUndeclaredEnvVars: dev gate env */
 /* eslint-disable no-await-in-loop, complexity, max-depth */
 import type { FunctionReference } from 'convex/server'
 import {

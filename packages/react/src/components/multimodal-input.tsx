@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/nursery/noUndeclaredClasses: standard tailwind v4 utilities biome cannot resolve */
 /* oxlint-disable promise/prefer-await-to-then */
 /** biome-ignore-all lint/a11y/noNoninteractiveElementInteractions: section as drop target is intentional — only used to detect file drag-drop */
 'use client'

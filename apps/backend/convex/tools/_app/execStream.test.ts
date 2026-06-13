@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/nursery/noUndeclaredEnvVars: test env */
+/** biome-ignore-all lint/suspicious/noUndeclaredEnvVars: test env */
 import { setHermeticAdapter } from '@a/cli'
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import { makeTest } from '../../../test-utils/convex'

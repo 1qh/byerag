@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/nursery/noUndeclaredClasses: standard tailwind v4 utilities biome cannot resolve */
 /* eslint-disable complexity, @typescript-eslint/no-unnecessary-condition */
 'use client'
 import type { StreamEvent } from 'backend/convex/streamProtocol'

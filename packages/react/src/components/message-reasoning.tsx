@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/nursery/noUndeclaredClasses: standard tailwind v4 utilities biome cannot resolve */
 'use client'
 import { Reasoning, ReasoningContent, ReasoningTrigger } from '@a/ui/components/ai-elements/reasoning'
 import { Shimmer } from '@a/ui/components/ai-elements/shimmer'

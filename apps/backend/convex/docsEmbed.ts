@@ -1,8 +1,8 @@
+/** biome-ignore-all lint/suspicious/noShadow: scoped shadows ok */
+/** biome-ignore-all lint/suspicious/noUndeclaredEnvVars: OLLAMA_HOST optional */
 /* eslint-disable @typescript-eslint/no-shadow, no-await-in-loop */
-/** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
 /** biome-ignore-all lint/style/noProcessEnv: OLLAMA_HOST env */
-/** biome-ignore-all lint/nursery/noUndeclaredEnvVars: OLLAMA_HOST optional */
 'use node'
 import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'

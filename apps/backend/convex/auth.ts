@@ -1,5 +1,5 @@
+/** biome-ignore-all lint/suspicious/noUndeclaredEnvVars: SITE_URL + BOOTSTRAP_ADMIN_EMAIL via Convex env */
 /** biome-ignore-all lint/style/noProcessEnv: Convex env read at runtime */
-/** biome-ignore-all lint/nursery/noUndeclaredEnvVars: SITE_URL + BOOTSTRAP_ADMIN_EMAIL via Convex env */
 /* eslint-disable @typescript-eslint/require-await */
 import Google from '@auth/core/providers/google'
 import { Anonymous } from '@convex-dev/auth/providers/Anonymous'

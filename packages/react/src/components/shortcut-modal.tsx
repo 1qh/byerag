@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/nursery/noUndeclaredClasses: standard tailwind v4 utilities biome cannot resolve */
 'use client'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@a/ui/components/dialog'
 import { Fragment, useEffect, useState } from 'react'

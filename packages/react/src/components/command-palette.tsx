@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/nursery/noUndeclaredClasses: standard tailwind v4 utilities biome cannot resolve */
 'use client'
 import type { Id } from 'backend/convex/_generated/dataModel'
 import { useApp } from '@a/react/app-context'

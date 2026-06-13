@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/nursery/noUndeclaredClasses: standard tailwind v4 utilities biome cannot resolve */
 /** biome-ignore-all lint/style/noProcessEnv: Next.js NEXT_PUBLIC_* env read at client boundary */
 'use client'
 import type { ReactNode } from 'react'

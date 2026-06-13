@@ -1,7 +1,7 @@
+/** biome-ignore-all lint/suspicious/noUndeclaredEnvVars: CLAMAV_HOST optional */
 /* eslint-disable no-await-in-loop */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops */
 /** biome-ignore-all lint/style/noProcessEnv: clamav host env */
-/** biome-ignore-all lint/nursery/noUndeclaredEnvVars: CLAMAV_HOST optional */
 /** biome-ignore-all lint/suspicious/useAwait: scanBytes wraps net.Socket callback in Promise */
 'use node'
 import { v } from 'convex/values'

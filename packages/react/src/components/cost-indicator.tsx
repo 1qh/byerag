@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/nursery/noUndeclaredClasses: standard tailwind v4 utilities biome cannot resolve */
 'use client'
 import { parseWithCache } from '@a/react/parsers'
 import { useMemo } from 'react'

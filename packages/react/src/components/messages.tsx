@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/nursery/noUndeclaredClasses: standard tailwind v4 utilities biome cannot resolve */
 'use client'
 import type { Status } from '@a/react/hooks'
 import type { UIMessage } from '@a/react/lib'

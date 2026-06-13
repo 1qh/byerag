@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/nursery/noUndeclaredClasses: standard tailwind v4 utilities biome cannot resolve */
 'use client'
 import { cn } from '@a/ui'
 import { Badge } from '@a/ui/components/badge'

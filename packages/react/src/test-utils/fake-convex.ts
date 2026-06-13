@@ -1,6 +1,6 @@
+/** biome-ignore-all lint/suspicious/noUndeclaredEnvVars: debug toggle */
 /* eslint-disable @eslint-react/no-unnecessary-use-prefix, @typescript-eslint/no-unused-vars, @typescript-eslint/require-await */
 /** biome-ignore-all lint/style/noProcessEnv: debug toggle */
-/** biome-ignore-all lint/nursery/noUndeclaredEnvVars: debug toggle */
 interface FakeChat {
   _id: string
   streaming?: boolean

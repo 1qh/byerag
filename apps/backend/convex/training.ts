@@ -1,5 +1,5 @@
+/** biome-ignore-all lint/suspicious/noShadow: scoped shadows ok */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops by design */
-/** biome-ignore-all lint/nursery/noShadow: scoped shadows ok */
 /* eslint-disable no-await-in-loop, complexity -- sequential Convex DB ops by design; control flow shape; widened types from generated API */
 import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'

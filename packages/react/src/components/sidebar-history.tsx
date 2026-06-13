@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/nursery/noUndeclaredClasses: standard tailwind v4 utilities biome cannot resolve */
 /* oxlint-disable promise/prefer-await-to-then, promise/prefer-await-to-callbacks */
 'use client'
 import type { Id } from 'backend/convex/_generated/dataModel'

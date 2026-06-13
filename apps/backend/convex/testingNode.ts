@@ -11,7 +11,7 @@ import { killSandbox, listSandboxIds } from './sandboxClient'
 import { constantTimeEqual } from './utils'
 
 const verifyTestSecret = (secret: string) => {
-  // biome-ignore lint/nursery/noUndeclaredEnvVars: NODE_ENV=test (in-process bun:test) OR ALLOW_TESTING_ENDPOINTS=1 (real backend opt-in)
+  // biome-ignore lint/suspicious/noUndeclaredEnvVars: NODE_ENV=test (in-process bun:test) OR ALLOW_TESTING_ENDPOINTS=1 (real backend opt-in)
   const allowed = process.env['NODE_ENV'] === 'test' || process.env['ALLOW_TESTING_ENDPOINTS'] === '1'
   if (!allowed) throw new Error('testing endpoints disabled (set ALLOW_TESTING_ENDPOINTS=1 on backend to enable)')
   const expected: string | undefined = process.env['TEST_SECRET']

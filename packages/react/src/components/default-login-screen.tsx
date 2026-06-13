@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/nursery/noUndeclaredClasses: standard tailwind v4 utilities biome cannot resolve */
 'use client'
 import { DevSignIn } from './dev-sign-in'
 import { GoogleSignInButton } from './google-sign-in-button'

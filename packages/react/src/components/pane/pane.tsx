@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/nursery/noUndeclaredClasses: standard tailwind v4 utilities biome cannot resolve */
 'use client'
 import type { ReactNode } from 'react'
 import { Button } from '@a/ui/components/button'

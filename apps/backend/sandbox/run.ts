@@ -1,5 +1,5 @@
+/** biome-ignore-all lint/suspicious/noUndeclaredEnvVars: secrets scrubbed post-parse */
 /** biome-ignore-all lint/style/noProcessEnv: sandbox runtime env access */
-/** biome-ignore-all lint/nursery/noUndeclaredEnvVars: secrets scrubbed post-parse */
 /** biome-ignore-all lint/performance/noDelete: cleaning env vars */
 /** biome-ignore-all lint/performance/useTopLevelRegex: inline validation regex */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential retry backoff */

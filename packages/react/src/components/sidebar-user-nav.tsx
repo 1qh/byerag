@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/nursery/noUndeclaredClasses: standard tailwind v4 utilities biome cannot resolve */
 /* eslint-disable @typescript-eslint/strict-void-return */
 'use client'
 import {
