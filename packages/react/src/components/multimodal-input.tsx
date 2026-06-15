@@ -102,6 +102,7 @@ const PureMultimodalInput = ({
     onAttachmentsChange([...attachments, ...uploaded])
   }
   return (
+    // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- container drag-drop zone; the accessible upload path is the file button
     <section
       aria-label='message composer'
       className='relative'

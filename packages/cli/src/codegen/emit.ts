@@ -200,9 +200,7 @@ const emitRegistry = (data: {
       '  },'
     )
   }
-  lines.push('}')
-  lines.push('export { PROVIDERS, REGISTRY }')
-  lines.push('')
+  lines.push('}', 'export { PROVIDERS, REGISTRY }', '')
   return lines.join('\n')
 }
 interface ShimSpec {

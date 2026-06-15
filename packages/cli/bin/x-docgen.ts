@@ -66,9 +66,12 @@ const renderInventory = (
     const list = (toolsByProvider.get(prov) ?? []).toSorted((a, b) =>
       a.cliPath.join(' ').localeCompare(b.cliPath.join(' '))
     )
-    lines.push(`## \`${label}\``, '')
-    lines.push(mdRow(['Command', 'Description', 'Version', 'Deprecated']))
-    lines.push(mdRow(['---', '---', '---', '---']))
+    lines.push(
+      `## \`${label}\``,
+      '',
+      mdRow(['Command', 'Description', 'Version', 'Deprecated']),
+      mdRow(['---', '---', '---', '---'])
+    )
     for (const t of list) {
       const cmd = `\`${t.cliPath.join(' ').replace(PROVIDER_PREFIX_RE, '')}\``
       lines.push(
