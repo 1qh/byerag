@@ -145,9 +145,11 @@ const ThinkingBlock = ({ isLoading, parts }: { isLoading: boolean; parts: Activi
   const [elapsedSec, setElapsedSec] = useState<null | number>(null)
   const wasLoadingRef = useRef(isLoading)
   useEffect(() => {
-    if (wasLoadingRef.current && !isLoading)
+    if (wasLoadingRef.current && !isLoading) {
+      const roundedSec = Math.round((Date.now() - startedAt) / 1000)
       // eslint-disable-next-line @eslint-react/hooks-extra/no-direct-set-state-in-use-effect -- snapshot elapsed time on transition
-      setElapsedSec(Math.max(1, Math.round((Date.now() - startedAt) / 1000)))
+      setElapsedSec(Math.max(1, roundedSec))
+    }
     wasLoadingRef.current = isLoading
   }, [isLoading, startedAt])
   const [manuallyOpen, setManuallyOpen] = useState<boolean | null>(null)

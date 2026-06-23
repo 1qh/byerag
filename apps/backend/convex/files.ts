@@ -104,7 +104,7 @@ const write = internalAction({
         `mkdir -p '${parentDir}' && df -Pk /home/user | tail -1 | awk '{print $4 * 1024}'`,
         { timeoutMs: 5000 }
       )
-      const availBytes = Number.parseInt(combined.stdout.trim(), 10)
+      const availBytes = Math.trunc(Number(combined.stdout.trim()))
       if (!Number.isFinite(availBytes)) throw new Error('sandbox disk check failed')
       if (availBytes < 100 * 1024 * 1024) throw new Error('sandbox disk nearly full')
       await sandbox.files.write(safePath, decoded ? new Uint8Array(decoded).buffer : content)
@@ -149,7 +149,7 @@ const downloadZip = internalAction({
           `stat -c%s '${zipPath}' 2>/dev/null || stat -f%z '${zipPath}'`,
           { timeoutMs: 5000 }
         )
-        const archiveSize = Number.parseInt(sizeCheck.stdout.trim(), 10)
+        const archiveSize = Math.trunc(Number(sizeCheck.stdout.trim()))
         if (archiveSize > 1 * 1024 * 1024)
           throw new Error('archive too large (max 1MB; use file-by-file download for larger trees)')
         const zipContent: Uint8Array = await sandbox.files.read(zipPath, { format: 'bytes' })

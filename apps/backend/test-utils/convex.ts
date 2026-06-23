@@ -20,6 +20,7 @@ const convexDir = resolve(import.meta.dirname, '../convex')
 const loadModules = (): Record<string, () => Promise<Record<string, unknown>>> => {
   const out: Record<string, () => Promise<Record<string, unknown>>> = {}
   const glob = new Glob('**/*.{ts,js}')
+  // oxlint-disable-next-line node/no-sync
   for (const rel of glob.scanSync({ cwd: convexDir })) {
     const abs = join(convexDir, rel)
     out[`../convex/${rel}`] = async () => (await import(abs)) as Record<string, unknown>

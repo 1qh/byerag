@@ -44,7 +44,9 @@ delete process.env.ANTHROPIC_API_KEY
 delete process.env.KIMI_API_KEY
 if (config.PGID_FILE)
   try {
+    // oxlint-disable-next-line node/no-sync
     const pgid = execSync(`ps -o pgid= -p ${process.pid}`).toString().trim()
+    // oxlint-disable-next-line node/no-sync
     if (/^\d+$/u.test(pgid)) writeFileSync(config.PGID_FILE, pgid)
   } catch {
     /* Best-effort */
@@ -67,7 +69,9 @@ const skillNames: string[] = []
 const appSkills = AGENT_SKILLS_BY_APP[config.CHAT_APP] ?? {}
 for (const [name, content] of Object.entries(appSkills)) {
   const dir = `${SKILLS_DIR}/${name}`
+  // oxlint-disable-next-line node/no-sync
   mkdirSync(dir, { recursive: true })
+  // oxlint-disable-next-line node/no-sync
   writeFileSync(`${dir}/SKILL.md`, content)
   skillNames.push(name)
 }
@@ -158,6 +162,7 @@ try {
     }
   }
 } catch (error) {
+  const secretRe = new RegExp(config.CHAT_SECRET.replaceAll(/[.*+?^${}()|[\]\\]/gu, String.raw`\$&`), 'gu')
   await postJson('/api/stream/event', {
     chatId: config.CHAT_ID,
     content: JSON.stringify({
@@ -166,7 +171,7 @@ try {
         .replaceAll(/sk-ant-[^\s"]*/gu, '[REDACTED]')
         .replaceAll(/sk-kimi-[^\s"]*/gu, '[REDACTED]')
         .replaceAll(/eyJ[A-Za-z0-9._-]{20,}/gu, '[REDACTED]')
-        .replaceAll(new RegExp(config.CHAT_SECRET.replaceAll(/[.*+?^${}()|[\]\\]/gu, String.raw`\$&`), 'gu'), '[REDACTED]')
+        .replaceAll(secretRe, '[REDACTED]')
         .replaceAll(/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/gu, '[IP]')
         .replaceAll(/at\s+\S+\s+\([^)]+\)/gu, '')
         .replaceAll(/\/home\/agent\/[^\s'"]*/gu, '[PATH]'),
@@ -186,10 +191,13 @@ try {
   })
 } finally {
   try {
+    // oxlint-disable-next-line node/no-sync
     const pgid = execSync(`ps -o pgid= -p ${process.pid}`).toString().trim()
     if (/^\d+$/u.test(pgid)) {
+      // oxlint-disable-next-line node/no-sync
       const children = execSync(`pgrep -g ${pgid} | grep -v ${process.pid} || true`).toString().trim()
       const pids = children.split('\n').filter(p => /^\d+$/u.test(p.trim()))
+      // oxlint-disable-next-line node/no-sync
       if (pids.length > 0) execSync(`kill -9 ${pids.join(' ')} 2>/dev/null || true`)
     }
   } catch {
@@ -197,6 +205,7 @@ try {
   }
   if (config.PGID_FILE)
     try {
+      // oxlint-disable-next-line node/no-sync
       unlinkSync(config.PGID_FILE)
     } catch {
       /* Best-effort */

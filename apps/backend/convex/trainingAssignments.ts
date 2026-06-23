@@ -159,7 +159,7 @@ const myActiveAssignments = query({
       .query('settings')
       .withIndex('by_key', q => q.eq('key', 'assignment_due_days'))
       .first()
-    const dueDays = Number.parseInt(dueSetting?.value ?? '14', 10)
+    const dueDays = Math.trunc(Number(dueSetting?.value ?? '14'))
     const windowMs = (Number.isFinite(dueDays) && dueDays > 0 ? dueDays : 14) * 86_400_000
     return rows.map(r => ({
       _id: r._id,

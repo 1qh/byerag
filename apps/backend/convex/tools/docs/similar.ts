@@ -33,7 +33,7 @@ const action = defineTool({
   handler: async (ctx, args) => {
     const cap = Math.min(args.limit, 50)
     const full = await embedQuery(args.query)
-    const vec = matryoshkaTruncate(full, Number.parseInt(args.dim, 10))
+    const vec = matryoshkaTruncate(full, Math.trunc(Number(args.dim)))
     const wantShared = args.scope === 'shared' || args.scope === 'both'
     const wantMine = args.scope === 'mine' || args.scope === 'both'
     if (args.granular) {

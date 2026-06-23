@@ -268,6 +268,7 @@ const redactArgsForAudit = (val: unknown, depth = 0): unknown => {
 const writeTrace = async (opts: TraceArgs): Promise<void> => {
   const steps = 'steps' in opts.result ? opts.result.steps : []
   const redactedArgs = JSON.stringify(redactArgsForAudit(opts.args) ?? {}).slice(0, 4000)
+  const redactedSteps = JSON.stringify(redactArgsForAudit(steps) ?? []).slice(0, 16_000)
   await Promise.all([
     opts.ctx.runMutation(internal.tools._app.dispatch.recordTrace, {
       args: redactedArgs,
@@ -278,7 +279,7 @@ const writeTrace = async (opts: TraceArgs): Promise<void> => {
       mode: opts.auth.mode,
       ok: opts.result.ok,
       owner: opts.auth.owner,
-      steps: JSON.stringify(redactArgsForAudit(steps) ?? []).slice(0, 16_000),
+      steps: redactedSteps,
       traceId: opts.traceId
     }),
     opts.ctx.runMutation(internal.lib.insertAuditLog, {

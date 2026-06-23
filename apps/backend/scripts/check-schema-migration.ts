@@ -14,6 +14,7 @@ if (head.exitCode !== 0) {
   process.exit(0)
 }
 const before = head.stdout.toString()
+// oxlint-disable-next-line node/no-sync
 const after = readFileSync(SCHEMA_PATH, 'utf8')
 if (before === after) {
   console.log('✔ schema unchanged')

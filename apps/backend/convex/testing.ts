@@ -211,6 +211,7 @@ const getUserProfile = query({
 })
 const seedUserProfile = mutation({
   args: {
+    // oxlint-disable-next-line unicorn/max-nested-calls
     kind: v.optional(v.union(v.literal('real'), v.literal('test'))),
     role: v.union(v.literal('admin'), v.literal('user')),
     testSecret: v.string(),

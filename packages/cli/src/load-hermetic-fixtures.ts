@@ -9,6 +9,7 @@ interface FixtureRule {
 const isRuleArray = (v: unknown): v is FixtureRule[] =>
   Array.isArray(v) && v.every(r => typeof r === 'object' && r !== null && 'response' in r)
 const loadHermeticFixtures = (path: string): void => {
+  // oxlint-disable-next-line node/no-sync
   const data = JSON.parse(readFileSync(path, 'utf8')) as FixtureMap
   setHermeticAdapter((op, payload) => {
     const entry = data[op]

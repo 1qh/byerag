@@ -24,6 +24,7 @@ const parseEnvLine = (vars: Record<string, string>, line: string): void => {
 const parseEnvFile = (path: string): Record<string, string> => {
   const vars: Record<string, string> = {}
   try {
+    // oxlint-disable-next-line node/no-sync
     const text = readFileSync(path, 'utf8')
     for (const line of text.split('\n')) parseEnvLine(vars, line)
   } catch {
@@ -33,7 +34,9 @@ const parseEnvFile = (path: string): Record<string, string> => {
 }
 const isProjectRoot = (dir: string): boolean => {
   try {
+    // oxlint-disable-next-line node/no-sync
     readFileSync(join(dir, 'package.json'))
+    // oxlint-disable-next-line node/no-sync
     readFileSync(join(dir, '.env'))
     return true
   } catch {
@@ -311,8 +314,10 @@ const materializeDocsReadIfApplicable = (path: string[], data: unknown): unknown
   const body = typeof d.body === 'string' ? d.body : null
   const docId = typeof d.doc_id === 'string' ? d.doc_id : null
   if (body === null || docId === null || !DOC_ID_RE.test(docId)) return data
+  // oxlint-disable-next-line node/no-sync
   mkdirSync(DOCS_CACHE_DIR, { recursive: true })
   const filePath = join(DOCS_CACHE_DIR, `${docId}.md`)
+  // oxlint-disable-next-line node/no-sync
   writeFileSync(filePath, body, 'utf8')
   const rest: Record<string, unknown> = {}
   for (const [k, val] of Object.entries(d)) if (k !== 'body') rest[k] = val

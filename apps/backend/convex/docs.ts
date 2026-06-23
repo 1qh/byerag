@@ -162,9 +162,13 @@ const persistChunks = internalMutation({
     centroid: v.array(v.float64()),
     chunks: v.array(
       v.object({
+        // oxlint-disable-next-line unicorn/max-nested-calls
         embedding: v.array(v.float64()),
+        // oxlint-disable-next-line unicorn/max-nested-calls
         end: v.number(),
+        // oxlint-disable-next-line unicorn/max-nested-calls
         start: v.number(),
+        // oxlint-disable-next-line unicorn/max-nested-calls
         text: v.string()
       })
     ),

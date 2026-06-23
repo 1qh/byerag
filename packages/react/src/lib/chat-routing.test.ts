@@ -65,6 +65,7 @@ describe('filterLivePending — Thinking-forever guard', () => {
   })
 })
 describe('use-chat-convex source guards', () => {
+  // oxlint-disable-next-line node/no-sync
   const hookSrc = readFileSync(join(import.meta.dir, '..', 'hooks', 'use-chat-convex.ts'), 'utf8')
   test('sendMessage uses history.replaceState (not router.replace) to avoid first-message flicker', () => {
     expect(hookSrc).toContain('globalThis.window.history.replaceState')

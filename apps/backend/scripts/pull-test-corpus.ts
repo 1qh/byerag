@@ -42,6 +42,7 @@ interface ProbeResult {
   reason: string
   verdict: 'accept' | 'reject'
 }
+// oxlint-disable-next-line node/no-sync
 const env = parseEnv(readFileSync(join(import.meta.dir, '..', '.env'), 'utf8'))
 const KIMI_BASE = env.KIMI_BASE_URL ?? ''
 const KIMI_KEY = env.KIMI_API_KEY ?? ''
@@ -159,7 +160,9 @@ const probe = async (c: Candidate): Promise<ProbeResult> => {
       verdict: 'reject'
     }
   const savePath = join(REAL_DOCS_DIR, c.filename)
+  // oxlint-disable-next-line node/no-sync
   mkdirSync(REAL_DOCS_DIR, { recursive: true })
+  // oxlint-disable-next-line node/no-sync
   writeFileSync(savePath, c.snippet)
   return {
     acceptedAs: savePath,
@@ -171,6 +174,7 @@ const probe = async (c: Candidate): Promise<ProbeResult> => {
     verdict: 'accept'
   }
 }
+// oxlint-disable-next-line node/no-sync
 if (!existsSync(CANDIDATES_PATH)) {
   console.error(`missing ${CANDIDATES_PATH}`)
   console.error(
@@ -178,6 +182,7 @@ if (!existsSync(CANDIDATES_PATH)) {
   )
   process.exit(2)
 }
+// oxlint-disable-next-line node/no-sync
 const lines = readFileSync(CANDIDATES_PATH, 'utf8')
   .split('\n')
   .map(l => l.trim())
@@ -189,6 +194,7 @@ for (const c of candidates) {
   console.log(`[pull-corpus] ▶ ${c.filename}: ${c.distinctiveFact.slice(0, 80)}`)
   const r = await probe(c)
   results.push(r)
+  // oxlint-disable-next-line node/no-sync
   appendFileSync(PROBE_LOG, `${JSON.stringify({ ...r, at: new Date().toISOString() })}\n`)
   console.log(`[pull-corpus]   verdict=${r.verdict} reason=${r.reason}`)
 }

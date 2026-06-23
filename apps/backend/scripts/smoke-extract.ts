@@ -21,6 +21,7 @@ const parseEnv = (text: string): Record<string, string> => {
   }
   return out
 }
+// oxlint-disable-next-line node/no-sync
 const env = parseEnv(readFileSync(join(import.meta.dir, '..', '.env'), 'utf8'))
 const url = env.CONVEX_SELF_HOSTED_URL ?? ''
 const testSecret = env.TEST_SECRET ?? ''
@@ -91,10 +92,12 @@ if (r1.extractedTextLen === 0) {
 }
 console.log('[extract] case 2: pandoc-generated docx (via sandbox)')
 const tmp = `${tmpdir()}/extract-${Date.now()}`
+// oxlint-disable-next-line node/no-sync
 writeFileSync(`${tmp}.md`, MD_BODY)
 await $`docker cp ${tmp}.md ${SANDBOX}:/tmp/x.md`.quiet()
 await $`docker exec -u agent ${SANDBOX} sh -c "pandoc /tmp/x.md -o /tmp/x.docx"`.quiet()
 await $`docker cp ${SANDBOX}:/tmp/x.docx ${tmp}.docx`.quiet()
+// oxlint-disable-next-line node/no-sync
 const docxBytes = readFileSync(`${tmp}.docx`)
 const docxId = await seed(
   'extract-pandoc.docx',

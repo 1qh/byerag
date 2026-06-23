@@ -50,6 +50,7 @@ const upsert = internalMutation({
     await ctx.db.patch(keep._id, { lastUsedAt: now, sandboxId })
     return { accepted: true }
   },
+  // oxlint-disable-next-line unicorn/max-nested-calls
   returns: v.object({ accepted: v.boolean(), existingSandboxId: v.optional(v.string()) })
 })
 const touch = internalMutation({

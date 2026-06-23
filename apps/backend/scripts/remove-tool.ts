@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 /* oxlint-disable unicorn/no-process-exit */
 import { $ } from 'bun'
-import { existsSync, rmSync } from 'node:fs'
+import { rm } from 'node:fs/promises'
 import { join } from 'node:path'
 
 const pathArg = process.argv[2]
@@ -19,13 +19,18 @@ const name = parts.at(-1) ?? ''
 const dir = parts.slice(0, -1).join('/')
 const toolFile = join('convex/tools', dir, `${name}.ts`)
 const testFile = join('convex/tools', dir, `${name}.integration.test.ts`)
-let removed = 0
-for (const f of [toolFile, testFile])
-  if (existsSync(f)) {
-    rmSync(f)
-    console.log(`removed ${f}`)
-    removed += 1
-  }
+const removedFlags = await Promise.all(
+  [toolFile, testFile].map(async f => {
+    try {
+      await rm(f)
+      console.log(`removed ${f}`)
+      return true
+    } catch {
+      return false
+    }
+  })
+)
+const removed = removedFlags.filter(Boolean).length
 if (removed === 0) {
   console.error(`no files found for ${pathArg}`)
   process.exit(1)

@@ -19,6 +19,7 @@ describe('loadHermeticFixtures', () => {
   })
   it('matches payload-specific rules before falling back', () => {
     const tmp = resolve(import.meta.dirname, '__tmp_fixtures.json')
+    // oxlint-disable-next-line node/no-sync
     writeFileSync(
       tmp,
       JSON.stringify({
@@ -32,6 +33,7 @@ describe('loadHermeticFixtures', () => {
       const otherHit = hermeticTry<{ hits: unknown[] }>('mock.search', { collection: 'other-key' })
       expect(otherHit?.hits).toStrictEqual([])
     } finally {
+      // oxlint-disable-next-line node/no-sync
       unlinkSync(tmp)
     }
   })

@@ -16,6 +16,7 @@ describe('docs boundary', () => {
     const offenders: string[] = []
     for await (const file of glob.scan({ cwd: REPO_ROOT }))
       if (!isAllowed(file)) {
+        // oxlint-disable-next-line node/no-sync
         const text = readFileSync(join(REPO_ROOT, file), 'utf8').toLowerCase()
         for (const tok of FORBIDDEN) {
           const re = new RegExp(`\\b${tok}\\b`, 'iu')

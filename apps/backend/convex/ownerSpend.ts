@@ -137,6 +137,7 @@ const reserveBudget = internalMutation({
     centsToday: v.number(),
     dayKey: v.string(),
     ok: v.boolean(),
+    // oxlint-disable-next-line unicorn/max-nested-calls
     reason: v.optional(v.string())
   })
 })

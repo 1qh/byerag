@@ -28,6 +28,7 @@ import { constantTimeEqual } from './utils'
 
 const userMessageContent = z.object({
   message: z.object({
+    // oxlint-disable-next-line unicorn/max-nested-calls
     content: z.array(z.object({ text: z.string(), type: z.literal('text') })),
     role: z.literal('user')
   })

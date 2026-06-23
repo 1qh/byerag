@@ -21,6 +21,7 @@ const parseEnv = (text: string): Record<string, string> => {
   }
   return out
 }
+// oxlint-disable-next-line node/no-sync
 const env = parseEnv(readFileSync(join(import.meta.dir, '..', '.env'), 'utf8'))
 const url = env.CONVEX_SELF_HOSTED_URL ?? ''
 const testSecret = env.TEST_SECRET ?? ''
@@ -51,6 +52,7 @@ const docs = [
 ]
 const docIds: string[] = []
 for (const d of docs) {
+  // oxlint-disable-next-line node/no-sync
   const body = readFileSync(join(realDir, d.file), 'utf8')
   const uploadUrl = await c.mutation(api.testing.docsGenerateUploadUrl, { testSecret })
   const res = await fetch(uploadUrl, { body, headers: { 'Content-Type': 'text/plain' }, method: 'POST' })

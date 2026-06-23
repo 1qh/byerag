@@ -19,6 +19,7 @@ const parseEnv = (text: string): Record<string, string> => {
   }
   return out
 }
+// oxlint-disable-next-line node/no-sync
 const env = parseEnv(readFileSync(join(import.meta.dir, '..', '.env'), 'utf8'))
 const url = env.CONVEX_SELF_HOSTED_URL ?? ''
 const testSecret = env.TEST_SECRET ?? ''
@@ -38,6 +39,7 @@ const check = (label: string, ok: boolean, detail: string): void => {
 console.log('[zip-bomb] wipe + craft 100MB-of-zeros gzipped (~100KB) bomb')
 await c.mutation(api.testing.wipeDocs, { testSecret })
 const raw = new Uint8Array(100 * 1024 * 1024)
+// oxlint-disable-next-line node/no-sync
 const gz = gzipSync(raw)
 console.log(`[zip-bomb] gzipped size=${gz.byteLength} bytes (decompresses to ${raw.byteLength})`)
 const uploadUrl = await c.mutation(api.testing.docsGenerateUploadUrl, { testSecret })

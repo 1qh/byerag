@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const env = Object.fromEntries(
+  // oxlint-disable-next-line node/no-sync
   readFileSync(join(import.meta.dir, '..', '.env'), 'utf8')
     .split('\n')
     .filter(l => l.includes('='))

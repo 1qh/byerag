@@ -214,7 +214,7 @@ const getDueDays = async (ctx: QueryCtx): Promise<number> => {
     .query('settings')
     .withIndex('by_key', q => q.eq('key', 'assignment_due_days'))
     .first()
-  const n = row ? Number.parseInt(row.value, 10) : Number.NaN
+  const n = row ? Math.trunc(Number(row.value)) : Number.NaN
   return Number.isFinite(n) && n > 0 ? n : DEFAULT_DUE_DAYS
 }
 interface TopicTrain {
@@ -404,11 +404,16 @@ interface AssignRow {
 const uniqSorted = (xs: string[]): string[] => [...new Set(xs)].toSorted((a, b) => a.localeCompare(b))
 const assignmentsTable = query({
   args: {
+    // oxlint-disable-next-line unicorn/max-nested-calls
     assigneds: v.optional(v.array(v.string())),
+    // oxlint-disable-next-line unicorn/max-nested-calls
     deadlines: v.optional(v.array(v.string())),
+    // oxlint-disable-next-line unicorn/max-nested-calls
     departments: v.optional(v.array(v.string())),
     page: v.optional(v.number()),
+    // oxlint-disable-next-line unicorn/max-nested-calls
     statuses: v.optional(v.array(v.string())),
+    // oxlint-disable-next-line unicorn/max-nested-calls
     tests: v.optional(v.array(v.string()))
   },
   handler: async (
@@ -629,6 +634,7 @@ interface UserSummaryFullRow {
 }
 const userSummaryFull = query({
   args: {
+    // oxlint-disable-next-line unicorn/max-nested-calls
     departments: v.optional(v.array(v.string())),
     needsCoaching: v.optional(v.boolean()),
     search: v.optional(v.string())

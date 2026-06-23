@@ -4,7 +4,9 @@ import { join } from 'node:path'
 
 const PARSERS_DIR = import.meta.dirname
 const parserSrc = [
+  // oxlint-disable-next-line node/no-sync
   readFileSync(join(PARSERS_DIR, 'chunks.ts'), 'utf8'),
+  // oxlint-disable-next-line node/no-sync
   readFileSync(join(PARSERS_DIR, 'stream.ts'), 'utf8')
 ].join('\n')
 describe('parsers — protocol drift', () => {

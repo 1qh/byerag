@@ -1,3 +1,4 @@
+/* oxlint-disable unicorn/max-nested-calls -- zod schema/validator definitions: declarative nesting is the API */
 import { z } from 'zod/v4'
 
 type ContentBlock =

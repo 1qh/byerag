@@ -30,6 +30,7 @@ const record = (id: string, title: string, pass: boolean, evidence: string): voi
   console.log(`${pass ? '✓' : '✗'} ${id} ${title}`)
   if (!pass) console.log(`    evidence: ${evidence.slice(0, 300)}`)
 }
+// oxlint-disable-next-line node/no-sync
 const env = parseEnv(readFileSync(join(import.meta.dir, '..', '.env'), 'utf8'))
 const url = env.CONVEX_SELF_HOSTED_URL ?? 'http://localhost:3210'
 const adminPort = '3001'
@@ -160,6 +161,7 @@ console.log('\n[judge] J — Test corpus + Kimi probe')
 const probeLogPath = join(import.meta.dir, '..', 'test-results', 'probe-log.jsonl')
 let probeAccepted = 0
 try {
+  // oxlint-disable-next-line node/no-sync
   const probeLog = readFileSync(probeLogPath, 'utf8').split('\n').filter(Boolean)
   for (const line of probeLog) {
     const row = JSON.parse(line) as { verdict?: string }
@@ -173,6 +175,7 @@ console.log('\n[judge] K — Final promise')
 const ledgerPath = join(import.meta.dir, '..', '..', '..', '..', 'byerag-doc', 'ledger.jsonl')
 let promiseFound = false
 try {
+  // oxlint-disable-next-line node/no-sync
   const ledgerTail = readFileSync(ledgerPath, 'utf8').split('\n').findLast(Boolean) ?? ''
   promiseFound = ledgerTail.includes('<promise>BYERAG SHIPPED') && ledgerTail.includes('</promise>')
 } catch {
@@ -193,6 +196,7 @@ const scenarios = [
 let scenarioPass = 0
 for (const s of scenarios)
   try {
+    // oxlint-disable-next-line node/no-sync
     const j = JSON.parse(readFileSync(join(evidenceDir, `${s}.json`), 'utf8')) as { verdict?: string }
     if (j.verdict === 'pass') scenarioPass += 1
   } catch {
@@ -207,7 +211,9 @@ record(
 const passCount = checks.filter(c => c.pass).length
 const failCount = checks.length - passCount
 console.log(`\n[judge] SUMMARY pass=${passCount} fail=${failCount} total=${checks.length}`)
+// oxlint-disable-next-line node/no-sync
 mkdirSync(join(import.meta.dir, '..', 'test-results'), { recursive: true })
+// oxlint-disable-next-line node/no-sync
 writeFileSync(
   join(import.meta.dir, '..', 'test-results', 'judge-results.json'),
   `${JSON.stringify({ at: new Date().toISOString(), checks, failCount, passCount, total: checks.length }, null, 2)}\n`

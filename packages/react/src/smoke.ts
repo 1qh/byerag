@@ -36,6 +36,7 @@ const runSmoke = async ({
   timeoutMs = 180_000
 }: RunSmokeOpts): Promise<void> => {
   const repoRoot = resolve(import.meta.dirname, '..', '..', '..')
+  // oxlint-disable-next-line node/no-sync
   const env = parseEnv(readFileSync(join(repoRoot, 'apps/backend/.env'), 'utf8'))
   const email = env.ALLOWED_EMAILS?.split(',')[0]?.trim() ?? env.BOOTSTRAP_ADMIN_EMAIL?.trim()
   const url = env.NEXT_PUBLIC_CONVEX_URL ?? env.CONVEX_SELF_HOSTED_URL

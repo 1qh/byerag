@@ -15,6 +15,7 @@ const parseEnv = (text: string): Record<string, string> => {
   }
   return out
 }
+// oxlint-disable-next-line node/no-sync
 const env = parseEnv(readFileSync(join(import.meta.dir, '..', '.env'), 'utf8'))
 const url = env.CONVEX_SELF_HOSTED_URL ?? ''
 const ts = env.TEST_SECRET ?? ''

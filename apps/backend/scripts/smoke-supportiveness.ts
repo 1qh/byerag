@@ -50,6 +50,7 @@ interface Verdict {
   toolsInvoked: string[]
   verdict: 'fail' | 'pass'
 }
+// oxlint-disable-next-line node/no-sync
 const env = parseEnv(readFileSync(join(import.meta.dir, '..', '.env'), 'utf8'))
 const url = env.CONVEX_SELF_HOSTED_URL ?? ''
 const testSecret = env.TEST_SECRET ?? ''
@@ -69,6 +70,7 @@ const RUN_DEADLINE_MS = 420_000
 const POLL_MS = 4000
 const EVIDENCE_DIR = join(import.meta.dir, '..', 'test-results', 'supportiveness-evidence')
 const SCENARIOS_PATH = join(import.meta.dir, '..', 'test-fixtures', 'supportiveness-scenarios.json')
+// oxlint-disable-next-line node/no-sync
 const allScenarios = (JSON.parse(readFileSync(SCENARIOS_PATH, 'utf8')) as { scenarios: Scenario[] }).scenarios
 const filter = process.argv[2] ?? ''
 const scenarios = filter ? allScenarios.filter(s => s.name === filter) : allScenarios
@@ -183,7 +185,9 @@ const runScenario = async (s: Scenario): Promise<Verdict> => {
     await sleep(POLL_MS)
   }
   const v = judge(s, messages)
+  // oxlint-disable-next-line node/no-sync
   mkdirSync(EVIDENCE_DIR, { recursive: true })
+  // oxlint-disable-next-line node/no-sync
   writeFileSync(
     join(EVIDENCE_DIR, `${s.name}.json`),
     `${JSON.stringify({ ...v, chatId, docIds, messageCount: messages.length, prompt: s.prompt }, null, 2)}\n`

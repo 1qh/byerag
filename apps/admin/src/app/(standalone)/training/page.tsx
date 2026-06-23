@@ -216,7 +216,7 @@ const TrainingPage = (): React.ReactElement => {
   }
   const saveDue = async (): Promise<void> => {
     if (dueDraft === null) return
-    const n = Number.parseInt(dueDraft, 10)
+    const n = Math.trunc(Number(dueDraft))
     if (!Number.isFinite(n) || n <= 0) {
       toast.error('Enter a positive number of days')
       setDueDraft(null)
@@ -282,7 +282,7 @@ const TrainingPage = (): React.ReactElement => {
     }
     setCBusy(true)
     try {
-      const days = cDueDays.trim() ? Number.parseInt(cDueDays, 10) : Number.NaN
+      const days = cDueDays.trim() ? Math.trunc(Number(cDueDays)) : Number.NaN
       const dueAtMs = Number.isFinite(days) && days > 0 ? Date.now() + days * 86_400_000 : undefined
       if (cAudience === 'selected' && cUserIds.length === 0) {
         toast.error('Pick at least one user')

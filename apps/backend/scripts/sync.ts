@@ -99,12 +99,14 @@ const loadEnvOrDie = async (): Promise<{ adminKey: string; selfHostedUrl: string
   return { adminKey, selfHostedUrl, vars }
 }
 const writeKeyInEnv = (key: string, value: string): void => {
+  // oxlint-disable-next-line node/no-sync
   const text = readFileSync('.env', 'utf8')
   const lines = text.split('\n')
   const idx = lines.findIndex(l => l.startsWith(`${key}=`))
   const newLine = `${key}=${value}`
   if (idx === -1) lines.push(newLine)
   else lines[idx] = newLine
+  // oxlint-disable-next-line node/no-sync
   writeFileSync('.env', lines.join('\n'))
 }
 const makeSetVar =
@@ -193,6 +195,7 @@ const ensureAuthKeys = async (
     return
   }
   console.log('Generating JWT keys for Convex Auth (fresh) and persisting to .env...')
+  // oxlint-disable-next-line node/no-sync
   const pair = generateKeyPairSync('rsa', {
     modulusLength: 2048,
     privateKeyEncoding: { format: 'pem', type: 'pkcs8' },

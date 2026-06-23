@@ -53,8 +53,11 @@ describeTool('${dotPath}', ({ ok }) => {
   })
 })
 `
+// oxlint-disable-next-line node/no-sync
 mkdirSync(dirname(filePath), { recursive: true })
+// oxlint-disable-next-line node/no-sync
 writeFileSync(filePath, tool)
+// oxlint-disable-next-line node/no-sync
 writeFileSync(testPath, test)
 console.log(`created ${filePath} (kind: ${kind})`)
 console.log(`created ${testPath}`)
