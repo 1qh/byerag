@@ -15,7 +15,7 @@ const seedExistingChat = async (
   const now = Date.now()
   const chatId = await t.run(async ctx =>
     ctx.db.insert('chats', {
-      app: 'test',
+      app: 'user',
       messageCount: 1,
       owner,
       secretHash,
@@ -35,13 +35,13 @@ describe('sendCore validation', () => {
   test('empty content rejected', async () => {
     const t = makeTest()
     await expect(
-      t.mutation(internal.messages.sendInternal, { app: 'test', content: '   ', email: 'a@x' })
+      t.mutation(internal.messages.sendInternal, { app: 'user', content: '   ', email: 'a@x' })
     ).rejects.toThrow('empty message')
   })
   test('overlong content rejected', async () => {
     const t = makeTest()
     await expect(
-      t.mutation(internal.messages.sendInternal, { app: 'test', content: 'x'.repeat(200_000), email: 'a@x' })
+      t.mutation(internal.messages.sendInternal, { app: 'user', content: 'x'.repeat(200_000), email: 'a@x' })
     ).rejects.toThrow('message too long')
   })
 })
@@ -53,7 +53,7 @@ describe('sendCore concurrent-stream cap', () => {
       const now = Date.now()
       for (let i = 0; i < 3; i += 1)
         await ctx.db.insert('chats', {
-          app: 'test',
+          app: 'user',
           messageCount: 1,
           owner,
           secretHash: 'h'.repeat(64),
@@ -65,7 +65,7 @@ describe('sendCore concurrent-stream cap', () => {
         })
     })
     await expect(
-      t.mutation(internal.messages.sendInternal, { app: 'test', content: 'hello', email: owner })
+      t.mutation(internal.messages.sendInternal, { app: 'user', content: 'hello', email: owner })
     ).rejects.toThrow(/Too many concurrent sessions/u)
   })
 })
@@ -74,7 +74,7 @@ describe('sendCore existing chat', () => {
     const t = makeTest()
     const chatId = await t.run(async ctx =>
       ctx.db.insert('chats', {
-        app: 'test',
+        app: 'user',
         messageCount: 0,
         owner: 'a@x',
         secretHash: 'h'.repeat(64),
@@ -89,28 +89,28 @@ describe('sendCore existing chat', () => {
       await ctx.db.delete(chatId)
     })
     await expect(
-      t.mutation(internal.messages.sendInternal, { app: 'test', chatId, content: 'x', email: 'a@x' })
+      t.mutation(internal.messages.sendInternal, { app: 'user', chatId, content: 'x', email: 'a@x' })
     ).rejects.toThrow('chat not found')
   })
   test('throws on owner mismatch', async () => {
     const t = makeTest()
     const { chatId } = await seedExistingChat(t, 'owner-a@x')
     await expect(
-      t.mutation(internal.messages.sendInternal, { app: 'test', chatId, content: 'x', email: 'attacker@x' })
+      t.mutation(internal.messages.sendInternal, { app: 'user', chatId, content: 'x', email: 'attacker@x' })
     ).rejects.toThrow('unauthorized')
   })
   test('throws if chat is busy', async () => {
     const t = makeTest()
     const { chatId } = await seedExistingChat(t, 'busy@x', { streaming: true })
     await expect(
-      t.mutation(internal.messages.sendInternal, { app: 'test', chatId, content: 'x', email: 'busy@x' })
+      t.mutation(internal.messages.sendInternal, { app: 'user', chatId, content: 'x', email: 'busy@x' })
     ).rejects.toThrow('chat is busy')
   })
   test('rotates secret on existing chat (new secret hash differs)', async () => {
     const t = makeTest()
     const { chatId, secret } = await seedExistingChat(t, 'rot@x')
     const oldHash = await hashSecret(secret)
-    await t.mutation(internal.messages.sendInternal, { app: 'test', chatId, content: 'second turn', email: 'rot@x' })
+    await t.mutation(internal.messages.sendInternal, { app: 'user', chatId, content: 'second turn', email: 'rot@x' })
     const after = await t.run(async ctx => ctx.db.get(chatId))
     expect(after?.secretHash).not.toBe(oldHash)
   })
@@ -120,7 +120,7 @@ describe('sendCore existing chat', () => {
     await t.run(async ctx => {
       for (let i = 0; i < 5; i += 1) await ctx.db.insert('streamEvents', { chatId, content: `{"i":${i}}`, seq: i })
     })
-    await t.mutation(internal.messages.sendInternal, { app: 'test', chatId, content: 'next', email: 'clean@x' })
+    await t.mutation(internal.messages.sendInternal, { app: 'user', chatId, content: 'next', email: 'clean@x' })
     const remaining = await t.run(async ctx =>
       ctx.db
         .query('streamEvents')
@@ -132,7 +132,7 @@ describe('sendCore existing chat', () => {
   test('increments turns and messageCount', async () => {
     const t = makeTest()
     const { chatId } = await seedExistingChat(t, 'inc@x')
-    await t.mutation(internal.messages.sendInternal, { app: 'test', chatId, content: 'next', email: 'inc@x' })
+    await t.mutation(internal.messages.sendInternal, { app: 'user', chatId, content: 'next', email: 'inc@x' })
     const after = await t.run(async ctx => ctx.db.get(chatId))
     expect(after?.turns).toBe(2)
     expect(after?.messageCount).toBe(2)
@@ -145,7 +145,7 @@ describe('chats.abort', () => {
     const oldHash = await hashSecret(secret)
     const { api } = await import('./_generated/api')
     const auth = await authed(t, 'ab@x')
-    await auth.mutation(api.chats.abort, { app: 'test', chatId })
+    await auth.mutation(api.chats.abort, { app: 'user', chatId })
     const after = await t.run(async ctx => ctx.db.get(chatId))
     expect(after?.streaming).toBe(false)
     expect(after?.secretHash).not.toBe(oldHash)
@@ -155,11 +155,11 @@ describe('chats.abort', () => {
     const { chatId } = await seedExistingChat(t, 'ab2@x', { streaming: true })
     const { api } = await import('./_generated/api')
     const auth = await authed(t, 'ab2@x')
-    await auth.mutation(api.chats.abort, { app: 'test', chatId })
+    await auth.mutation(api.chats.abort, { app: 'user', chatId })
     await t.run(async ctx => {
       await ctx.db.patch(chatId, { streaming: true, streamingStartedAt: Date.now() })
     })
-    await auth.mutation(api.chats.abort, { app: 'test', chatId })
+    await auth.mutation(api.chats.abort, { app: 'user', chatId })
     const errEvents = await t.run(async ctx =>
       ctx.db
         .query('streamEvents')
@@ -174,7 +174,7 @@ describe('chats.abort', () => {
     const { chatId: chat1 } = await seedExistingChat(t, owner, { streaming: true })
     await t.run(async ctx => {
       await ctx.db.insert('chats', {
-        app: 'test',
+        app: 'user',
         messageCount: 0,
         owner,
         secretHash: 'h'.repeat(64),
@@ -187,7 +187,7 @@ describe('chats.abort', () => {
     })
     await t.mutation(internal.sandboxes.upsert, { owner, sandboxId: 'shared-sb' })
     const { api } = await import('./_generated/api')
-    await (await authed(t, owner)).mutation(api.chats.abort, { app: 'test', chatId: chat1 })
+    await (await authed(t, owner)).mutation(api.chats.abort, { app: 'user', chatId: chat1 })
     const sb = await t.query(internal.sandboxes.getByOwner, { owner })
     expect(sb?.sandboxId).toBe('shared-sb')
   })
@@ -197,7 +197,7 @@ describe('chats.abort', () => {
     const { chatId } = await seedExistingChat(t, owner, { streaming: true })
     await t.mutation(internal.sandboxes.upsert, { owner, sandboxId: 'lone-sb' })
     const { api } = await import('./_generated/api')
-    await (await authed(t, owner)).mutation(api.chats.abort, { app: 'test', chatId })
+    await (await authed(t, owner)).mutation(api.chats.abort, { app: 'user', chatId })
     const sb = await t.query(internal.sandboxes.getByOwner, { owner })
     expect(sb).toBeNull()
   })
@@ -206,7 +206,7 @@ describe('chats.abort', () => {
     const { chatId } = await seedExistingChat(t, 'noop@x', { streaming: false })
     const before = await t.run(async ctx => ctx.db.get(chatId))
     const { api } = await import('./_generated/api')
-    await (await authed(t, 'noop@x')).mutation(api.chats.abort, { app: 'test', chatId })
+    await (await authed(t, 'noop@x')).mutation(api.chats.abort, { app: 'user', chatId })
     const after = await t.run(async ctx => ctx.db.get(chatId))
     expect(after?.secretHash).toBe(before?.secretHash ?? '')
   })

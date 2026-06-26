@@ -10,7 +10,7 @@ type T = TestConvex<typeof schema>
 const sendSecrets = new Map<ChatId, string>()
 const send = async (t: T, email: string, content: string, chatId?: ChatId): Promise<ChatId> => {
   const r: { chatId: ChatId; secret: string } = await t.mutation(internal.messages.sendInternal, {
-    app: 'test',
+    app: 'user',
     content,
     email,
     ...(chatId ? { chatId } : {})

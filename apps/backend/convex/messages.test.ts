@@ -152,7 +152,7 @@ test('insertStreamEvent rejects invalid secret', async () => {
 })
 test('messages.send rejects without auth', async () => {
   const t = makeTest()
-  await expect(t.mutation(api.messages.send, { app: 'test', content: 'test' })).rejects.toThrow('not authenticated')
+  await expect(t.mutation(api.messages.send, { app: 'user', content: 'test' })).rejects.toThrow('not authenticated')
 })
 test('messages.list returns empty without auth', async () => {
   const t = makeTest()
@@ -722,7 +722,7 @@ test('countStreaming counts active sessions', async () => {
   const now = Date.now()
   await t.run(async ctx => {
     await ctx.db.insert('chats', {
-      app: 'test',
+      app: 'user',
       messageCount: 0,
       owner: 'count@test.com',
       secretHash: 'e8bc163c82eee18733288c7d4ac636db3a6deb013ef2d37b68322be20edc45cc',
@@ -733,7 +733,7 @@ test('countStreaming counts active sessions', async () => {
       updatedAt: now
     })
     await ctx.db.insert('chats', {
-      app: 'test',
+      app: 'user',
       messageCount: 0,
       owner: 'count@test.com',
       secretHash: 'ad328846aa18b32a335816374511cac1063c704b8c57999e51da9f908290a7a4',

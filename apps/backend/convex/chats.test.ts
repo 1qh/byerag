@@ -56,7 +56,7 @@ test("send to other user's chat rejected", async () => {
     await ctx.db.patch(chatId, { streaming: false })
   })
   await expect(
-    t.mutation(internal.messages.sendInternal, { app: 'test', chatId, content: 'hijack', email: 'bob@test.com' })
+    t.mutation(internal.messages.sendInternal, { app: 'user', chatId, content: 'hijack', email: 'bob@test.com' })
   ).rejects.toThrow('unauthorized')
 })
 test('chat has all required fields on creation', async () => {
@@ -94,7 +94,7 @@ test('streaming timeout — stale streaming flag treated as false', async () => 
 test('chats.list returns empty without auth', async () => {
   const t = makeTest()
   await send(t, 'noauth@test.com', 'test')
-  const chats: unknown[] = await t.query(api.chats.list, { app: 'test' })
+  const chats: unknown[] = await t.query(api.chats.list, { app: 'user' })
   expect(chats).toHaveLength(0)
 })
 test('chats.status returns false without auth', async () => {
@@ -106,7 +106,7 @@ test('chats.status returns false without auth', async () => {
 test('chats.remove rejects without auth', async () => {
   const t = makeTest()
   const chatId = await send(t, 'rmauth@test.com', 'test')
-  await expect(t.mutation(api.chats.remove, { app: 'test', chatId })).rejects.toThrow('not authenticated')
+  await expect(t.mutation(api.chats.remove, { app: 'user', chatId })).rejects.toThrow('not authenticated')
   const chat: unknown = await t.run(async ctx => ctx.db.get(chatId))
   expect(chat).not.toBeNull()
 })
@@ -116,7 +116,7 @@ test('testing.send rejects without TEST_SECRET env', async () => {
   delete process.env.TEST_SECRET
   try {
     await expect(
-      t.mutation(api.testing.send, { app: 'test', content: 'hi', email: 'x@test.com', testSecret: 'anything' })
+      t.mutation(api.testing.send, { app: 'user', content: 'hi', email: 'x@test.com', testSecret: 'anything' })
     ).rejects.toThrow('testing endpoints disabled')
   } finally {
     if (prior !== undefined) process.env.TEST_SECRET = prior
@@ -127,7 +127,7 @@ test('testing.send rejects wrong TEST_SECRET', async () => {
   process.env.TEST_SECRET = 'correct-secret'
   try {
     await expect(
-      t.mutation(api.testing.send, { app: 'test', content: 'hi', email: 'x@test.com', testSecret: 'wrong' })
+      t.mutation(api.testing.send, { app: 'user', content: 'hi', email: 'x@test.com', testSecret: 'wrong' })
     ).rejects.toThrow('invalid test secret')
   } finally {
     delete process.env.TEST_SECRET
@@ -180,7 +180,7 @@ test('chats.currentUser returns null without auth', async () => {
 test('chats.remove no-op for other user chat (no throw)', async () => {
   const t = makeTest()
   const chatId = await send(t, 'owner@test.com', 'hi')
-  await expect(t.mutation(api.chats.remove, { app: 'test', chatId })).rejects.toThrow('not authenticated')
+  await expect(t.mutation(api.chats.remove, { app: 'user', chatId })).rejects.toThrow('not authenticated')
 })
 test('testing.listMessages returns messages', async () => {
   const t = makeTest()
@@ -274,7 +274,7 @@ test('updateTitle patches chat title', async () => {
     await ctx.db.patch(chatId, { streaming: false })
   })
   const a = await authed(t, 'rename@test.com')
-  await a.mutation(api.chats.updateTitle, { app: 'test', chatId, title: 'renamed' })
+  await a.mutation(api.chats.updateTitle, { app: 'user', chatId, title: 'renamed' })
   const chat = await t.run(async ctx => ctx.db.get(chatId))
   expect(chat?.title).toBe('renamed')
 })
@@ -282,7 +282,7 @@ test('updateTitle rejects while streaming', async () => {
   const t = makeTest()
   const chatId = await send(t, 'rn2@test.com', 'original')
   const a = await authed(t, 'rn2@test.com')
-  await expect(a.mutation(api.chats.updateTitle, { app: 'test', chatId, title: 'new' })).rejects.toThrow('streaming')
+  await expect(a.mutation(api.chats.updateTitle, { app: 'user', chatId, title: 'new' })).rejects.toThrow('streaming')
 })
 test('updateTitle rejects empty title', async () => {
   const t = makeTest()
@@ -291,7 +291,7 @@ test('updateTitle rejects empty title', async () => {
     await ctx.db.patch(chatId, { streaming: false })
   })
   const a = await authed(t, 'rn3@test.com')
-  await expect(a.mutation(api.chats.updateTitle, { app: 'test', chatId, title: '   ' })).rejects.toThrow('empty')
+  await expect(a.mutation(api.chats.updateTitle, { app: 'user', chatId, title: '   ' })).rejects.toThrow('empty')
 })
 test('remove sets deletedAt (soft delete), list filters it', async () => {
   const t = makeTest()
@@ -300,10 +300,10 @@ test('remove sets deletedAt (soft delete), list filters it', async () => {
     await ctx.db.patch(chatId, { streaming: false })
   })
   const a = await authed(t, 'soft@test.com')
-  await a.mutation(api.chats.remove, { app: 'test', chatId })
+  await a.mutation(api.chats.remove, { app: 'user', chatId })
   const chat = await t.run(async ctx => ctx.db.get(chatId))
   expect(chat?.deletedAt).toBeGreaterThan(0)
-  const visible = await a.query(api.chats.list, { app: 'test' })
+  const visible = await a.query(api.chats.list, { app: 'user' })
   expect(visible.find(c => c._id === chatId)).toBeUndefined()
 })
 test('restore clears deletedAt within window', async () => {
@@ -313,11 +313,11 @@ test('restore clears deletedAt within window', async () => {
     await ctx.db.patch(chatId, { streaming: false })
   })
   const a = await authed(t, 'restore@test.com')
-  await a.mutation(api.chats.remove, { app: 'test', chatId })
-  await a.mutation(api.chats.restore, { app: 'test', chatId })
+  await a.mutation(api.chats.remove, { app: 'user', chatId })
+  await a.mutation(api.chats.restore, { app: 'user', chatId })
   const chat = await t.run(async ctx => ctx.db.get(chatId))
   expect(chat?.deletedAt).toBeUndefined()
-  const visible = await a.query(api.chats.list, { app: 'test' })
+  const visible = await a.query(api.chats.list, { app: 'user' })
   expect(visible.find(c => c._id === chatId)).toBeDefined()
 })
 test('restore rejects after undo window expires', async () => {
@@ -327,13 +327,13 @@ test('restore rejects after undo window expires', async () => {
     await ctx.db.patch(chatId, { deletedAt: Date.now() - 10 * 60_000, streaming: false })
   })
   const a = await authed(t, 'expired@test.com')
-  await expect(a.mutation(api.chats.restore, { app: 'test', chatId })).rejects.toThrow('undo window')
+  await expect(a.mutation(api.chats.restore, { app: 'user', chatId })).rejects.toThrow('undo window')
 })
 test('remove rejects while streaming', async () => {
   const t = makeTest()
   const chatId = await send(t, 'busy@test.com', 'live')
   const a = await authed(t, 'busy@test.com')
-  await expect(a.mutation(api.chats.remove, { app: 'test', chatId })).rejects.toThrow('streaming')
+  await expect(a.mutation(api.chats.remove, { app: 'user', chatId })).rejects.toThrow('streaming')
 })
 test('hardPruneDeleted cascades messages + streamEvents', async () => {
   const t = makeTest()
