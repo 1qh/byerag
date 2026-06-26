@@ -12,6 +12,7 @@ const seedChat = async (
 ): Promise<Id<'chats'>> =>
   t.run(async ctx =>
     ctx.db.insert('chats', {
+      app: 'user',
       deletedAt: options.deletedAt,
       messageCount: 0,
       owner: options.owner ?? 'cron@x',

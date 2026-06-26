@@ -136,6 +136,7 @@ describe('chats.countStreaming', () => {
       const now = Date.now()
       const insert = async (streaming: boolean): Promise<void> => {
         await ctx.db.insert('chats', {
+          app: 'user',
           messageCount: 0,
           owner: 'cs@x',
           secretHash: 'h'.repeat(64),
@@ -162,6 +163,7 @@ describe('chats.countStreaming', () => {
     const t = makeTest()
     await t.run(async ctx => {
       await ctx.db.insert('chats', {
+        app: 'user',
         deletedAt: Date.now(),
         messageCount: 0,
         owner: 'sd@x',

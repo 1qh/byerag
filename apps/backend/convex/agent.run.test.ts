@@ -13,6 +13,7 @@ const seedChatWithUser = async (
   const owner = options.owner ?? 'agentrun@x'
   const chatId = await t.run(async ctx => {
     const id = await ctx.db.insert('chats', {
+      app: 'user',
       messageCount: 1,
       owner,
       secretHash,

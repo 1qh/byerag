@@ -6,6 +6,7 @@ import { internal } from './_generated/api'
 const seedChat = async (t: ReturnType<typeof makeTest>): Promise<Id<'chats'>> =>
   t.run(async ctx =>
     ctx.db.insert('chats', {
+      app: 'user',
       messageCount: 0,
       owner: 'rt@x',
       secretHash: 'a'.repeat(64),

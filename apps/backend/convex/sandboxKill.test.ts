@@ -10,6 +10,7 @@ const seedSandbox = async (t: ReturnType<typeof makeTest>, owner: string, sandbo
 const seedStreamingChat = async (t: ReturnType<typeof makeTest>, owner: string): Promise<void> => {
   await t.run(async ctx => {
     await ctx.db.insert('chats', {
+      app: 'user',
       messageCount: 0,
       owner,
       secretHash: 'h'.repeat(64),

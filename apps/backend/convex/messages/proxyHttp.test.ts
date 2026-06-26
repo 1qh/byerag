@@ -28,6 +28,7 @@ const seedChat = async (
   const now = Date.now()
   const chatId: string = await t.run(async ctx => {
     const id = await ctx.db.insert('chats', {
+      app: 'user',
       messageCount: 1,
       owner,
       secretHash,

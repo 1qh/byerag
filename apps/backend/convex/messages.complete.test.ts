@@ -12,6 +12,7 @@ const seedStreaming = async (
   const secretHash = await hashSecret(SECRET)
   const chatId = await t.run(async ctx =>
     ctx.db.insert('chats', {
+      app: 'user',
       messageCount: options.messageCount ?? 0,
       owner: options.owner ?? 'cmp@x',
       secretHash,

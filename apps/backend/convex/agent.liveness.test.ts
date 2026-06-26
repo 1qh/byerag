@@ -13,6 +13,7 @@ const seedChat = async (
   const secretHash = await hashSecret(secret)
   const chatId = await t.run(async ctx =>
     ctx.db.insert('chats', {
+      app: 'user',
       messageCount: 0,
       owner: 'live@x',
       secretHash,
