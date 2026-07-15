@@ -3,7 +3,7 @@ import type { Id } from 'backend/convex/_generated/dataModel'
 import { resetFakeConvex, setFakeStore } from '@a/react/test-utils/fake-convex'
 import { render } from '@a/react/test-utils/render'
 import { SidebarProvider } from '@a/ui/components/sidebar'
-import { fireEvent } from '@testing-library/react'
+import { fireEvent, within } from '@testing-library/react'
 import { beforeEach, describe, expect, test } from 'bun:test'
 import { AppSidebar } from './app-sidebar'
 
@@ -64,7 +64,7 @@ describe('AppSidebar', () => {
         <AppSidebar activeChatId={null} onNewChat={noop} onSelect={noopId} />
       </SidebarProvider>
     )
-    const dot = container.querySelector('[role="status"]')
-    expect(dot?.getAttribute('aria-label')).toContain('Connected')
+    const dot = within(container).getByRole('status')
+    expect(dot.getAttribute('aria-label')).toContain('Connected')
   })
 })

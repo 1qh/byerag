@@ -2,23 +2,50 @@
 import type { FunctionReference } from 'convex/server'
 import type { ArgSpecs, ProviderMeta, RegistryEntry, ToolMeta } from '@a/cli'
 import { internal } from '../../_generated/api'
+import admin_provider from '../_admin/_provider'
 import docs_provider from '../docs/_provider'
+import test_provider from '../test/_provider'
 import training_provider from '../training/_provider'
+import { action as _adminAuditRecent_mod } from '../_admin/audit/recent'
+import { action as _adminDebugTrace_mod } from '../_admin/debug/trace'
 import { action as docsConflict_mod } from '../docs/conflict'
 import { action as docsDiff_mod } from '../docs/diff'
 import { action as docsGrep_mod } from '../docs/grep'
 import { action as docsList_mod } from '../docs/list'
 import { action as docsRead_mod } from '../docs/read'
 import { action as docsSimilar_mod } from '../docs/similar'
+import { action as testEcho_mod } from '../test/echo'
 import { action as trainingAttemptDetail_mod } from '../training/attemptDetail'
 import { action as trainingAttempts_mod } from '../training/attempts'
 import { action as trainingStatus_mod } from '../training/status'
 import { action as trainingTopics_mod } from '../training/topics'
 const PROVIDERS: Record<string, ProviderMeta> = {
+  "_admin": admin_provider,
   "docs": docs_provider,
+  "test": test_provider,
   "training": training_provider,
 }
 const REGISTRY: Record<string, RegistryEntry<'admin' | 'user'>> = {
+  "admin.audit.recent": {
+    argSpecs: (_adminAuditRecent_mod as unknown as { argSpecs: ArgSpecs }).argSpecs,
+    fn: internal.tools._admin.audit.recent.action as FunctionReference<'query', 'internal'>,
+    inferredDescription: null,
+    inferredSchema: {"kind":"object","shape":{"entries":{"optional":false,"schema":{"element":{"kind":"object","shape":{"_id":{"optional":false,"schema":{"kind":"unknown","text":"Id<\"auditLogs\">"}},"args":{"optional":false,"schema":{"kind":"string"}},"command":{"optional":false,"schema":{"kind":"string"}},"mode":{"optional":false,"schema":{"kind":"string"}},"ok":{"optional":false,"schema":{"kind":"boolean"}},"owner":{"optional":false,"schema":{"kind":"string"}},"severity":{"optional":true,"schema":{"kind":"enum","values":["high","low","medium"]}}}},"kind":"array"}}}},
+    kind: 'query',
+    meta: (_adminAuditRecent_mod as unknown as { meta: ToolMeta }).meta,
+    path: ["admin","audit","recent"],
+    tier: "admin"
+  },
+  "admin.debug.trace": {
+    argSpecs: (_adminDebugTrace_mod as unknown as { argSpecs: ArgSpecs }).argSpecs,
+    fn: internal.tools._admin.debug.trace.action as FunctionReference<'query', 'internal'>,
+    inferredDescription: null,
+    inferredSchema: {"kind":"object","shape":{"trace":{"optional":false,"schema":{"kind":"union","members":[{"kind":"null"},{"kind":"object","shape":{"args":{"optional":false,"schema":{"kind":"string"}},"command":{"optional":false,"schema":{"kind":"string"}},"durationMs":{"optional":false,"schema":{"kind":"number"}},"error":{"optional":true,"schema":{"kind":"string"}},"inputsResolved":{"optional":true,"schema":{"kind":"string"}},"mode":{"optional":false,"schema":{"kind":"string"}},"ok":{"optional":false,"schema":{"kind":"boolean"}},"owner":{"optional":false,"schema":{"kind":"string"}},"steps":{"optional":true,"schema":{"kind":"string"}},"traceId":{"optional":false,"schema":{"kind":"string"}}}}]}}}},
+    kind: 'query',
+    meta: (_adminDebugTrace_mod as unknown as { meta: ToolMeta }).meta,
+    path: ["admin","debug","trace"],
+    tier: "admin"
+  },
   "docs.conflict": {
     argSpecs: (docsConflict_mod as unknown as { argSpecs: ArgSpecs }).argSpecs,
     fn: internal.tools.docs.conflict.action as FunctionReference<'action', 'internal'>,
@@ -77,6 +104,16 @@ const REGISTRY: Record<string, RegistryEntry<'admin' | 'user'>> = {
     kind: 'action',
     meta: (docsSimilar_mod as unknown as { meta: ToolMeta }).meta,
     path: ["docs","similar"],
+    tier: "user"
+  },
+  "test.echo": {
+    argSpecs: (testEcho_mod as unknown as { argSpecs: ArgSpecs }).argSpecs,
+    fn: internal.tools.test.echo.action as FunctionReference<'query', 'internal'>,
+    inferredDescription: null,
+    inferredSchema: {"kind":"object","shape":{"echoed":{"optional":false,"schema":{"kind":"string"}}}},
+    kind: 'query',
+    meta: (testEcho_mod as unknown as { meta: ToolMeta }).meta,
+    path: ["test","echo"],
     tier: "user"
   },
   "training.attempt-detail": {

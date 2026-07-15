@@ -79,7 +79,7 @@ const usePaginatedQuery = (_fnRef: unknown, args: unknown, _opts: unknown): Fake
     loadMore: () => {
       /* Empty */
     },
-    results: store.messages.get(chatIdOf(args)) ?? [],
+    results: [...(store.messages.get(chatIdOf(args)) ?? [])].toSorted((a, b) => b._creationTime - a._creationTime),
     status: 'Exhausted'
   }
 }

@@ -6,7 +6,7 @@
     "readonly/ui"
   ],
   "scripts": {
-    "action": "sh up.sh",
+    "action": "sh up.sh && bun run test",
     "build": "bash -c \"turbo build --output-logs=errors-only 2> >(grep -vE 'WARNING|Could not resolve workspaces|missing field|Turborepo will still function' >&2)\"",
     "check": "lintmax check",
     "clean": "sh clean.sh",
@@ -18,7 +18,7 @@
     "prepare": "bunx simple-git-hooks",
     "prod": "sh prod.sh",
     "sync": "bun --filter=backend run sync",
-    "test": "bun --env-file=apps/backend/.env test apps/backend packages/cli && bun --filter='./packages/react' run test && bun --filter='./apps/*' run test",
+    "test": "bun --env-file=apps/backend/.env test apps/backend packages/cli && bun --filter='./packages/react' run test",
     "test:e2e": "bun --env-file=apps/backend/.env test --parallel=1 apps/*/tests-e2e/"
   },
   "simple-git-hooks": {

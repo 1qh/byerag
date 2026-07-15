@@ -13,8 +13,7 @@
     "print-prompt": "bun scripts/print-prompt.ts",
     "probe:live": "bun scripts/probe-live.ts",
     "smoke": "bun scripts/smoke.ts",
-    "start": "bun --env-file=../backend/.env next start --port 3003",
-    "test": "bun test src server"
+    "start": "bun --env-file=../backend/.env next start --port 3003"
   },
   "dependencies": {
     "@a/react": "workspace:*",

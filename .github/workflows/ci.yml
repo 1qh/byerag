@@ -17,6 +17,8 @@ jobs:
       - if: runner.os == 'Linux'
         run: sudo apt-get install -y zsh
       - uses: oven-sh/setup-bun@v2
+      - name: seed env (the suite reads apps/backend/.env, which is gitignored)
+        run: '[ -f apps/backend/.env ] || cp apps/backend/.env.example apps/backend/.env'
       - run: bun action
       - name: prune prior CI runs
         if: always()
