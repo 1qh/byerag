@@ -13,7 +13,7 @@
     "deploy": "bun --filter=backend run deploy",
     "dev": "turbo dev",
     "fix": "lintmax fix",
-    "postinstall": "sherif",
+    "postinstall": "sherif -i typescript",
     "new-app": "bun scripts/new-app.ts",
     "prepare": "bunx simple-git-hooks",
     "prod": "sh prod.sh",
@@ -40,7 +40,7 @@
     "simple-git-hooks": "latest",
     "tsdown": "latest",
     "turbo": "latest",
-    "typescript": "latest",
+    "typescript": "~6.0.3",
     "unrun": "latest"
   },
   "packageManager": "bun@1.3.14",
