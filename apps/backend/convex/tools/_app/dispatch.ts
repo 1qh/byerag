@@ -22,6 +22,7 @@ import type { ResolvedAuth } from './auth'
 import { internal } from '../../_generated/api'
 import { httpAction, internalMutation, internalQuery } from '../../_generated/server'
 import { optionalEnv } from '../../env'
+import { SECRET_PATTERNS } from '../../redactor'
 import { hashSecret } from '../../secretHash'
 import { constantTimeEqual, log } from '../../utils'
 import { PROVIDERS, REGISTRY } from '../generated/registry'
@@ -247,8 +248,14 @@ const parseExecBody = async (req: Request): Promise<ExecBody | Response> => {
 }
 const REDACT_KEY_RE =
   /(?:password|\bsecret\b|\btoken\b|api[_-]?key|authorization|cookie|access[_-]?token|refresh[_-]?token|\bcard\b|\bssn\b|\bphone\b|\bpassport\b|\blicense\b|bearer|\bemail\b|credentials?)/iu
-const REDACT_COMBINED_RE =
-  /(?<email>[\w.+-]+@[\w-]+\.[\w.-]+)|(?<ssn>(?<!\d)\d{3}-\d{2}-\d{4}(?!\d))|(?<skant>sk-ant-[^\s"]{8,})|(?<e2b>\be2b_[A-Za-z0-9_-]{8,})|(?<jwt>eyJ[A-Za-z0-9._-]{20,})/giu
+const REDACT_COMBINED_RE = new RegExp(
+  [
+    String.raw`(?<email>[\w.+-]+@[\w-]+\.[\w.-]+)`,
+    String.raw`(?<ssn>(?<!\d)\d{3}-\d{2}-\d{4}(?!\d))`,
+    ...SECRET_PATTERNS
+  ].join('|'),
+  'giu'
+)
 const redactValueEmails = (s: string): string =>
   s.replaceAll(REDACT_COMBINED_RE, (_m, email?: string, ssn?: string) => {
     if (email) return '[EMAIL]'
