@@ -6,6 +6,6 @@ const action = defineQuery({
   description: 'Echo the given message back. Touches no data — the dispatch path is the point.',
   errorCodes: [],
   examples: ['test echo --msg hello'],
-  handler: (_ctx, args) => ({ msg: args.msg })
+  handler: (_ctx, args) => ({ echoed: args.msg })
 })
 export { action }
