@@ -4,15 +4,7 @@ import type { ActionCtx, MutationCtx, QueryCtx } from '../../_generated/server'
 import type { Called, Wrapped } from '@a/cli'
 import { internal } from '../../_generated/api'
 import { callResult, unwrap, wrapArgs } from '@a/cli'
-import type { AdminAuditRecentArgs, AdminAuditRecentResult, AdminDebugTraceArgs, AdminDebugTraceResult, DocsConflictArgs, DocsConflictResult, DocsDiffArgs, DocsDiffResult, DocsGrepArgs, DocsGrepResult, DocsListArgs, DocsListResult, DocsReadArgs, DocsReadResult, DocsSimilarArgs, DocsSimilarResult, TestEchoArgs, TestEchoResult, TrainingAttemptDetailArgs, TrainingAttemptDetailResult, TrainingAttemptsArgs, TrainingAttemptsResult, TrainingStatusResult, TrainingTopicsResult } from './toolTypes'
-const callAdminAuditRecent = async (ctx: QueryCtx, args: AdminAuditRecentArgs): Promise<Called<AdminAuditRecentResult>> => {
-  const r = (await ctx.runQuery(internal.tools._admin.audit.recent.action, wrapArgs(args, "admin.audit.recent"))) as Wrapped<AdminAuditRecentResult>
-  return unwrap(r)
-}
-const callAdminDebugTrace = async (ctx: QueryCtx, args: AdminDebugTraceArgs): Promise<Called<AdminDebugTraceResult>> => {
-  const r = (await ctx.runQuery(internal.tools._admin.debug.trace.action, wrapArgs(args, "admin.debug.trace"))) as Wrapped<AdminDebugTraceResult>
-  return unwrap(r)
-}
+import type { DocsConflictArgs, DocsConflictResult, DocsDiffArgs, DocsDiffResult, DocsGrepArgs, DocsGrepResult, DocsListArgs, DocsListResult, DocsReadArgs, DocsReadResult, DocsSimilarArgs, DocsSimilarResult, TrainingAttemptDetailArgs, TrainingAttemptDetailResult, TrainingAttemptsArgs, TrainingAttemptsResult, TrainingStatusResult, TrainingTopicsResult } from './toolTypes'
 const callDocsConflict = async (ctx: ActionCtx, args: DocsConflictArgs): Promise<Called<DocsConflictResult>> => {
   const r = (await ctx.runAction(internal.tools.docs.conflict.action, wrapArgs(args, "docs.conflict"))) as Wrapped<DocsConflictResult>
   return unwrap(r)
@@ -37,10 +29,6 @@ const callDocsSimilar = async (ctx: ActionCtx, args: DocsSimilarArgs): Promise<C
   const r = (await ctx.runAction(internal.tools.docs.similar.action, wrapArgs(args, "docs.similar"))) as Wrapped<DocsSimilarResult>
   return unwrap(r)
 }
-const callTestEcho = async (ctx: QueryCtx, args: TestEchoArgs): Promise<Called<TestEchoResult>> => {
-  const r = (await ctx.runQuery(internal.tools.test.echo.action, wrapArgs(args, "test.echo"))) as Wrapped<TestEchoResult>
-  return unwrap(r)
-}
 const callTrainingAttemptDetail = async (ctx: QueryCtx, args: TrainingAttemptDetailArgs): Promise<Called<TrainingAttemptDetailResult>> => {
   const r = (await ctx.runQuery(internal.tools.training.attemptDetail.action, wrapArgs(args, "training.attempt-detail"))) as Wrapped<TrainingAttemptDetailResult>
   return unwrap(r)
@@ -58,14 +46,6 @@ const callTrainingTopics = async (ctx: QueryCtx, args: Record<string, never>): P
   return unwrap(r)
 }
 const callersTree = {
-  admin: {
-    audit: {
-      recent: callAdminAuditRecent
-    },
-    debug: {
-      trace: callAdminDebugTrace
-    }
-  },
   docs: {
     conflict: callDocsConflict,
     diff: callDocsDiff,
@@ -73,9 +53,6 @@ const callersTree = {
     list: callDocsList,
     read: callDocsRead,
     similar: callDocsSimilar
-  },
-  test: {
-    echo: callTestEcho
   },
   training: {
     "attempt-detail": callTrainingAttemptDetail,
@@ -89,30 +66,24 @@ type FnEntry =
   | { fn: FunctionReference<'mutation', 'internal'>; kind: 'mutation' }
   | { fn: FunctionReference<'query', 'internal'>; kind: 'query' }
 const fnByPath: Record<string, FnEntry> = {
-  "admin.audit.recent": { fn: internal.tools._admin.audit.recent.action as unknown as FunctionReference<'query', 'internal'>, kind: 'query' as const },
-  "admin.debug.trace": { fn: internal.tools._admin.debug.trace.action as unknown as FunctionReference<'query', 'internal'>, kind: 'query' as const },
   "docs.conflict": { fn: internal.tools.docs.conflict.action as unknown as FunctionReference<'action', 'internal'>, kind: 'action' as const },
   "docs.diff": { fn: internal.tools.docs.diff.action as unknown as FunctionReference<'query', 'internal'>, kind: 'query' as const },
   "docs.grep": { fn: internal.tools.docs.grep.action as unknown as FunctionReference<'query', 'internal'>, kind: 'query' as const },
   "docs.list": { fn: internal.tools.docs.list.action as unknown as FunctionReference<'query', 'internal'>, kind: 'query' as const },
   "docs.read": { fn: internal.tools.docs.read.action as unknown as FunctionReference<'query', 'internal'>, kind: 'query' as const },
   "docs.similar": { fn: internal.tools.docs.similar.action as unknown as FunctionReference<'action', 'internal'>, kind: 'action' as const },
-  "test.echo": { fn: internal.tools.test.echo.action as unknown as FunctionReference<'query', 'internal'>, kind: 'query' as const },
   "training.attempt-detail": { fn: internal.tools.training.attemptDetail.action as unknown as FunctionReference<'query', 'internal'>, kind: 'query' as const },
   "training.attempts": { fn: internal.tools.training.attempts.action as unknown as FunctionReference<'query', 'internal'>, kind: 'query' as const },
   "training.status": { fn: internal.tools.training.status.action as unknown as FunctionReference<'query', 'internal'>, kind: 'query' as const },
   "training.topics": { fn: internal.tools.training.topics.action as unknown as FunctionReference<'query', 'internal'>, kind: 'query' as const }
 }
 interface ToolTable {
-  "admin.audit.recent": { args: AdminAuditRecentArgs; ctx: QueryCtx; kind: 'query'; result: AdminAuditRecentResult };
-  "admin.debug.trace": { args: AdminDebugTraceArgs; ctx: QueryCtx; kind: 'query'; result: AdminDebugTraceResult };
   "docs.conflict": { args: DocsConflictArgs; ctx: ActionCtx; kind: 'action'; result: DocsConflictResult };
   "docs.diff": { args: DocsDiffArgs; ctx: QueryCtx; kind: 'query'; result: DocsDiffResult };
   "docs.grep": { args: DocsGrepArgs; ctx: QueryCtx; kind: 'query'; result: DocsGrepResult };
   "docs.list": { args: DocsListArgs; ctx: QueryCtx; kind: 'query'; result: DocsListResult };
   "docs.read": { args: DocsReadArgs; ctx: QueryCtx; kind: 'query'; result: DocsReadResult };
   "docs.similar": { args: DocsSimilarArgs; ctx: ActionCtx; kind: 'action'; result: DocsSimilarResult };
-  "test.echo": { args: TestEchoArgs; ctx: QueryCtx; kind: 'query'; result: TestEchoResult };
   "training.attempt-detail": { args: TrainingAttemptDetailArgs; ctx: QueryCtx; kind: 'query'; result: TrainingAttemptDetailResult };
   "training.attempts": { args: TrainingAttemptsArgs; ctx: QueryCtx; kind: 'query'; result: TrainingAttemptsResult };
   "training.status": { args: Record<string, never>; ctx: QueryCtx; kind: 'query'; result: TrainingStatusResult };
