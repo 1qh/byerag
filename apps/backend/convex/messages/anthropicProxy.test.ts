@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import { makeTest } from '../../test-utils/convex'
 import { clearStreaming, getSecret, send } from '../../test-utils/messages-helpers'
+import { env } from '../env'
 
 const originalFetch = globalThis.fetch
 const stubFetch = (fn: typeof globalThis.fetch): void => {
@@ -15,6 +16,8 @@ describe('anthropicProxy httpAction', () => {
     delete process.env.ANTHROPIC_API_KEY
   })
   const proxyUrl = (path = '/v1/messages') => `/api/anthropic${path}`
+  /** The proxy forwards to KIMI_BASE_URL — Claude Code reaches it by pointing ANTHROPIC_BASE_URL at us. */
+  const upstreamUrl = (path: string) => new URL(path.replace(/^\//u, ''), env.KIMI_BASE_URL).toString()
   it('rejects malformed proxy token (oversized-body path also rejected before buffering)', async () => {
     const t = makeTest()
     const res = await t.fetch(proxyUrl(), {
@@ -82,9 +85,9 @@ describe('anthropicProxy httpAction', () => {
       method: 'POST'
     })
     expect(res.status).toBe(200)
-    expect(captured.url).toBe('https://api.anthropic.com/v1/messages')
-    expect(captured.headers?.['x-api-key']).toBe('test-key-xyz')
-    expect(captured.headers?.authorization).toBeUndefined()
+    expect(captured.url).toBe(upstreamUrl('/v1/messages'))
+    expect(captured.headers?.authorization).toBe(`Bearer ${env.KIMI_API_KEY}`)
+    expect(captured.headers?.['x-api-key']).toBeUndefined()
     expect(captured.headers?.['anthropic-version']).toBe('2023-06-01')
   })
   it('rejects malformed anthropic-version with 400', async () => {
@@ -119,7 +122,7 @@ describe('anthropicProxy httpAction', () => {
       },
       method: 'POST'
     })
-    expect(capturedUrl).toBe('https://api.anthropic.com/v1/messages')
+    expect(capturedUrl).toBe(upstreamUrl('/v1/messages'))
   })
   it('returns upstream status code', async () => {
     const t = makeTest()
