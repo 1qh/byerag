@@ -7,6 +7,7 @@ interface TooltipDismissalsValue {
   dismissed: readonly string[]
 }
 const TooltipDismissalsContext = createContext<TooltipDismissalsValue | undefined>(undefined)
+TooltipDismissalsContext.displayName = 'TooltipDismissalsContext'
 const TooltipDismissalsProvider = ({ children, value }: { children: ReactNode; value?: TooltipDismissalsValue }) => (
   <TooltipDismissalsContext value={value}>{children}</TooltipDismissalsContext>
 )

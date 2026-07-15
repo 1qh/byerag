@@ -72,10 +72,10 @@ const fileTypeFor = (mime: string): { Icon: typeof FileText; tone: string } => {
   return { Icon: File, tone: 'bg-muted text-muted-foreground' }
 }
 const FileTypeChip = ({ mime }: { mime: string }): React.ReactElement => {
-  const { Icon, tone } = fileTypeFor(mime)
+  const type = fileTypeFor(mime)
   return (
-    <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-full', tone)}>
-      <Icon aria-hidden className='size-5' />
+    <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-full', type.tone)}>
+      <type.Icon aria-hidden className='size-5' />
     </span>
   )
 }

@@ -1,3 +1,4 @@
+/* eslint-disable @eslint-react/immutability */
 import { fireEvent, render } from '@testing-library/react'
 import { describe, expect, test } from 'bun:test'
 import { useShortcuts } from './use-shortcuts'

@@ -160,8 +160,6 @@ const getMyAttemptDetail = query({
         })),
         status: row.status
       }
-    // Terminal (passed/failed/cancelled): reveal pass/fail + score + source-doc citations only.
-    // No questionSnapshots / answer key ever leave the server.
     const docIds = new Set<string>()
     for (const q of row.questionSnapshots) for (const d of q.sourceDocIds) docIds.add(d)
     const sources: { docId: string; filename: string }[] = []

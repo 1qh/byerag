@@ -120,14 +120,18 @@ const activityKey = (part: ActivityPart): string => {
   if (part.type === 'data-tool-x') return `x:${toolLabel(part.toolName, part.input)}`
   return `${part.type}:${oneLine(part.text).slice(0, 24)}`
 }
-const ActivityRows = ({ parts }: { parts: ActivityPart[] }): ReactNode => {
+const activityKeysFor = (parts: ActivityPart[]): string[] => {
   const seen = new Map<string, number>()
   return parts.map(part => {
     const base = activityKey(part)
     const n = seen.get(base) ?? 0
     seen.set(base, n + 1)
-    return <ActivityRow key={`${base}#${n}`} part={part} />
+    return `${base}#${n}`
   })
+}
+const ActivityRows = ({ parts }: { parts: ActivityPart[] }): ReactNode => {
+  const keys = activityKeysFor(parts)
+  return parts.map((part, i) => <ActivityRow key={keys[i]} part={part} />)
 }
 const summarizeTools = (parts: ActivityPart[]): string => {
   const seen = new Set<string>()
@@ -147,7 +151,6 @@ const ThinkingBlock = ({ isLoading, parts }: { isLoading: boolean; parts: Activi
   useEffect(() => {
     if (wasLoadingRef.current && !isLoading) {
       const roundedSec = Math.round((Date.now() - startedAt) / 1000)
-      // eslint-disable-next-line @eslint-react/hooks-extra/no-direct-set-state-in-use-effect -- snapshot elapsed time on transition
       setElapsedSec(Math.max(1, roundedSec))
     }
     wasLoadingRef.current = isLoading

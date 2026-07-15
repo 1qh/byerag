@@ -77,7 +77,6 @@ const AttemptPage = ({ params }: { params: Promise<{ attemptId: string }> }): Re
     setSubmitting(true)
     try {
       await submit({ answers, attemptId: attemptId as never })
-      // Status flips → getMyAttemptDetail re-renders the terminal result
     } catch (error: unknown) {
       toast.error(`Could not submit: ${String(error).slice(0, 120)}`)
       setSubmitting(false)

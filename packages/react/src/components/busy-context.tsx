@@ -7,6 +7,7 @@ interface BusyState {
   onStop: (() => void) | null
 }
 const BusyContext = createContext<BusyState>({ lockedReason: null, onStop: null })
+BusyContext.displayName = 'BusyContext'
 const BusyProvider = ({ children, value }: { children: ReactNode; value: BusyState }) => (
   <BusyContext value={value}>{children}</BusyContext>
 )

@@ -9,7 +9,7 @@ import { Button } from '@a/ui/components/button'
 import { Progress } from '@a/ui/components/progress'
 import { api } from 'backend/convex/_generated/api'
 import { useAction, useMutation } from 'convex/react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { ScanOverrideModal } from './scan-override-modal'
 
@@ -82,10 +82,12 @@ const DocUpload = ({ isAdmin, scope }: DocUploadProps): React.ReactElement => {
   const itemsRef = useRef<QueueItem[]>([])
   const conflictRef = useRef<ConflictState | null>(null)
   const runningRef = useRef(false)
-  // eslint-disable-next-line react-hooks/refs
-  itemsRef.current = items
-  // eslint-disable-next-line react-hooks/refs
-  conflictRef.current = conflict
+  useEffect(() => {
+    itemsRef.current = items
+  }, [items])
+  useEffect(() => {
+    conflictRef.current = conflict
+  }, [conflict])
   const patch = (id: string, p: Partial<QueueItem>): void => {
     setItems(prev => prev.map(it => (it.id === id ? { ...it, ...p } : it)))
     itemsRef.current = itemsRef.current.map(it => (it.id === id ? { ...it, ...p } : it))

@@ -41,15 +41,15 @@ const useDraft = (chatId: null | string): [string, (v: string) => void, () => vo
   const [value, setValue] = useState<string>(() => read(chatId))
   const latestRef = useRef(value)
   const chatIdRef = useRef(chatId)
-  // eslint-disable-next-line react-hooks/refs
-  latestRef.current = value
+  useEffect(() => {
+    latestRef.current = value
+  }, [value])
   useEffect(() => {
     if (chatIdRef.current !== chatId) {
       write(chatIdRef.current, latestRef.current)
       chatIdRef.current = chatId
       const next = read(chatId)
       latestRef.current = next
-      // eslint-disable-next-line @eslint-react/hooks-extra/no-direct-set-state-in-use-effect
       setValue(next)
     }
   }, [chatId])

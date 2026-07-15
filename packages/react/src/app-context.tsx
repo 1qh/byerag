@@ -14,6 +14,7 @@ interface AppCtx {
   id: string
 }
 const AppContext = createContext<AppCtx | null>(null)
+AppContext.displayName = 'AppContext'
 const EMPTY: AppCallbacks = {}
 const AppProvider = ({ appId, callbacks, children }: { appId: string; callbacks?: AppCallbacks; children: ReactNode }) => {
   const value = useMemo<AppCtx>(() => ({ callbacks: callbacks ?? EMPTY, id: appId }), [appId, callbacks])

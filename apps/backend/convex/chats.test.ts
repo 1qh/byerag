@@ -89,7 +89,6 @@ test('streaming timeout — stale streaming flag treated as false', async () => 
   const elapsed = Date.now() - (chat?.streamingStartedAt ?? 0)
   expect(elapsed).toBeGreaterThan(10 * 60 * 1000)
   expect(chat?.streaming).toBeTruthy()
-  // But status query would return false due to timeout logic
 })
 test('chats.list returns empty without auth', async () => {
   const t = makeTest()

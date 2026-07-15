@@ -11,6 +11,7 @@ interface GenericListResult {
   items: Record<string, unknown>[]
   summary: string
 }
+const ID_FIELDS = ['_id', 'id', 'refId'] as const
 const TITLE_FIELDS = ['name', 'filename', 'toEmail', 'subject', 'refId', '_id'] as const
 const SUB_FIELDS = ['description', 'subject', 'fromEmail', 'kind', 'signal'] as const
 const titleField = (item: Record<string, unknown>): string => {
@@ -20,12 +21,33 @@ const titleField = (item: Record<string, unknown>): string => {
   }
   return '?'
 }
+const identityOf = (item: Record<string, unknown>): null | string => {
+  for (const k of ID_FIELDS) {
+    const v = item[k]
+    if (typeof v === 'string' && v) return v
+  }
+  const title = titleField(item)
+  return title === '?' ? null : title
+}
 const subField = (item: Record<string, unknown>): null | string => {
   for (const k of SUB_FIELDS) {
     const v = item[k]
     if (typeof v === 'string') return v
   }
   return null
+}
+interface KeyedRow {
+  item: Record<string, unknown>
+  key: string
+}
+const keyedRows = (items: Record<string, unknown>[]): KeyedRow[] => {
+  const seen = new Map<string, number>()
+  return items.map(item => {
+    const base = identityOf(item) ?? JSON.stringify(item)
+    const n = seen.get(base) ?? 0
+    seen.set(base, n + 1)
+    return { item, key: n === 0 ? base : `${base}#${n}` }
+  })
 }
 interface ListCardProps {
   data: GenericListResult
@@ -45,8 +67,8 @@ const ListCard = ({ data, label, paneKind }: ListCardProps) => {
         </CardTitle>
       </CardHeader>
       <CardContent className='space-y-1'>
-        {data.items.slice(0, 50).map((item, i) => (
-          <div className={cn(ROW_CLASS)} key={typeof item._id === 'string' ? item._id : i}>
+        {keyedRows(data.items.slice(0, 50)).map(({ item, key }) => (
+          <div className={cn(ROW_CLASS)} key={key}>
             <div className='font-medium'>{titleField(item)}</div>
             {subField(item) ? <div className='text-muted-foreground mt-0.5'>{subField(item)}</div> : null}
           </div>

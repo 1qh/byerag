@@ -103,6 +103,18 @@ const parseQuestions = (raw: string): ParsedQuestion[] => {
   }
 }
 const MAX_RETRY = 5
+const tryKimi = async (prompt: string, i: number): Promise<{ error: string; res: KimiResult | null }> => {
+  try {
+    const res = await callKimi(prompt)
+    return { error: '', res }
+  } catch (error) {
+    if (i < 2)
+      await new Promise<void>(resolve => {
+        setTimeout(resolve, 2000 * (i + 1))
+      })
+    return { error: String(error).slice(0, 100), res: null }
+  }
+}
 const generate = internalAction({
   args: { attempt: v.optional(v.number()), docId: v.id('docs') },
   handler: async (ctx, { docId, attempt }): Promise<{ conflictsFlagged?: number; generated: number; reason?: string }> => {
@@ -117,17 +129,14 @@ const generate = internalAction({
     const text = doc.extractedText.slice(0, MAX_PROMPT_DOC_CHARS)
     let res: KimiResult | null = null
     let lastError = ''
-    for (let i = 0; i < 3; i += 1)
-      try {
-        res = await callKimi(buildUserPrompt(doc.filename, text))
+    for (let i = 0; i < 3; i += 1) {
+      const { error, res: attempted } = await tryKimi(buildUserPrompt(doc.filename, text), i)
+      if (attempted) {
+        res = attempted
         break
-      } catch (error) {
-        lastError = String(error).slice(0, 100)
-        if (i < 2)
-          await new Promise<void>(resolve => {
-            setTimeout(resolve, 2000 * (i + 1))
-          })
       }
+      lastError = error
+    }
     if (!res) {
       if (att < MAX_RETRY)
         await ctx.scheduler.runAfter(5 * 60_000, internal.trainingGen.generate, { attempt: att + 1, docId })

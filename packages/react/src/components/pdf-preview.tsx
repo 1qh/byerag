@@ -14,7 +14,7 @@ const PdfPreview = ({ url }: { url: string }): React.ReactElement => {
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
-    // eslint-disable-next-line @eslint-react/hooks-extra/no-direct-set-state-in-use-effect -- ResizeObserver derives state from layout
+    // eslint-disable-next-line @eslint-react/set-state-in-effect -- ResizeObserver derives state from layout
     const update = (): void => setWidth(Math.max(320, el.clientWidth - 8))
     update()
     const ro = new ResizeObserver(update)

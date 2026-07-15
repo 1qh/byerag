@@ -13,7 +13,7 @@ const PolicySettingsPage = (): React.ReactElement => {
   const [text, setText] = useState<string>('')
   const [saving, setSaving] = useState(false)
   useEffect(() => {
-    // eslint-disable-next-line @eslint-react/hooks-extra/no-direct-set-state-in-use-effect -- sync server value into local edit state
+    // eslint-disable-next-line @eslint-react/set-state-in-effect -- sync server value into local edit state
     if (typeof current === 'string') setText(current)
   }, [current])
   if (current === undefined) return <div className='p-6'>Loading…</div>

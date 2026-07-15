@@ -8,6 +8,7 @@ interface Ctx {
 }
 type Mode = 'clean' | 'debug'
 const VerbosityContext = createContext<Ctx | null>(null)
+VerbosityContext.displayName = 'VerbosityContext'
 const KEY = 'verbosity-mode'
 const readInitial = (): Mode => {
   try {

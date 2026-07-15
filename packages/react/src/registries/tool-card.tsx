@@ -8,6 +8,7 @@ interface ToolCardProps {
   output: unknown
 }
 const ToolCardContext = createContext<null | ToolCardComponent>(null)
+ToolCardContext.displayName = 'ToolCardContext'
 const ToolCardProvider = ({ children, value }: { children: ReactNode; value: ToolCardComponent }) => (
   <ToolCardContext value={value}>{children}</ToolCardContext>
 )

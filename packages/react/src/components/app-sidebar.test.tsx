@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars */
+/* eslint-disable @eslint-react/immutability, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unused-vars */
 import type { Id } from 'backend/convex/_generated/dataModel'
 import { resetFakeConvex, setFakeStore } from '@a/react/test-utils/fake-convex'
 import { render } from '@a/react/test-utils/render'

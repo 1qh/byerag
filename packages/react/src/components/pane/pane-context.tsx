@@ -25,6 +25,7 @@ interface PaneSubject {
   payload: unknown
 }
 const PaneContext = createContext<null | PaneState>(null)
+PaneContext.displayName = 'PaneContext'
 const PaneProvider = ({ children }: { children: ReactNode }) => {
   const [subject, setSubject] = useState<null | PaneSubject>(null)
   const [drafted, setDrafted] = useState<DraftedLine[]>([])

@@ -282,8 +282,6 @@ describe('files', () => {
     await ensureSandbox()
     const bytes = new Uint8Array([0x00, 0x01, 0x02, 0xff, 0xfe, 0x00, 0x80, 0x7f])
     await uploadFile(email, '/home/user/workspace/nullbytes.bin', toBase64(bytes), true)
-    // .bin not in BINARY_EXTENSIONS — will be read as text, which corrupts null bytes
-    // But that's expected behavior — only known binary extensions get binary treatment
   })
   test('symlink escape blocked', async () => {
     await ensureSandbox()

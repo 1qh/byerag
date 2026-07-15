@@ -10,6 +10,7 @@ interface MessagePartCtx {
 type MessagePartRegistryMap = Readonly<Record<string, MessagePartRenderer>>
 type MessagePartRenderer = (part: UIPart, ctx: MessagePartCtx) => ReactNode
 const MessagePartRegistryContext = createContext<MessagePartRegistryMap | null>(null)
+MessagePartRegistryContext.displayName = 'MessagePartRegistryContext'
 const MessagePartRegistry = ({ children, value }: { children: ReactNode; value: MessagePartRegistryMap }) => (
   <MessagePartRegistryContext value={value}>{children}</MessagePartRegistryContext>
 )

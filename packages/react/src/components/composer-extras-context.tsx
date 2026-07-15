@@ -8,6 +8,7 @@ interface UploadedFile {
   storageId: string
 }
 const FileUploadContext = createContext<FileUploadFn | undefined>(undefined)
+FileUploadContext.displayName = 'FileUploadContext'
 const FileUploadProvider = ({ children, upload }: { children: ReactNode; upload?: FileUploadFn }) => (
   <FileUploadContext value={upload}>{children}</FileUploadContext>
 )

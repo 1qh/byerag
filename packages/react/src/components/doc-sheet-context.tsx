@@ -20,6 +20,7 @@ const DocSheetContext = createContext<DocSheetApi>({
     /* Empty */
   }
 })
+DocSheetContext.displayName = 'DocSheetContext'
 const DocSheetProvider = ({ children }: { children: ReactNode }): React.ReactElement => {
   const [state, setState] = useState<DocSheetState>({ anchor: null, docId: null })
   const openDoc = useCallback((docId: string, anchor: null | string = null) => {
