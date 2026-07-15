@@ -684,9 +684,14 @@ const anthropicProxy = httpAction(async (ctx, req) => {
       }
     }
     const settled = async (u: UsageReport): Promise<void> => {
-      log('info', 'proxy.settled.enter', { hasUsage: u.inputTokens > 0 || u.outputTokens > 0, owner, settledDoneOuter, u })
+      const hasUsage = u.inputTokens > 0 || u.outputTokens > 0
+      log('info', 'proxy.settled.enter', { hasUsage, owner, settledDoneOuter, u })
       if (settledDoneOuter) return
       settledDoneOuter = true
+      if (!hasUsage) {
+        await postSettle(0, 'sse-flush-no-usage')
+        return
+      }
       const actualCents = computeActualCents(u)
       await postSettle(actualCents, 'sse-flush')
       try {
