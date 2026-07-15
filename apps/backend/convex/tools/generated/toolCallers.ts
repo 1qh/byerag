@@ -4,7 +4,7 @@ import type { ActionCtx, MutationCtx, QueryCtx } from '../../_generated/server'
 import type { Called, Wrapped } from '@a/cli'
 import { internal } from '../../_generated/api'
 import { callResult, unwrap, wrapArgs } from '@a/cli'
-import type { DocsConflictArgs, DocsConflictResult, DocsDiffArgs, DocsDiffResult, DocsGrepArgs, DocsGrepResult, DocsListArgs, DocsListResult, DocsReadArgs, DocsReadResult, DocsSimilarArgs, DocsSimilarResult, TrainingAttemptDetailArgs, TrainingAttemptDetailResult, TrainingAttemptsArgs, TrainingAttemptsResult, TrainingStatusResult, TrainingTopicsResult } from './toolTypes'
+import type { DocsConflictArgs, DocsConflictResult, DocsDiffArgs, DocsDiffResult, DocsGrepArgs, DocsGrepResult, DocsListArgs, DocsListResult, DocsReadArgs, DocsReadResult, DocsSimilarArgs, DocsSimilarResult, TestEchoArgs, TestEchoResult, TrainingAttemptDetailArgs, TrainingAttemptDetailResult, TrainingAttemptsArgs, TrainingAttemptsResult, TrainingStatusResult, TrainingTopicsResult } from './toolTypes'
 const callDocsConflict = async (ctx: ActionCtx, args: DocsConflictArgs): Promise<Called<DocsConflictResult>> => {
   const r = (await ctx.runAction(internal.tools.docs.conflict.action, wrapArgs(args, "docs.conflict"))) as Wrapped<DocsConflictResult>
   return unwrap(r)
@@ -27,6 +27,10 @@ const callDocsRead = async (ctx: QueryCtx, args: DocsReadArgs): Promise<Called<D
 }
 const callDocsSimilar = async (ctx: ActionCtx, args: DocsSimilarArgs): Promise<Called<DocsSimilarResult>> => {
   const r = (await ctx.runAction(internal.tools.docs.similar.action, wrapArgs(args, "docs.similar"))) as Wrapped<DocsSimilarResult>
+  return unwrap(r)
+}
+const callTestEcho = async (ctx: QueryCtx, args: TestEchoArgs): Promise<Called<TestEchoResult>> => {
+  const r = (await ctx.runQuery(internal.tools.test.echo.action, wrapArgs(args, "test.echo"))) as Wrapped<TestEchoResult>
   return unwrap(r)
 }
 const callTrainingAttemptDetail = async (ctx: QueryCtx, args: TrainingAttemptDetailArgs): Promise<Called<TrainingAttemptDetailResult>> => {
@@ -54,6 +58,9 @@ const callersTree = {
     read: callDocsRead,
     similar: callDocsSimilar
   },
+  test: {
+    echo: callTestEcho
+  },
   training: {
     "attempt-detail": callTrainingAttemptDetail,
     attempts: callTrainingAttempts,
@@ -72,6 +79,7 @@ const fnByPath: Record<string, FnEntry> = {
   "docs.list": { fn: internal.tools.docs.list.action as unknown as FunctionReference<'query', 'internal'>, kind: 'query' as const },
   "docs.read": { fn: internal.tools.docs.read.action as unknown as FunctionReference<'query', 'internal'>, kind: 'query' as const },
   "docs.similar": { fn: internal.tools.docs.similar.action as unknown as FunctionReference<'action', 'internal'>, kind: 'action' as const },
+  "test.echo": { fn: internal.tools.test.echo.action as unknown as FunctionReference<'query', 'internal'>, kind: 'query' as const },
   "training.attempt-detail": { fn: internal.tools.training.attemptDetail.action as unknown as FunctionReference<'query', 'internal'>, kind: 'query' as const },
   "training.attempts": { fn: internal.tools.training.attempts.action as unknown as FunctionReference<'query', 'internal'>, kind: 'query' as const },
   "training.status": { fn: internal.tools.training.status.action as unknown as FunctionReference<'query', 'internal'>, kind: 'query' as const },
@@ -84,6 +92,7 @@ interface ToolTable {
   "docs.list": { args: DocsListArgs; ctx: QueryCtx; kind: 'query'; result: DocsListResult };
   "docs.read": { args: DocsReadArgs; ctx: QueryCtx; kind: 'query'; result: DocsReadResult };
   "docs.similar": { args: DocsSimilarArgs; ctx: ActionCtx; kind: 'action'; result: DocsSimilarResult };
+  "test.echo": { args: TestEchoArgs; ctx: QueryCtx; kind: 'query'; result: TestEchoResult };
   "training.attempt-detail": { args: TrainingAttemptDetailArgs; ctx: QueryCtx; kind: 'query'; result: TrainingAttemptDetailResult };
   "training.attempts": { args: TrainingAttemptsArgs; ctx: QueryCtx; kind: 'query'; result: TrainingAttemptsResult };
   "training.status": { args: Record<string, never>; ctx: QueryCtx; kind: 'query'; result: TrainingStatusResult };

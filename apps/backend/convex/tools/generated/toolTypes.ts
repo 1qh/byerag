@@ -76,6 +76,12 @@ interface DocsSimilarResult {
   scope: "mine" | "shared"
   snippet: string
 }[]
+interface TestEchoArgs {
+  msg: string
+}
+interface TestEchoResult {
+  msg: string
+}
 interface TrainingAttemptDetailArgs {
   id: string
 }
@@ -139,4 +145,4 @@ interface TrainingTopicsResult {
     poolSize: number
   }[]
 }
-export type { DocsConflictArgs, DocsConflictResult, DocsDiffArgs, DocsDiffResult, DocsGrepArgs, DocsGrepResult, DocsListArgs, DocsListResult, DocsReadArgs, DocsReadResult, DocsSimilarArgs, DocsSimilarResult, TrainingAttemptDetailArgs, TrainingAttemptDetailResult, TrainingAttemptsArgs, TrainingAttemptsResult, TrainingStatusResult, TrainingTopicsResult }
+export type { DocsConflictArgs, DocsConflictResult, DocsDiffArgs, DocsDiffResult, DocsGrepArgs, DocsGrepResult, DocsListArgs, DocsListResult, DocsReadArgs, DocsReadResult, DocsSimilarArgs, DocsSimilarResult, TestEchoArgs, TestEchoResult, TrainingAttemptDetailArgs, TrainingAttemptDetailResult, TrainingAttemptsArgs, TrainingAttemptsResult, TrainingStatusResult, TrainingTopicsResult }

@@ -3,6 +3,7 @@ import type { FunctionReference } from 'convex/server'
 import type { ArgSpecs, ProviderMeta, RegistryEntry, ToolMeta } from '@a/cli'
 import { internal } from '../../_generated/api'
 import docs_provider from '../docs/_provider'
+import test_provider from '../test/_provider'
 import training_provider from '../training/_provider'
 import { action as docsConflict_mod } from '../docs/conflict'
 import { action as docsDiff_mod } from '../docs/diff'
@@ -10,12 +11,14 @@ import { action as docsGrep_mod } from '../docs/grep'
 import { action as docsList_mod } from '../docs/list'
 import { action as docsRead_mod } from '../docs/read'
 import { action as docsSimilar_mod } from '../docs/similar'
+import { action as testEcho_mod } from '../test/echo'
 import { action as trainingAttemptDetail_mod } from '../training/attemptDetail'
 import { action as trainingAttempts_mod } from '../training/attempts'
 import { action as trainingStatus_mod } from '../training/status'
 import { action as trainingTopics_mod } from '../training/topics'
 const PROVIDERS: Record<string, ProviderMeta> = {
   "docs": docs_provider,
+  "test": test_provider,
   "training": training_provider,
 }
 const REGISTRY: Record<string, RegistryEntry<'admin' | 'user'>> = {
@@ -77,6 +80,16 @@ const REGISTRY: Record<string, RegistryEntry<'admin' | 'user'>> = {
     kind: 'action',
     meta: (docsSimilar_mod as unknown as { meta: ToolMeta }).meta,
     path: ["docs","similar"],
+    tier: "user"
+  },
+  "test.echo": {
+    argSpecs: (testEcho_mod as unknown as { argSpecs: ArgSpecs }).argSpecs,
+    fn: internal.tools.test.echo.action as FunctionReference<'query', 'internal'>,
+    inferredDescription: null,
+    inferredSchema: {"kind":"object","shape":{"msg":{"optional":false,"schema":{"kind":"string"}}}},
+    kind: 'query',
+    meta: (testEcho_mod as unknown as { meta: ToolMeta }).meta,
+    path: ["test","echo"],
     tier: "user"
   },
   "training.attempt-detail": {
