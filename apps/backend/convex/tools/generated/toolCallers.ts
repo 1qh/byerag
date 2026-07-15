@@ -5,6 +5,7 @@ import type { Called, Wrapped } from '@a/cli'
 import { internal } from '../../_generated/api'
 import { callResult, unwrap, wrapArgs } from '@a/cli'
 import type { DocsConflictArgs, DocsConflictResult, DocsDiffArgs, DocsDiffResult, DocsGrepArgs, DocsGrepResult, DocsListArgs, DocsListResult, DocsReadArgs, DocsReadResult, DocsSimilarArgs, DocsSimilarResult, TrainingAttemptDetailArgs, TrainingAttemptDetailResult, TrainingAttemptsArgs, TrainingAttemptsResult, TrainingStatusResult, TrainingTopicsResult } from './toolTypes'
+
 const callDocsConflict = async (ctx: ActionCtx, args: DocsConflictArgs): Promise<Called<DocsConflictResult>> => {
   const r = (await ctx.runAction(internal.tools.docs.conflict.action, wrapArgs(args, "docs.conflict"))) as Wrapped<DocsConflictResult>
   return unwrap(r)
@@ -77,6 +78,7 @@ const fnByPath: Record<string, FnEntry> = {
   "training.status": { fn: internal.tools.training.status.action as unknown as FunctionReference<'query', 'internal'>, kind: 'query' as const },
   "training.topics": { fn: internal.tools.training.topics.action as unknown as FunctionReference<'query', 'internal'>, kind: 'query' as const }
 }
+
 interface ToolTable {
   "docs.conflict": { args: DocsConflictArgs; ctx: ActionCtx; kind: 'action'; result: DocsConflictResult };
   "docs.diff": { args: DocsDiffArgs; ctx: QueryCtx; kind: 'query'; result: DocsDiffResult };
@@ -89,6 +91,7 @@ interface ToolTable {
   "training.status": { args: Record<string, never>; ctx: QueryCtx; kind: 'query'; result: TrainingStatusResult };
   "training.topics": { args: Record<string, never>; ctx: QueryCtx; kind: 'query'; result: TrainingTopicsResult };
 }
+
 const callers = callersTree
 export { callers, callResult, fnByPath }
 export type { Called, Wrapped } from '@a/cli'
