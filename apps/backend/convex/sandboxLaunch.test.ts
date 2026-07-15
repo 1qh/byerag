@@ -37,9 +37,16 @@ describe('buildSandboxEnv', () => {
     expect(env.CLAUDE_TMPDIR.endsWith(`/${baseInput.chatId}`)).toBe(true)
     expect(env.CLAUDE_CODE_REMOTE_MEMORY_DIR.endsWith(`/${baseInput.chatId}`)).toBe(true)
   })
-  test('PATH includes the agent node_modules .bin first (resolves bun + claude)', () => {
+  test('PATH resolves bun and claude ahead of the system dirs', () => {
     const env = buildSandboxEnv(baseInput)
-    expect(env.PATH.startsWith('/home/user/agent/node_modules/.bin')).toBe(true)
+    const entries = env.PATH.split(':')
+    const bunBin = entries.indexOf('/home/agent/.bun/bin')
+    const agentBin = entries.indexOf('/home/agent/node_modules/.bin')
+    const systemBin = entries.indexOf('/usr/bin')
+    expect(bunBin).toBeGreaterThanOrEqual(0)
+    expect(agentBin).toBeGreaterThanOrEqual(0)
+    expect(bunBin).toBeLessThan(systemBin)
+    expect(agentBin).toBeLessThan(systemBin)
     expect(env.PATH).toContain('/usr/local/bin')
   })
   test('forwards budget/turns/model/effort/system/user verbatim', () => {
