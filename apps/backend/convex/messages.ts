@@ -8,7 +8,7 @@ import type { UsageReport } from './messages/streamHelpers'
 import { internal } from './_generated/api'
 import { httpAction, internalMutation, internalQuery, mutation, query } from './_generated/server'
 import { getOwnerEmailOrNull, requireOwnerEmail } from './authHelpers'
-import { resetEventCount, resetTurn, STREAM_EVENT_HARD_CAP } from './chatRuntime'
+import { incrementEventCount, resetEventCount, resetTurn } from './chatRuntime'
 import { SEQ_SANDBOX_ERROR, SEQ_SERVER_ERROR, STREAMING_TIMEOUT_MS, VALID_CHATID_RE } from './constants'
 import { env } from './env'
 import { sanitizeForDisplay } from './lib'
@@ -150,7 +150,7 @@ const insertStreamEvent = internalMutation({
       .withIndex('by_chat_seq', q => q.eq('chatId', chatId).eq('seq', seq))
       .first()
     if (dup) throw new Error('duplicate seq')
-    if (seq >= STREAM_EVENT_HARD_CAP) throw new Error('too many events')
+    await incrementEventCount(ctx, chatId)
     await ctx.db.insert('streamEvents', { chatId, content, seq })
   },
   returns: v.null()
@@ -324,7 +324,7 @@ const insertAgentEvent = internalMutation({
       .withIndex('by_chat_seq', q => q.eq('chatId', chatId).eq('seq', seq))
       .first()
     if (dup) throw new Error('duplicate seq')
-    if (seq >= STREAM_EVENT_HARD_CAP) throw new Error('too many events')
+    await incrementEventCount(ctx, chatId)
     await ctx.db.insert('streamEvents', { chatId, content, seq })
   }
 })
