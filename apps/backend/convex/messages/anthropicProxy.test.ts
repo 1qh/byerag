@@ -74,7 +74,7 @@ describe('anthropicProxy httpAction', () => {
       return new Response('{"ok":true}', { headers: { 'content-type': 'application/json' }, status: 200 })
     }) as typeof globalThis.fetch)
     const res = await t.fetch(proxyUrl('/v1/messages'), {
-      body: '{"model":"claude-x"}',
+      body: '{"model":"claude-haiku-4-5"}',
       headers: {
         Authorization: `Bearer sk-ant-oat01-proxy_${chatId}_${secret.replaceAll('-', '')}`,
         'Content-Type': 'application/json'
@@ -112,7 +112,7 @@ describe('anthropicProxy httpAction', () => {
       return new Response('{}', { status: 200 })
     }) as typeof globalThis.fetch)
     await t.fetch(proxyUrl('/v1/messages?foo=bar'), {
-      body: '{}',
+      body: '{"model":"claude-haiku-4-5"}',
       headers: {
         Authorization: `Bearer sk-ant-oat01-proxy_${chatId}_${secret.replaceAll('-', '')}`,
         'Content-Type': 'application/json'
@@ -127,7 +127,7 @@ describe('anthropicProxy httpAction', () => {
     const secret = await getSecret(t, chatId)
     stubFetch(async () => new Response('rate limit', { status: 429 }))
     const res = await t.fetch(proxyUrl(), {
-      body: '{}',
+      body: '{"model":"claude-haiku-4-5"}',
       headers: {
         Authorization: `Bearer sk-ant-oat01-proxy_${chatId}_${secret.replaceAll('-', '')}`,
         'Content-Type': 'application/json'
