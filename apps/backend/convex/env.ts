@@ -10,7 +10,7 @@ const schema = z.object({
   KIMI_BASE_URL: z.url().startsWith('https://'),
   SANDBOX_CONVEX_SITE_URL: z.url().startsWith('http'),
   SANDBOX_IMAGE: z.string().min(1),
-  SANDBOX_RUNTIME: z.string().min(1)
+  SANDBOX_RUNTIME: z.string().min(1).default('runc')
 })
 type EnvSchema = z.infer<typeof schema>
 const readRaw = (): Record<keyof EnvSchema, string | undefined> => ({
@@ -20,7 +20,7 @@ const readRaw = (): Record<keyof EnvSchema, string | undefined> => ({
   KIMI_BASE_URL: process.env.KIMI_BASE_URL,
   SANDBOX_CONVEX_SITE_URL: process.env.SANDBOX_CONVEX_SITE_URL,
   SANDBOX_IMAGE: process.env.SANDBOX_IMAGE,
-  SANDBOX_RUNTIME: process.env.SANDBOX_RUNTIME ?? 'runc'
+  SANDBOX_RUNTIME: process.env.SANDBOX_RUNTIME
 })
 const env = new Proxy({} as EnvSchema, {
   get: (_, key: string) => schema.parse(readRaw())[key as keyof EnvSchema]
