@@ -40,6 +40,6 @@ describe('isolation', () => {
   test("send to other user's chat rejected", async () => {
     const owner = fresh('own')
     const chatId = await sendMessage({ content: 'mine', email: owner })
-    expect(sendMessage({ chatId, content: 'hijack', email: fresh('atk') })).rejects.toThrow()
+    await expect(sendMessage({ chatId, content: 'hijack', email: fresh('atk') })).rejects.toThrow()
   })
 })

@@ -68,6 +68,6 @@ describe('chat', () => {
     expect(c1).not.toBe(c2)
   })
   test('empty content rejected', async () => {
-    expect(sendMessage({ content: '', email: fresh() })).rejects.toThrow()
+    await expect(sendMessage({ content: '', email: fresh() })).rejects.toThrow()
   })
 })
