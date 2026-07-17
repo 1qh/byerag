@@ -9,8 +9,8 @@ import { internal } from './_generated/api'
 import { internalAction } from './_generated/server'
 
 const WORKSPACES_ROOT = '/workspaces'
-const SAFE_OWNER_RE = /[^a-z0-9_.-]/giu
-const SAFE_FILE_RE = /[^a-z0-9._\- ()]/giu
+const SAFE_OWNER_RE = /[^\w.-]/giu
+const SAFE_FILE_RE = /[^\w.\- ()]/giu
 const slugOwner = (s: string): string => s.toLowerCase().replaceAll(SAFE_OWNER_RE, '_').slice(0, 64)
 const slugFile = (s: string): string => s.replaceAll(SAFE_FILE_RE, '_').slice(0, 200)
 interface DocBlob {

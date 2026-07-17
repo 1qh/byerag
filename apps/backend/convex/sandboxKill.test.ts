@@ -47,7 +47,7 @@ describe('sandboxKill.pruneStaleAndKill — listStale gate', () => {
     const t = makeTest()
     await t.action(internal.sandboxKill.pruneStaleAndKill, {})
     const rows = await t.run(async ctx => ctx.db.query('sandboxes').collect())
-    expect(rows.length).toBe(0)
+    expect(rows).toHaveLength(0)
   })
   test('preserves fresh (non-stale) sandbox rows', async () => {
     const t = makeTest()

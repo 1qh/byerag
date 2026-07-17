@@ -57,7 +57,7 @@ describe('sandboxes.upsert branches', () => {
         .withIndex('by_owner', q => q.eq('owner', 'a@x'))
         .collect()
     )
-    expect(rows.length).toBe(1)
+    expect(rows).toHaveLength(1)
     expect(rows[0]?.sandboxId).toBe('sb1')
   })
 })
@@ -117,7 +117,7 @@ describe('sandboxes.listStale', () => {
       await ctx.db.insert('sandboxes', { lastUsedAt: stale, owner: 'stale@x', sandboxId: 'sb-stale' })
     })
     const list = await t.query(internal.sandboxes.listStale, {})
-    expect(list.length).toBe(1)
+    expect(list).toHaveLength(1)
     expect(list[0]?.sandboxId).toBe('sb-stale')
   })
   test('empty when no stale rows', async () => {
@@ -126,7 +126,7 @@ describe('sandboxes.listStale', () => {
       await ctx.db.insert('sandboxes', { lastUsedAt: Date.now(), owner: 'a@x', sandboxId: 'sb1' })
     })
     const list = await t.query(internal.sandboxes.listStale, {})
-    expect(list.length).toBe(0)
+    expect(list).toHaveLength(0)
   })
 })
 describe('chats.countStreaming', () => {

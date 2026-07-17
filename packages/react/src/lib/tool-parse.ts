@@ -1,4 +1,4 @@
-const CMD_RE = /^\s*(?:bunx?\s+)?(?:x\s+)?(?<provider>[a-z][a-z0-9-]*)\s+(?<rest>.+?)\s*$/u
+const CMD_RE = /^\s*(?:bunx?\s+)?(?:x\s+)?(?<provider>[a-z][a-z0-9-]*)\s+(?<rest>\S.*)$/u
 const TOKEN_RE = /^[a-z][a-z0-9-]*$/u
 const WS_RE = /\s+/u
 const BLACKLIST = new Set(['--help', '-h', 'help'])

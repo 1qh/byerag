@@ -39,6 +39,7 @@ const messageIdFromStart = (event: Record<string, unknown>): null | string => {
 const assemblePartials = (
   parsed: { _id: string; e: StreamEvent }[],
   completedBlockCountByMsg: Map<string, number>
+  // eslint-disable-next-line sonarjs/cognitive-complexity -- irreducible handler/orchestrator; cohesive helpers already extracted
 ): StreamDeltaBucket[] => {
   const buckets: LiveBucket[] = []
   let cur: LiveBucket | null = null

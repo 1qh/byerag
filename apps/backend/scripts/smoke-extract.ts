@@ -7,20 +7,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { api } from '../convex/_generated/api'
-
-const ENV_LINE = /^\s*(?<key>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?<val>.*?)\s*$/u
-const parseEnv = (text: string): Record<string, string> => {
-  const out: Record<string, string> = {}
-  for (const line of text.split('\n')) {
-    const t = line.trim()
-    if (t && !t.startsWith('#')) {
-      const m = ENV_LINE.exec(line)
-      const key = m?.groups?.key
-      if (key) out[key] = (m.groups?.val ?? '').replaceAll(/^["']|["']$/gu, '')
-    }
-  }
-  return out
-}
+import { parseEnv } from './lib/env'
 // oxlint-disable-next-line node/no-sync
 const env = parseEnv(readFileSync(join(import.meta.dir, '..', '.env'), 'utf8'))
 const url = env.CONVEX_SELF_HOSTED_URL ?? ''

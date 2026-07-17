@@ -39,6 +39,8 @@ interface UseChatResult {
   streamEvents: StreamMsg[]
   title: string
 }
+const assignPendingChatId = (pending: PendingText[], text: string, id: Id<'chats'>): PendingText[] =>
+  pending.map(p => (p.chatId === null && p.text === text ? { chatId: id, text } : p))
 const useChatConvex = ({ chatId }: { chatId: Id<'chats'> | null }): UseChatResult => {
   const { callbacks, id: app } = useApp()
   const pathname = usePathname()
@@ -121,7 +123,7 @@ const useChatConvex = ({ chatId }: { chatId: Id<'chats'> | null }): UseChatResul
         if (!submittedChatId) {
           callbacks.onChatCreate?.(id)
           setCreatedChatId(id)
-          setPendingTexts(prev => prev.map(p => (p.chatId === null && p.text === text ? { chatId: id, text } : p)))
+          setPendingTexts(prev => assignPendingChatId(prev, text, id))
           globalThis.window.history.replaceState(null, '', `/chat/${id}`)
         }
       } catch (caughtError: unknown) {
@@ -166,7 +168,10 @@ const useChatConvex = ({ chatId }: { chatId: Id<'chats'> | null }): UseChatResul
     if (!lastUserText) return
     sendMessage(lastUserText)
   }
-  const status: Status = isStreaming ? 'streaming' : isPending ? 'submitted' : 'ready'
+  let status: Status
+  if (isStreaming) status = 'streaming'
+  else if (isPending) status = 'submitted'
+  else status = 'ready'
   const state = useMemo(
     () =>
       deriveChatState({

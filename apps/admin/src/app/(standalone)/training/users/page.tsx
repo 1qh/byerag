@@ -22,6 +22,7 @@ import { downloadCsv } from '../_components/csv'
 type SortKey = 'department' | 'failed' | 'lastAttempt' | 'overdue' | 'passed' | 'passRate' | 'user'
 const FILTER_TRIGGER = <Button className='-ml-2 h-auto gap-1 px-2 py-1 font-medium' size='sm' variant='ghost' />
 const fmtDate = (ms?: number): string => (ms ? new Date(ms).toISOString().slice(0, 10) : '—')
+const toggleDept = (arr: string[], d: string): string[] => (arr.includes(d) ? arr.filter(x => x !== d) : [...arr, d])
 const SortHeader = ({
   active,
   asc,
@@ -104,6 +105,129 @@ const TrainingUsersPage = (): React.ReactElement => {
       `training-users-${new Date().toISOString().slice(0, 10)}.csv`
     )
   }
+  const renderContent = (): React.ReactElement => {
+    if (data === undefined) return <div className='text-muted-foreground'>Loading…</div>
+    if (data === null) return <div className='text-destructive'>Admin only.</div>
+    if (sorted.length === 0) return <div className='text-muted-foreground'>No trainees match.</div>
+    return (
+      <>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>
+                <SortHeader active={sortKey === 'user'} asc={sortAsc} label='User' onSort={() => toggleSort('user')} />
+              </TableHead>
+              <TableHead>
+                <SortHeader
+                  active={sortKey === 'department'}
+                  asc={sortAsc}
+                  label='Department'
+                  onSort={() => toggleSort('department')}
+                />
+              </TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead className='text-right'>
+                <SortHeader
+                  active={sortKey === 'passed'}
+                  asc={sortAsc}
+                  label='Passed / assigned'
+                  onSort={() => toggleSort('passed')}
+                />
+              </TableHead>
+              <TableHead className='text-right'>
+                <SortHeader
+                  active={sortKey === 'failed'}
+                  asc={sortAsc}
+                  label='Failed'
+                  onSort={() => toggleSort('failed')}
+                />
+              </TableHead>
+              <TableHead className='text-right'>
+                <SortHeader
+                  active={sortKey === 'overdue'}
+                  asc={sortAsc}
+                  label='Overdue'
+                  onSort={() => toggleSort('overdue')}
+                />
+              </TableHead>
+              <TableHead className='text-right'>
+                <SortHeader
+                  active={sortKey === 'passRate'}
+                  asc={sortAsc}
+                  label='Pass rate'
+                  onSort={() => toggleSort('passRate')}
+                />
+              </TableHead>
+              <TableHead className='text-right'>
+                <SortHeader
+                  active={sortKey === 'lastAttempt'}
+                  asc={sortAsc}
+                  label='Last attempt'
+                  onSort={() => toggleSort('lastAttempt')}
+                />
+              </TableHead>
+              <TableHead>Most-failed topic</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {pageRows.map(u => (
+              <TableRow key={u.userId}>
+                <TableCell>
+                  <button
+                    className='text-left font-medium hover:underline'
+                    onClick={() => setDrilldownUser(u.userId)}
+                    type='button'>
+                    {u.userId}
+                  </button>
+                </TableCell>
+                <TableCell className='text-muted-foreground'>{u.department}</TableCell>
+                <TableCell className='text-muted-foreground text-xs'>{u.role}</TableCell>
+                <TableCell className='text-right tabular-nums'>
+                  {u.passed}/{u.assigned}
+                </TableCell>
+                <TableCell
+                  className={cn(
+                    'text-right tabular-nums',
+                    u.failedAttempts >= 3 && 'font-semibold text-destructive',
+                    u.failedAttempts > 0 && u.failedAttempts < 3 && 'text-yellow-700 dark:text-yellow-400'
+                  )}>
+                  {u.failedAttempts}
+                </TableCell>
+                <TableCell
+                  className={cn(
+                    'text-right tabular-nums',
+                    u.overdue > 0 && 'font-semibold text-yellow-700 dark:text-yellow-400'
+                  )}>
+                  {u.overdue}
+                </TableCell>
+                <TableCell className='text-right tabular-nums'>{u.assigned === 0 ? '—' : `${u.passRate}%`}</TableCell>
+                <TableCell className='text-right text-muted-foreground text-xs'>{fmtDate(u.lastAttemptMs)}</TableCell>
+                <TableCell className='max-w-xs truncate text-muted-foreground text-sm' title={u.mostFailedTopic}>
+                  {u.mostFailedTopic ?? '—'}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <div className='flex items-center justify-between text-muted-foreground text-sm'>
+          <span>
+            Showing {pageRows.length} of {sorted.length}
+          </span>
+          <div className='flex items-center gap-2'>
+            <Button disabled={clamped === 0} onClick={() => setPage(p => p - 1)} size='sm' variant='outline'>
+              Prev
+            </Button>
+            <span>
+              {clamped + 1} / {pageCount}
+            </span>
+            <Button disabled={clamped + 1 >= pageCount} onClick={() => setPage(p => p + 1)} size='sm' variant='outline'>
+              Next
+            </Button>
+          </div>
+        </div>
+      </>
+    )
+  }
   return (
     <div className='space-y-4 p-6'>
       <div className='flex items-center gap-2'>
@@ -149,7 +273,7 @@ const TrainingUsersPage = (): React.ReactElement => {
                 <DropdownMenuCheckboxItem
                   checked={deptFilter.includes(d)}
                   key={d}
-                  onCheckedChange={() => setDeptFilter(p => (p.includes(d) ? p.filter(x => x !== d) : [...p, d]))}>
+                  onCheckedChange={() => setDeptFilter(toggleDept(deptFilter, d))}>
                   {d}
                 </DropdownMenuCheckboxItem>
               ))
@@ -177,130 +301,7 @@ const TrainingUsersPage = (): React.ReactElement => {
           {needsCoaching ? 'Needs coaching · clear' : 'Needs coaching'}
         </button>
       </div>
-      {data === undefined ? (
-        <div className='text-muted-foreground'>Loading…</div>
-      ) : data === null ? (
-        <div className='text-destructive'>Admin only.</div>
-      ) : sorted.length === 0 ? (
-        <div className='text-muted-foreground'>No trainees match.</div>
-      ) : (
-        <>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>
-                  <SortHeader active={sortKey === 'user'} asc={sortAsc} label='User' onSort={() => toggleSort('user')} />
-                </TableHead>
-                <TableHead>
-                  <SortHeader
-                    active={sortKey === 'department'}
-                    asc={sortAsc}
-                    label='Department'
-                    onSort={() => toggleSort('department')}
-                  />
-                </TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead className='text-right'>
-                  <SortHeader
-                    active={sortKey === 'passed'}
-                    asc={sortAsc}
-                    label='Passed / assigned'
-                    onSort={() => toggleSort('passed')}
-                  />
-                </TableHead>
-                <TableHead className='text-right'>
-                  <SortHeader
-                    active={sortKey === 'failed'}
-                    asc={sortAsc}
-                    label='Failed'
-                    onSort={() => toggleSort('failed')}
-                  />
-                </TableHead>
-                <TableHead className='text-right'>
-                  <SortHeader
-                    active={sortKey === 'overdue'}
-                    asc={sortAsc}
-                    label='Overdue'
-                    onSort={() => toggleSort('overdue')}
-                  />
-                </TableHead>
-                <TableHead className='text-right'>
-                  <SortHeader
-                    active={sortKey === 'passRate'}
-                    asc={sortAsc}
-                    label='Pass rate'
-                    onSort={() => toggleSort('passRate')}
-                  />
-                </TableHead>
-                <TableHead className='text-right'>
-                  <SortHeader
-                    active={sortKey === 'lastAttempt'}
-                    asc={sortAsc}
-                    label='Last attempt'
-                    onSort={() => toggleSort('lastAttempt')}
-                  />
-                </TableHead>
-                <TableHead>Most-failed topic</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pageRows.map(u => (
-                <TableRow key={u.userId}>
-                  <TableCell>
-                    <button
-                      className='text-left font-medium hover:underline'
-                      onClick={() => setDrilldownUser(u.userId)}
-                      type='button'>
-                      {u.userId}
-                    </button>
-                  </TableCell>
-                  <TableCell className='text-muted-foreground'>{u.department}</TableCell>
-                  <TableCell className='text-muted-foreground text-xs'>{u.role}</TableCell>
-                  <TableCell className='text-right tabular-nums'>
-                    {u.passed}/{u.assigned}
-                  </TableCell>
-                  <TableCell
-                    className={cn(
-                      'text-right tabular-nums',
-                      u.failedAttempts >= 3 && 'font-semibold text-destructive',
-                      u.failedAttempts > 0 && u.failedAttempts < 3 && 'text-yellow-700 dark:text-yellow-400'
-                    )}>
-                    {u.failedAttempts}
-                  </TableCell>
-                  <TableCell
-                    className={cn(
-                      'text-right tabular-nums',
-                      u.overdue > 0 && 'font-semibold text-yellow-700 dark:text-yellow-400'
-                    )}>
-                    {u.overdue}
-                  </TableCell>
-                  <TableCell className='text-right tabular-nums'>{u.assigned === 0 ? '—' : `${u.passRate}%`}</TableCell>
-                  <TableCell className='text-right text-muted-foreground text-xs'>{fmtDate(u.lastAttemptMs)}</TableCell>
-                  <TableCell className='max-w-xs truncate text-muted-foreground text-sm' title={u.mostFailedTopic}>
-                    {u.mostFailedTopic ?? '—'}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <div className='flex items-center justify-between text-muted-foreground text-sm'>
-            <span>
-              Showing {pageRows.length} of {sorted.length}
-            </span>
-            <div className='flex items-center gap-2'>
-              <Button disabled={clamped === 0} onClick={() => setPage(p => p - 1)} size='sm' variant='outline'>
-                Prev
-              </Button>
-              <span>
-                {clamped + 1} / {pageCount}
-              </span>
-              <Button disabled={clamped + 1 >= pageCount} onClick={() => setPage(p => p + 1)} size='sm' variant='outline'>
-                Next
-              </Button>
-            </div>
-          </div>
-        </>
-      )}
+      {renderContent()}
       <AttemptHistoryModal onClose={() => setDrilldownUser(null)} userId={drilldownUser} />
     </div>
   )

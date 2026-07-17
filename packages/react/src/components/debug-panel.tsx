@@ -1,5 +1,5 @@
 /** biome-ignore-all lint/nursery/noUndeclaredClasses: standard tailwind v4 utilities biome cannot resolve */
-/* eslint-disable complexity, @typescript-eslint/no-unnecessary-condition */
+/* eslint-disable complexity, sonarjs/cognitive-complexity -- dense debug panel: presentational branching plus a single-pass stream-event classifier */
 'use client'
 import type { StreamEvent } from 'backend/convex/streamProtocol'
 import { parseWithCache } from '@a/react/parsers'
@@ -109,9 +109,7 @@ const DebugPanel = ({
         <span>{open ? '▼' : '▶'}</span>
         <span>{parsed.length} events</span>
         {init?.model ? <span>· {init.model}</span> : null}
-        {result?.result?.cost_usd !== null && result?.result?.cost_usd !== undefined && (
-          <span>{`· $${result.result.cost_usd.toFixed(4)}`}</span>
-        )}
+        {result?.result?.cost_usd !== undefined && <span>{`· $${result.result.cost_usd.toFixed(4)}`}</span>}
         <span>
           · {totalIn}in {totalOut}out
         </span>
@@ -161,7 +159,7 @@ const DebugPanel = ({
                     a.subtype ?? '',
                     a.action ? `(${a.action})` : '',
                     a.sandboxId?.slice(0, 8) ?? '',
-                    a.elapsed === null || a.elapsed === undefined ? '' : `${a.elapsed}ms`
+                    a.elapsed === undefined ? '' : `${a.elapsed}ms`
                   ].filter(Boolean)
                   return parts.join(' ')
                 })
@@ -193,7 +191,7 @@ const DebugPanel = ({
                       if (e.sandboxId) extra.push(e.sandboxId.slice(0, 12))
                       if (e.action) extra.push(e.action)
                       if (e.template) extra.push(e.template)
-                      if (e.elapsed !== null && e.elapsed !== undefined) extra.push(`${e.elapsed}ms`)
+                      if (e.elapsed !== undefined) extra.push(`${e.elapsed}ms`)
                       if (e.model) extra.push(e.model)
                     }
                     return `${dt} ${e.type}${sub} ${extra.join(' ')}\n`

@@ -12,6 +12,7 @@ const KIMI_TIMEOUT_MS = 60_000
 const KIMI_MAX_TOKENS = 4000
 const MAX_PROMPT_DOC_CHARS = 12_000
 const TARGET_QUESTIONS = 10
+// eslint-disable-next-line sonarjs/super-linear-regex -- single greedy quantifier bounded by trailing literal ], one backtrack scan, linear
 const JSON_ARRAY_RE = /\[[\s\S]*\]/u
 const TRAILING_SLASH_RE = /\/$/u
 const SYSTEM_PROMPT =
@@ -117,6 +118,7 @@ const tryKimi = async (prompt: string, i: number): Promise<{ error: string; res:
 }
 const generate = internalAction({
   args: { attempt: v.optional(v.number()), docId: v.id('docs') },
+  // eslint-disable-next-line sonarjs/cognitive-complexity -- irreducible action handler: LLM question-generation, retry, parse, conflict-flag request wiring
   handler: async (ctx, { docId, attempt }): Promise<{ conflictsFlagged?: number; generated: number; reason?: string }> => {
     const att = attempt ?? 0
     const doc = (await ctx.runQuery(internal.docs.getForConflict, { docId })) as null | {

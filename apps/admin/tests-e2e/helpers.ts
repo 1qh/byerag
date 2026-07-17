@@ -68,6 +68,19 @@ const sendMessage = async (args: { chatId?: string; content: string; email: stri
   })
 const uploadFile = async (email: string, path: string, content: string, binary?: boolean) =>
   client.action(api.testing.uploadFile, { binary, content, email, path, testSecret })
+const countCompletedTurns = (msgs: { type: string }[]): number => {
+  let completed = 0
+  for (let j = 0; j < msgs.length; j += 1)
+    if (msgs[j]?.type === 'user' && msgs.slice(j + 1).some((m: { type: string }) => m.type === 'assistant')) completed += 1
+  return completed
+}
+const isErrorEvent = (e: { content: string }): boolean => {
+  try {
+    return (JSON.parse(e.content) as { type: string }).type === 'error'
+  } catch {
+    return false
+  }
+}
 const waitFor = async (chatId: string, minTurns = 1, timeoutS = 300) => {
   for (let i = 0; i < timeoutS; i += 1) {
     await new Promise<void>(resolve => {
@@ -79,11 +92,7 @@ const waitFor = async (chatId: string, minTurns = 1, timeoutS = 300) => {
       testSecret
     })
     const msgs: { type: string }[] = result.page
-    let completedTurns = 0
-    for (let j = 0; j < msgs.length; j += 1)
-      if (msgs[j]?.type === 'user' && msgs.slice(j + 1).some((m: { type: string }) => m.type === 'assistant'))
-        completedTurns += 1
-    if (completedTurns >= minTurns) {
+    if (countCompletedTurns(msgs) >= minTurns) {
       const streaming = await client.query(api.testing.getChatStreaming, {
         chatId: chatId as never,
         testSecret
@@ -94,16 +103,7 @@ const waitFor = async (chatId: string, minTurns = 1, timeoutS = 300) => {
         chatId: chatId as never,
         testSecret
       })
-      if (
-        events.some((e: { content: string }) => {
-          try {
-            return (JSON.parse(e.content) as { type: string }).type === 'error'
-          } catch {
-            return false
-          }
-        })
-      )
-        return false
+      if (events.some(isErrorEvent)) return false
     }
   }
   return false

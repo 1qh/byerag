@@ -127,7 +127,7 @@ describe('sendCore existing chat', () => {
         .withIndex('by_chat', q => q.eq('chatId', chatId))
         .collect()
     )
-    expect(remaining.length).toBe(0)
+    expect(remaining).toHaveLength(0)
   })
   test('increments turns and messageCount', async () => {
     const t = makeTest()
@@ -166,7 +166,7 @@ describe('chats.abort', () => {
         .withIndex('by_chat_seq', q => q.eq('chatId', chatId).eq('seq', -1))
         .collect()
     )
-    expect(errEvents.length).toBe(1)
+    expect(errEvents).toHaveLength(1)
   })
   test('preserves shared sandbox when other chats are streaming for same owner', async () => {
     const t = makeTest()

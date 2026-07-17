@@ -1,4 +1,4 @@
-/* eslint-disable no-await-in-loop, complexity */
+/* eslint-disable no-await-in-loop */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential bulk delete */
 'use client'
 import type { Id } from 'backend/convex/_generated/dataModel'
@@ -104,55 +104,58 @@ const DocCard = ({
   selected?: boolean
   selectMode?: boolean
   showUploader: boolean
-}): React.ReactElement => (
-  <li
-    className={cn(
-      'flex items-stretch gap-1 rounded-xl border bg-card transition-all hover:-translate-y-px hover:shadow-md',
-      selected && 'bg-muted'
-    )}>
-    {selectMode ? (
-      <span className='flex items-center pl-3'>
-        <Checkbox
-          aria-label={`Select ${doc.filename}`}
-          checked={selected ?? false}
-          onCheckedChange={() => onToggleSelect?.(doc._id)}
-        />
-      </span>
-    ) : null}
-    <button
-      className='group flex min-w-0 flex-1 items-center gap-3 rounded-l-xl px-3 py-3 text-left'
-      onClick={() => (selectMode ? onToggleSelect?.(doc._id) : onOpen(doc._id))}
-      title={`${relTime(doc.uploadedAt, now)} · ${humanSize(doc.fileSize)}${showUploader ? ` · by ${doc.uploadedBy}` : ''}`}
-      type='button'>
-      <FileTypeChip mime={doc.mime} />
-      <div className='min-w-0 flex-1'>
-        <p className='truncate font-medium text-sm'>
-          {doc.filename}
-          {doc.version > 1 ? <span className='ml-1 text-muted-foreground text-xs'>v{doc.version}</span> : null}
-        </p>
-        <p className='line-clamp-2 text-muted-foreground text-xs'>
-          {doc.summary ?? `Added ${relTime(doc.uploadedAt, now)}.`}
-        </p>
-      </div>
-      {doc.policyStatus === 'pending' ? (
-        <span className='flex items-center gap-1 text-muted-foreground text-xs'>
-          <Loader2 aria-hidden className='size-3 animate-spin' />
-          Reading…
+}): React.ReactElement => {
+  const byline = showUploader ? ` · by ${doc.uploadedBy}` : ''
+  return (
+    <li
+      className={cn(
+        'flex items-stretch gap-1 rounded-xl border bg-card transition-all hover:-translate-y-px hover:shadow-md',
+        selected && 'bg-muted'
+      )}>
+      {selectMode ? (
+        <span className='flex items-center pl-3'>
+          <Checkbox
+            aria-label={`Select ${doc.filename}`}
+            checked={selected ?? false}
+            onCheckedChange={() => onToggleSelect?.(doc._id)}
+          />
         </span>
       ) : null}
-    </button>
-    {onDelete && !selectMode ? (
-      <Button
-        aria-label={`Delete ${doc.filename}`}
-        className='mr-2 self-center'
-        onClick={() => onDelete(doc._id, doc.filename)}
-        size='icon-sm'
-        variant='ghost'>
-        <Trash2 className='size-4' />
-      </Button>
-    ) : null}
-  </li>
-)
+      <button
+        className='group flex min-w-0 flex-1 items-center gap-3 rounded-l-xl px-3 py-3 text-left'
+        onClick={() => (selectMode ? onToggleSelect?.(doc._id) : onOpen(doc._id))}
+        title={`${relTime(doc.uploadedAt, now)} · ${humanSize(doc.fileSize)}${byline}`}
+        type='button'>
+        <FileTypeChip mime={doc.mime} />
+        <div className='min-w-0 flex-1'>
+          <p className='truncate font-medium text-sm'>
+            {doc.filename}
+            {doc.version > 1 ? <span className='ml-1 text-muted-foreground text-xs'>v{doc.version}</span> : null}
+          </p>
+          <p className='line-clamp-2 text-muted-foreground text-xs'>
+            {doc.summary ?? `Added ${relTime(doc.uploadedAt, now)}.`}
+          </p>
+        </div>
+        {doc.policyStatus === 'pending' ? (
+          <span className='flex items-center gap-1 text-muted-foreground text-xs'>
+            <Loader2 aria-hidden className='size-3 animate-spin' />
+            Reading…
+          </span>
+        ) : null}
+      </button>
+      {onDelete && !selectMode ? (
+        <Button
+          aria-label={`Delete ${doc.filename}`}
+          className='mr-2 self-center'
+          onClick={() => onDelete(doc._id, doc.filename)}
+          size='icon-sm'
+          variant='ghost'>
+          <Trash2 className='size-4' />
+        </Button>
+      ) : null}
+    </li>
+  )
+}
 const SectionHeader = ({ count, label }: { count: number; label: string }): React.ReactElement => (
   <div className='flex items-baseline gap-2'>
     <h2 className='font-semibold text-base'>{label}</h2>
@@ -276,7 +279,8 @@ const DocsPage = (): React.ReactElement => {
         fail += 1
         toast.error(`${String(id).slice(-6)}: ${String(error).slice(0, 80)}`)
       }
-    toast.success(`Deleted ${ok}/${ids.length}${fail > 0 ? ` (${fail} failed)` : ''}`)
+    const failSuffix = fail > 0 ? ` (${fail} failed)` : ''
+    toast.success(`Deleted ${ok}/${ids.length}${failSuffix}`)
     setBulkConfirmOpen(false)
     setBulkDeleting(false)
     exitSelectMode()
@@ -339,6 +343,105 @@ const DocsPage = (): React.ReactElement => {
       router.push('/')
     }
   }
+  const renderBulkToolbar = (): null | React.ReactElement => {
+    if (sharedFiltered.length + mineActive.length === 0) return null
+    return (
+      <div className='sticky top-0 z-10 -mt-2 flex items-center justify-end gap-2 bg-background/90 py-1 backdrop-blur'>
+        {selectMode ? (
+          <>
+            <span className='mr-auto text-muted-foreground text-sm'>{selected.size} selected</span>
+            <Button disabled={selected.size === 0 || bulkDeleting} onClick={askAboutSelected} size='sm'>
+              <MessageSquare className='size-4' />
+              Ask about {selected.size > 0 ? selected.size : ''}
+            </Button>
+            <Button
+              disabled={selectedMine.length === 0 || selectedShared.length > 0 || bulkDeleting}
+              onClick={() => setBulkConfirmOpen(true)}
+              size='sm'
+              title={selectedShared.length > 0 ? 'Only your private files can be deleted from here.' : undefined}
+              variant='destructive'>
+              <Trash2 className='size-4' />
+              Delete {selectedMine.length > 0 ? selectedMine.length : ''}
+            </Button>
+            <Button disabled={bulkDeleting} onClick={exitSelectMode} size='sm' variant='ghost'>
+              Done
+            </Button>
+          </>
+        ) : (
+          <Button onClick={() => setSelectMode(true)} size='sm' variant='outline'>
+            Select to ask or delete
+          </Button>
+        )}
+      </div>
+    )
+  }
+  const renderSharedList = (): React.ReactElement => {
+    if (shared === undefined) return <p className='text-muted-foreground text-sm'>Loading…</p>
+    if (sharedFiltered.length === 0)
+      return (
+        <p className='rounded-xl border border-dashed p-6 text-center text-muted-foreground text-sm'>
+          {q ? 'Nothing matches your search yet.' : 'Your team has not shared anything yet.'}
+        </p>
+      )
+    return (
+      <>
+        <ul className='space-y-2'>
+          {(q || sharedExpanded ? sharedFiltered : sharedFiltered.slice(0, 5)).map(d => (
+            <DocCard
+              doc={d}
+              key={d._id}
+              now={now}
+              onOpen={onOpen}
+              onToggleSelect={onToggleSelect}
+              selected={selected.has(d._id as string)}
+              selectMode={selectMode}
+              showUploader
+            />
+          ))}
+        </ul>
+        {!q && sharedFiltered.length > 5 ? (
+          <Button onClick={() => setSharedExpanded(v => !v)} size='sm' variant='ghost'>
+            {sharedExpanded ? 'Show less' : `Show all (${sharedFiltered.length})`}
+          </Button>
+        ) : null}
+      </>
+    )
+  }
+  const renderMineList = (): React.ReactElement => {
+    if (mine === undefined) return <p className='text-muted-foreground text-sm'>Loading…</p>
+    if (mineActive.length === 0)
+      return (
+        <p className='rounded-xl border border-dashed p-6 text-center text-muted-foreground text-sm'>
+          {q
+            ? 'Nothing matches your search yet.'
+            : 'Drop a file or click Upload. The assistant will read it and remember.'}
+        </p>
+      )
+    return (
+      <>
+        <ul className='space-y-2'>
+          {(q || mineExpanded ? mineActive : mineActive.slice(0, 5)).map(d => (
+            <DocCard
+              doc={d}
+              key={d._id}
+              now={now}
+              onDelete={onDeleteClick}
+              onOpen={onOpen}
+              onToggleSelect={onToggleSelect}
+              selected={selected.has(d._id as string)}
+              selectMode={selectMode}
+              showUploader={false}
+            />
+          ))}
+        </ul>
+        {!q && mineActive.length > 5 ? (
+          <Button onClick={() => setMineExpanded(v => !v)} size='sm' variant='ghost'>
+            {mineExpanded ? 'Show less' : `Show all (${mineActive.length})`}
+          </Button>
+        ) : null}
+      </>
+    )
+  }
   return (
     <div className='mx-auto flex h-dvh w-full max-w-3xl flex-col gap-6 overflow-y-auto p-6'>
       <header className='space-y-3'>
@@ -383,104 +486,17 @@ const DocsPage = (): React.ReactElement => {
           </ul>
         </section>
       ) : null}
-      {sharedFiltered.length + mineActive.length > 0 ? (
-        <div className='sticky top-0 z-10 -mt-2 flex items-center justify-end gap-2 bg-background/90 py-1 backdrop-blur'>
-          {selectMode ? (
-            <>
-              <span className='mr-auto text-muted-foreground text-sm'>{selected.size} selected</span>
-              <Button disabled={selected.size === 0 || bulkDeleting} onClick={askAboutSelected} size='sm'>
-                <MessageSquare className='size-4' />
-                Ask about {selected.size > 0 ? selected.size : ''}
-              </Button>
-              <Button
-                disabled={selectedMine.length === 0 || selectedShared.length > 0 || bulkDeleting}
-                onClick={() => setBulkConfirmOpen(true)}
-                size='sm'
-                title={selectedShared.length > 0 ? 'Only your private files can be deleted from here.' : undefined}
-                variant='destructive'>
-                <Trash2 className='size-4' />
-                Delete {selectedMine.length > 0 ? selectedMine.length : ''}
-              </Button>
-              <Button disabled={bulkDeleting} onClick={exitSelectMode} size='sm' variant='ghost'>
-                Done
-              </Button>
-            </>
-          ) : (
-            <Button onClick={() => setSelectMode(true)} size='sm' variant='outline'>
-              Select to ask or delete
-            </Button>
-          )}
-        </div>
-      ) : null}
+      {renderBulkToolbar()}
       <section className='space-y-3'>
         <SectionHeader count={sharedFiltered.length} label='Shared with your team' />
         <p className='text-muted-foreground text-xs'>The assistant cites these when it answers.</p>
-        {shared === undefined ? (
-          <p className='text-muted-foreground text-sm'>Loading…</p>
-        ) : sharedFiltered.length === 0 ? (
-          <p className='rounded-xl border border-dashed p-6 text-center text-muted-foreground text-sm'>
-            {q ? 'Nothing matches your search yet.' : 'Your team has not shared anything yet.'}
-          </p>
-        ) : (
-          <>
-            <ul className='space-y-2'>
-              {(q || sharedExpanded ? sharedFiltered : sharedFiltered.slice(0, 5)).map(d => (
-                <DocCard
-                  doc={d}
-                  key={d._id}
-                  now={now}
-                  onOpen={onOpen}
-                  onToggleSelect={onToggleSelect}
-                  selected={selected.has(d._id as string)}
-                  selectMode={selectMode}
-                  showUploader
-                />
-              ))}
-            </ul>
-            {!q && sharedFiltered.length > 5 ? (
-              <Button onClick={() => setSharedExpanded(v => !v)} size='sm' variant='ghost'>
-                {sharedExpanded ? 'Show less' : `Show all (${sharedFiltered.length})`}
-              </Button>
-            ) : null}
-          </>
-        )}
+        {renderSharedList()}
       </section>
       <section className='space-y-3'>
         <SectionHeader count={mineActive.length} label='Your private files' />
         <p className='text-muted-foreground text-xs'>Only you can see these. The assistant reads them when you ask.</p>
         <DocUpload scope='mine' />
-        {mine === undefined ? (
-          <p className='text-muted-foreground text-sm'>Loading…</p>
-        ) : mineActive.length === 0 ? (
-          <p className='rounded-xl border border-dashed p-6 text-center text-muted-foreground text-sm'>
-            {q
-              ? 'Nothing matches your search yet.'
-              : 'Drop a file or click Upload. The assistant will read it and remember.'}
-          </p>
-        ) : (
-          <>
-            <ul className='space-y-2'>
-              {(q || mineExpanded ? mineActive : mineActive.slice(0, 5)).map(d => (
-                <DocCard
-                  doc={d}
-                  key={d._id}
-                  now={now}
-                  onDelete={onDeleteClick}
-                  onOpen={onOpen}
-                  onToggleSelect={onToggleSelect}
-                  selected={selected.has(d._id as string)}
-                  selectMode={selectMode}
-                  showUploader={false}
-                />
-              ))}
-            </ul>
-            {!q && mineActive.length > 5 ? (
-              <Button onClick={() => setMineExpanded(v => !v)} size='sm' variant='ghost'>
-                {mineExpanded ? 'Show less' : `Show all (${mineActive.length})`}
-              </Button>
-            ) : null}
-          </>
-        )}
+        {renderMineList()}
       </section>
       {mineRejected.length > 0 ? <RejectedSection docs={mineRejected} onAskReview={onAskReview} onOpen={onOpen} /> : null}
       <AlertDialog

@@ -10,6 +10,7 @@ import { collect } from '../src/codegen/scan'
 
 const APPS_DIR = resolve(process.cwd(), '../')
 const PROVIDER_PREFIX_RE = /^_/u
+const byString = (a: string, b: string): number => (a < b ? -1 : Number(a > b))
 const mdRow = (cells: string[]): string => `| ${cells.join(' | ')} |`
 const escapeMd = (s: string): string => s.replaceAll('|', String.raw`\|`).replaceAll('\n', ' ')
 const discoverApps = async (): Promise<{ name: string; root: string }[]> => {
@@ -60,7 +61,7 @@ const renderInventory = (
     `Generated ${now} · ${tools.length} tools across ${toolsByProvider.size} provider(s).`,
     ''
   ]
-  const providers = [...toolsByProvider.keys()].toSorted()
+  const providers = [...toolsByProvider.keys()].toSorted(byString)
   for (const prov of providers) {
     const label = prov.replace(PROVIDER_PREFIX_RE, '')
     const list = (toolsByProvider.get(prov) ?? []).toSorted((a, b) =>

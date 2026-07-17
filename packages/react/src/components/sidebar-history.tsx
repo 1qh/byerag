@@ -28,18 +28,19 @@ const SidebarHistory = ({ activeChatId, onSelect }: SidebarHistoryProps) => {
   const rename = useMutation(api.chats.updateTitle)
   const toggleBookmark = useMutation(api.chats.toggleBookmark)
   const now = useNow()
+  const undo = useCallback(
+    (id: Id<'chats'>): void => {
+      restore({ app, chatId: id }).catch((error: unknown) => toast.error(errorMessage(error)))
+    },
+    [app, restore]
+  )
   const onDelete = useCallback(
     (id: Id<'chats'>): void => {
       const run = async (): Promise<void> => {
         try {
           await remove({ app, chatId: id })
           toast('Chat deleted', {
-            action: {
-              label: 'Undo',
-              onClick: () => {
-                restore({ app, chatId: id }).catch((error: unknown) => toast.error(errorMessage(error)))
-              }
-            },
+            action: { label: 'Undo', onClick: undo.bind(null, id) },
             duration: 10_000
           })
         } catch (error: unknown) {
@@ -50,7 +51,7 @@ const SidebarHistory = ({ activeChatId, onSelect }: SidebarHistoryProps) => {
         /* Empty */
       })
     },
-    [app, remove, restore]
+    [app, remove, undo]
   )
   const onRename = useCallback(
     async (id: Id<'chats'>, title: string): Promise<void> => {

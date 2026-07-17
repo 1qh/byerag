@@ -10,7 +10,8 @@ import { CORPUS_POLICY_DEFAULT } from './settings'
 const MAX_PROMPT_CHARS = 4000
 const KIMI_TIMEOUT_MS = 30_000
 const POLICY_CATEGORIES = new Set(['abusive', 'off-topic', 'on-topic', 'promotional', 'prompt-injection', 'spam'])
-const JSON_BLOCK_RE = /\{[\s\S]*?"relevant"[\s\S]*?\}/u
+// eslint-disable-next-line sonarjs/super-linear-regex -- first JSON object containing "relevant" in bounded LLM output; the negated-class tail requires a closing brace, so it is linear
+const JSON_BLOCK_RE = /\{[\s\S]*?"relevant"[^}]*\}/u
 interface KimiResponse {
   content?: { text?: string; type?: string }[]
   usage?: KimiUsage

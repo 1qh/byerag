@@ -63,6 +63,9 @@ const TestDetailPage = (): React.ReactElement => {
         </div>
       </div>
     )
+  let failedTone: 'attention' | 'default' | 'warn' = 'default'
+  if (data.failedCount >= 3) failedTone = 'attention'
+  else if (data.failedCount > 0) failedTone = 'warn'
   return (
     <div className='space-y-6 p-6'>
       <Link
@@ -94,7 +97,7 @@ const TestDetailPage = (): React.ReactElement => {
         <StatCard
           hint={`across ${data.strugglers.filter(s => s.attemptCount > 0).length} people`}
           label='Failed attempts'
-          tone={data.failedCount >= 3 ? 'attention' : data.failedCount > 0 ? 'warn' : 'default'}
+          tone={failedTone}
           value={data.failedCount}
         />
       </section>

@@ -13,6 +13,7 @@ interface DocRow {
   uploadedAt: number
   version?: number
 }
+type PolicyStatus = 'approved' | 'pending' | 'rejected'
 const findBySha256 = internalQuery({
   args: { owner: v.optional(v.string()), scope: v.union(v.literal('shared'), v.literal('mine')), sha256: v.string() },
   handler: async (ctx, { sha256, scope, owner }): Promise<DocRow | null> => {
@@ -138,7 +139,7 @@ const setExtracted = internalMutation({
 interface ClassifyDoc {
   extractedText?: string
   filename: string
-  policyStatus: 'approved' | 'pending' | 'rejected'
+  policyStatus: PolicyStatus
   summary?: string
   uploadedBy: string
 }
@@ -423,7 +424,7 @@ interface DocListItem {
   policyCategory?: string
   policyReason?: string
   policyReviewRequestedAt?: number
-  policyStatus: 'approved' | 'pending' | 'rejected'
+  policyStatus: PolicyStatus
   scanStatus: 'clean' | 'pending' | 'quarantined'
   scope: 'mine' | 'shared'
   summary?: string
@@ -535,7 +536,9 @@ const getCitationBadge = query({
   }> => {
     const row = await ctx.db.get(docId)
     if (!row) return null
-    const badge: 'deleted' | 'fresh' | 'superseded' = row.deletedAt ? 'deleted' : row.supersededBy ? 'superseded' : 'fresh'
+    let badge: 'deleted' | 'fresh' | 'superseded' = 'fresh'
+    if (row.deletedAt) badge = 'deleted'
+    else if (row.supersededBy) badge = 'superseded'
     return { badge, filename: row.filename, supersededBy: row.supersededBy, version: row.version }
   }
 })

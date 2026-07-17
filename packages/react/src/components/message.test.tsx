@@ -30,6 +30,6 @@ describe('PreviewMessage', () => {
       role: 'assistant'
     }
     const { container } = render(<PreviewMessage isLoading={false} message={m} />)
-    expect(container.querySelector('[data-slot="sources"]')).toBe(null)
+    expect(container.querySelector('[data-slot="sources"]')).toBeNull()
   })
 })

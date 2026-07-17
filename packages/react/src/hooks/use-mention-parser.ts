@@ -1,6 +1,6 @@
 'use client'
 const KIND_RE = /^[a-z]+$/u
-const TOKEN_RE = /@(?<kind>[a-z]+)(?::(?<name>[^\s]*))?/giu
+const TOKEN_RE = /@(?<kind>[a-z]+)(?::(?<name>\S*))?/giu
 const WS_RE = /\s/u
 const SINGLETON_KINDS = new Set(['me'])
 interface ActiveMention {

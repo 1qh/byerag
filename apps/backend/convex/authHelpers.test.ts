@@ -127,6 +127,7 @@ describe('validateRedirectTo — open-redirect defense', () => {
     expect(() => validateRedirectTo(opts(null))).toThrow('Expected string redirectTo')
   })
   test('malformed URL rejected', () => {
+    // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture asserts on a literal http URL, not a cleartext network call
     expect(() => validateRedirectTo(opts('http://[invalid'))).toThrow('Invalid redirectTo URL')
   })
   test('javascript: URL rejected (origin not in allowlist)', () => {

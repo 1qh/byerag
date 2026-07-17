@@ -18,6 +18,6 @@ afterEach(() => {
 describe('CommandPalette', () => {
   test('closed by default (no dialog in body)', () => {
     render(wrap(<CommandPalette onCreate={noop} onSelect={noopId} />))
-    expect(document.querySelector('[role="dialog"]')).toBe(null)
+    expect(document.querySelector('[role="dialog"]')).toBeNull()
   })
 })

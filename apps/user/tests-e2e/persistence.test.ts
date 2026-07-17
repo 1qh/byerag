@@ -19,7 +19,7 @@ describe('persistence', () => {
     await waitFor(chatId)
     const before = await listMessages(chatId)
     const after = await listMessages(chatId)
-    expect(after.length).toBe(before.length)
+    expect(after).toHaveLength(before.length)
     expect(after.map(m => m.type).join(',')).toBe(before.map(m => m.type).join(','))
   })
   test('two users create independent chats', async () => {

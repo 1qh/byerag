@@ -83,6 +83,103 @@ const TrainingTestsListPage = (): React.ReactElement => {
       `training-tests-${new Date().toISOString().slice(0, 10)}.csv`
     )
   }
+  const renderContent = (): React.ReactElement => {
+    if (data === undefined) return <div className='text-muted-foreground'>Loading…</div>
+    if (data === null) return <div className='text-destructive'>Admin only.</div>
+    if (sorted.length === 0)
+      return <div className='text-muted-foreground'>No tests yet. Approve shared docs to seed the question bank.</div>
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>
+              <SortHeader active={sortKey === 'name'} asc={sortAsc} label='Test' onSort={() => toggleSort('name')} />
+            </TableHead>
+            <TableHead className='text-right'>
+              <SortHeader
+                active={sortKey === 'poolSize'}
+                asc={sortAsc}
+                label='Questions'
+                onSort={() => toggleSort('poolSize')}
+              />
+            </TableHead>
+            <TableHead className='text-right'>
+              <SortHeader
+                active={sortKey === 'assigned'}
+                asc={sortAsc}
+                label='Assigned'
+                onSort={() => toggleSort('assigned')}
+              />
+            </TableHead>
+            <TableHead className='text-right'>
+              <SortHeader
+                active={sortKey === 'passRate'}
+                asc={sortAsc}
+                label='Pass rate'
+                onSort={() => toggleSort('passRate')}
+              />
+            </TableHead>
+            <TableHead className='text-right'>
+              <SortHeader
+                active={sortKey === 'overdue'}
+                asc={sortAsc}
+                label='Overdue'
+                onSort={() => toggleSort('overdue')}
+              />
+            </TableHead>
+            <TableHead className='text-right'>
+              <SortHeader
+                active={sortKey === 'sourceDocs'}
+                asc={sortAsc}
+                label='Source docs'
+                onSort={() => toggleSort('sourceDocs')}
+              />
+            </TableHead>
+            <TableHead className='text-right'>
+              <SortHeader
+                active={sortKey === 'createdAt'}
+                asc={sortAsc}
+                label='Created'
+                onSort={() => toggleSort('createdAt')}
+              />
+            </TableHead>
+            <TableHead className='text-right'>
+              <SortHeader
+                active={sortKey === 'lastActivity'}
+                asc={sortAsc}
+                label='Last activity'
+                onSort={() => toggleSort('lastActivity')}
+              />
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {sorted.map(t => (
+            <TableRow key={t.topicId}>
+              <TableCell className='font-medium'>
+                <Link className='hover:underline' href={`/training/tests/${t.slug}`}>
+                  {t.name}
+                </Link>
+              </TableCell>
+              <TableCell className='text-right tabular-nums'>{t.poolSize}</TableCell>
+              <TableCell className='text-right tabular-nums'>{t.assigned}</TableCell>
+              <TableCell className='text-right tabular-nums'>{t.assigned === 0 ? '—' : `${t.passRate}%`}</TableCell>
+              <TableCell
+                className={cn(
+                  'text-right tabular-nums',
+                  t.overdue > 0 && 'font-semibold text-yellow-700 dark:text-yellow-400'
+                )}>
+                {t.overdue}
+              </TableCell>
+              <TableCell className='text-right tabular-nums'>{t.sourceDocsCount}</TableCell>
+              <TableCell className='text-right text-muted-foreground text-xs'>{fmtDate(t.createdAt)}</TableCell>
+              <TableCell className='text-right text-muted-foreground text-xs'>{fmtDate(t.lastActivityMs)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    )
+  }
   return (
     <div className='space-y-4 p-6'>
       <Link
@@ -106,103 +203,7 @@ const TrainingTestsListPage = (): React.ReactElement => {
         placeholder='Search test name…'
         value={search}
       />
-      {data === undefined ? (
-        <div className='text-muted-foreground'>Loading…</div>
-      ) : data === null ? (
-        <div className='text-destructive'>Admin only.</div>
-      ) : sorted.length === 0 ? (
-        <div className='text-muted-foreground'>No tests yet. Approve shared docs to seed the question bank.</div>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>
-                <SortHeader active={sortKey === 'name'} asc={sortAsc} label='Test' onSort={() => toggleSort('name')} />
-              </TableHead>
-              <TableHead className='text-right'>
-                <SortHeader
-                  active={sortKey === 'poolSize'}
-                  asc={sortAsc}
-                  label='Questions'
-                  onSort={() => toggleSort('poolSize')}
-                />
-              </TableHead>
-              <TableHead className='text-right'>
-                <SortHeader
-                  active={sortKey === 'assigned'}
-                  asc={sortAsc}
-                  label='Assigned'
-                  onSort={() => toggleSort('assigned')}
-                />
-              </TableHead>
-              <TableHead className='text-right'>
-                <SortHeader
-                  active={sortKey === 'passRate'}
-                  asc={sortAsc}
-                  label='Pass rate'
-                  onSort={() => toggleSort('passRate')}
-                />
-              </TableHead>
-              <TableHead className='text-right'>
-                <SortHeader
-                  active={sortKey === 'overdue'}
-                  asc={sortAsc}
-                  label='Overdue'
-                  onSort={() => toggleSort('overdue')}
-                />
-              </TableHead>
-              <TableHead className='text-right'>
-                <SortHeader
-                  active={sortKey === 'sourceDocs'}
-                  asc={sortAsc}
-                  label='Source docs'
-                  onSort={() => toggleSort('sourceDocs')}
-                />
-              </TableHead>
-              <TableHead className='text-right'>
-                <SortHeader
-                  active={sortKey === 'createdAt'}
-                  asc={sortAsc}
-                  label='Created'
-                  onSort={() => toggleSort('createdAt')}
-                />
-              </TableHead>
-              <TableHead className='text-right'>
-                <SortHeader
-                  active={sortKey === 'lastActivity'}
-                  asc={sortAsc}
-                  label='Last activity'
-                  onSort={() => toggleSort('lastActivity')}
-                />
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sorted.map(t => (
-              <TableRow key={t.topicId}>
-                <TableCell className='font-medium'>
-                  <Link className='hover:underline' href={`/training/tests/${t.slug}`}>
-                    {t.name}
-                  </Link>
-                </TableCell>
-                <TableCell className='text-right tabular-nums'>{t.poolSize}</TableCell>
-                <TableCell className='text-right tabular-nums'>{t.assigned}</TableCell>
-                <TableCell className='text-right tabular-nums'>{t.assigned === 0 ? '—' : `${t.passRate}%`}</TableCell>
-                <TableCell
-                  className={cn(
-                    'text-right tabular-nums',
-                    t.overdue > 0 && 'font-semibold text-yellow-700 dark:text-yellow-400'
-                  )}>
-                  {t.overdue}
-                </TableCell>
-                <TableCell className='text-right tabular-nums'>{t.sourceDocsCount}</TableCell>
-                <TableCell className='text-right text-muted-foreground text-xs'>{fmtDate(t.createdAt)}</TableCell>
-                <TableCell className='text-right text-muted-foreground text-xs'>{fmtDate(t.lastActivityMs)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+      {renderContent()}
     </div>
   )
 }

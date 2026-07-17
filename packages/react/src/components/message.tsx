@@ -46,7 +46,8 @@ const toolLabel = (toolName: string, input: Record<string, unknown> | undefined)
     const id = ID_RE.exec(cmd)?.groups?.id
     const scope = SCOPE_RE.exec(cmd)?.groups?.scope
     const hint = q ? `"${q}"` : (id ?? scope ?? '')
-    return oneLine(`${path.join(' ')}${hint ? ` ${hint}` : ''}`).slice(0, 70)
+    const hintPart = hint ? ` ${hint}` : ''
+    return oneLine(`${path.join(' ')}${hintPart}`).slice(0, 70)
   }
   if (toolName === 'Read' && typeof input?.file_path === 'string') return `Read ${basename(input.file_path)}`
   if (toolName === 'Read' && typeof input?.path === 'string') return `Read ${basename(input.path)}`
@@ -94,20 +95,13 @@ const ActivityRow = ({ part }: { part: ActivityPart }): ReactNode => {
   if (part.type === 'reasoning')
     return <p className='text-muted-foreground text-sm leading-relaxed italic'>{oneLine(part.text)}</p>
   if (part.type === 'text') return <p className='text-muted-foreground text-sm leading-relaxed'>{oneLine(part.text)}</p>
-  if (part.type === 'status')
-    return (
-      <p
-        className={cn(
-          'text-sm leading-relaxed italic',
-          part.tone === 'error'
-            ? 'text-destructive'
-            : part.tone === 'warn'
-              ? 'text-yellow-700 dark:text-yellow-400'
-              : 'text-muted-foreground'
-        )}>
-        {oneLine(part.text)}
-      </p>
-    )
+  if (part.type === 'status') {
+    let toneClass: string
+    if (part.tone === 'error') toneClass = 'text-destructive'
+    else if (part.tone === 'warn') toneClass = 'text-yellow-700 dark:text-yellow-400'
+    else toneClass = 'text-muted-foreground'
+    return <p className={cn('text-sm leading-relaxed italic', toneClass)}>{oneLine(part.text)}</p>
+  }
   const out = part.output === undefined ? '' : oneLine(formatOutput(part.output)).slice(0, 160)
   return (
     <div className='rounded-md border border-muted-foreground/15 bg-background/60 px-2 py-1.5 text-xs'>
@@ -159,11 +153,10 @@ const ThinkingBlock = ({ isLoading, parts }: { isLoading: boolean; parts: Activi
   const open = manuallyOpen ?? isLoading
   const toolSummary = summarizeTools(parts)
   const pillSuffix = toolSummary ? ` · ${toolSummary}` : ''
-  const pillLabel = isLoading
-    ? 'Thinking…'
-    : elapsedSec === null
-      ? `Thought${pillSuffix}`
-      : `Thought for ${elapsedSec}s${pillSuffix}`
+  let pillLabel: string
+  if (isLoading) pillLabel = 'Thinking…'
+  else if (elapsedSec === null) pillLabel = `Thought${pillSuffix}`
+  else pillLabel = `Thought for ${elapsedSec}s${pillSuffix}`
   return (
     <div className='my-2 rounded-xl bg-muted/40 px-3 py-2 transition-colors'>
       <button
@@ -185,6 +178,7 @@ const ThinkingBlock = ({ isLoading, parts }: { isLoading: boolean; parts: Activi
     </div>
   )
 }
+// eslint-disable-next-line sonarjs/cognitive-complexity -- single-pass parts→nodes reducer that groups activity into thinking blocks
 const PurePreviewMessage = ({ chatId, isLoading, message }: PreviewMessageProps) => {
   const customRenderers = useMessagePartRegistry()
   useToolCard()

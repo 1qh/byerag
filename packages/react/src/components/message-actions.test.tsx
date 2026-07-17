@@ -11,11 +11,11 @@ const msg = (text: string): UIMessage => ({
 describe('Actions', () => {
   test('null while loading', () => {
     const { container } = render(<Actions isLoading message={msg('hi')} />)
-    expect(container.querySelector('button')).toBe(null)
+    expect(container.querySelector('button')).toBeNull()
   })
   test('null when no text', () => {
     const { container } = render(<Actions isLoading={false} message={msg('')} />)
-    expect(container.querySelector('button')).toBe(null)
+    expect(container.querySelector('button')).toBeNull()
   })
   test('renders copy button when text present', () => {
     const { container } = render(<Actions isLoading={false} message={msg('hi')} />)

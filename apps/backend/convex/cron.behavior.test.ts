@@ -37,7 +37,7 @@ describe('timeoutStreaming', () => {
         .withIndex('by_chat', q => q.eq('chatId', chatId))
         .collect()
     )
-    expect(events.length).toBe(0)
+    expect(events).toHaveLength(0)
   })
   test('no-op when streaming but elapsed < STREAMING_TIMEOUT_MS', async () => {
     const t = makeTest()
@@ -65,7 +65,7 @@ describe('timeoutStreaming', () => {
         .withIndex('by_chat_seq', q => q.eq('chatId', chatId).eq('seq', SEQ_SERVER_ERROR))
         .collect()
     )
-    expect(errs.length).toBe(1)
+    expect(errs).toHaveLength(1)
     expect(errs[0]?.content).toContain('agent timed out')
   })
   test('does not double-insert error if already present', async () => {
@@ -81,7 +81,7 @@ describe('timeoutStreaming', () => {
         .withIndex('by_chat_seq', q => q.eq('chatId', chatId).eq('seq', SEQ_SERVER_ERROR))
         .collect()
     )
-    expect(errs.length).toBe(1)
+    expect(errs).toHaveLength(1)
     expect(errs[0]?.content).toContain('prior')
   })
   test('clears sessionId on timeout', async () => {
@@ -158,7 +158,7 @@ describe('reconcileStreaming', () => {
         .withIndex('by_chat', q => q.eq('chatId', chatId))
         .collect()
     )
-    expect(events.length).toBe(0)
+    expect(events).toHaveLength(0)
   })
 })
 describe('hardPruneDeleted', () => {
@@ -167,7 +167,7 @@ describe('hardPruneDeleted', () => {
     await seedChat(t)
     await t.mutation(internal.chats.hardPruneDeleted, {})
     const chats = await t.run(async ctx => ctx.db.query('chats').collect())
-    expect(chats.length).toBe(1)
+    expect(chats).toHaveLength(1)
   })
   test('does not delete chat within grace window', async () => {
     const t = makeTest()
@@ -203,8 +203,8 @@ describe('hardPruneDeleted', () => {
         .withIndex('by_chat', q => q.eq('chatId', chatId))
         .collect()
     )
-    expect(msgs.length).toBe(0)
-    expect(events.length).toBe(0)
+    expect(msgs).toHaveLength(0)
+    expect(events).toHaveLength(0)
   })
 })
 describe('pruneStaleSpend cron', () => {
@@ -216,7 +216,7 @@ describe('pruneStaleSpend cron', () => {
     })
     await t.mutation(internal.ownerSpend.pruneStaleSpend, {})
     const remaining = await t.run(async ctx => ctx.db.query('ownerSpend').collect())
-    expect(remaining.length).toBe(0)
+    expect(remaining).toHaveLength(0)
   })
   test('preserves rows with inflight > 0 even when stale', async () => {
     const t = makeTest()
@@ -225,7 +225,7 @@ describe('pruneStaleSpend cron', () => {
     })
     await t.mutation(internal.ownerSpend.pruneStaleSpend, {})
     const remaining = await t.run(async ctx => ctx.db.query('ownerSpend').collect())
-    expect(remaining.length).toBe(1)
+    expect(remaining).toHaveLength(1)
   })
 })
 describe('auditInvariants cron', () => {

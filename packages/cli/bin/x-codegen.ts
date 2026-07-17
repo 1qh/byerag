@@ -9,6 +9,7 @@ import { emitRegistry, emitShims, emitToolCallers, emitToolTypes } from '../src/
 import { collect } from '../src/codegen/scan'
 import { extractSchemas } from '../src/codegen/schema'
 
+const byString = (a: string, b: string): number => (a < b ? -1 : Number(a > b))
 const PLATFORM_ROOT = resolve(process.cwd(), 'convex/tools')
 const APPS_DIR = resolve(process.cwd(), '../')
 const APPS_MANIFEST_OUT = resolve(process.cwd(), 'convex/apps/_apps.ts')
@@ -23,7 +24,7 @@ const discoverAppsForManifest = async (): Promise<string[]> => {
       } catch {
         /* No server dir — skip */
       }
-  return out.toSorted()
+  return out.toSorted(byString)
 }
 const emitAppsManifest = (apps: string[]): string => {
   const imports = apps.map(a => `import { config as ${a} } from '../../../${a}/server'`).join('\n')

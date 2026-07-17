@@ -25,14 +25,11 @@ interface MessageReasoningProps {
 }
 const MessageReasoning = ({ isLoading, reasoning }: MessageReasoningProps) => {
   const { rest, summary } = splitFirstSentence(reasoning)
-  const getThinking = (isStreaming: boolean) =>
-    isStreaming ? (
-      <Shimmer duration={1}>Thinking</Shimmer>
-    ) : summary ? (
-      <p className='text-muted-foreground text-left flex-1 min-w-0'>{summary}</p>
-    ) : (
-      <p>Thought for a few seconds</p>
-    )
+  const getThinking = (isStreaming: boolean) => {
+    if (isStreaming) return <Shimmer duration={1}>Thinking</Shimmer>
+    if (summary) return <p className='text-muted-foreground text-left flex-1 min-w-0'>{summary}</p>
+    return <p>Thought for a few seconds</p>
+  }
   return (
     <Reasoning className='[&_.lucide-brain]:hidden' defaultOpen={isLoading} isStreaming={isLoading}>
       <ReasoningTrigger getThinkingMessage={getThinking} />

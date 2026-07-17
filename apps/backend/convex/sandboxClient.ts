@@ -174,8 +174,12 @@ const execInside = async (id: string, cmd: string, opts: RunOpts): Promise<RunRe
 const writeInside = async (id: string, path: string, content: ArrayBuffer | string | Uint8Array): Promise<void> => {
   const dir = dirname(path)
   const name = path.slice(dir.length + 1)
-  const payload: Buffer | string =
-    typeof content === 'string' ? content : Buffer.from(content instanceof ArrayBuffer ? new Uint8Array(content) : content)
+  let payload: Buffer | string
+  if (typeof content === 'string') payload = content
+  else {
+    const view = content instanceof ArrayBuffer ? new Uint8Array(content) : content
+    payload = Buffer.from(view)
+  }
   const archive = tarOne(name, payload)
   const res = await dockerRequest({
     body: archive,
@@ -236,7 +240,7 @@ const ensureRunning = async (id: string): Promise<void> => {
   if (info.State.Paused) await dockerRequest({ method: 'POST', path: `/containers/${id}/unpause` })
   else if (!info.State.Running) await dockerRequest({ method: 'POST', path: `/containers/${id}/start` })
 }
-const SAFE_OWNER_RE = /[^a-z0-9_.-]/giu
+const SAFE_OWNER_RE = /[^\w.-]/giu
 const sanitizeOwner = (owner: string): string => owner.toLowerCase().replaceAll(SAFE_OWNER_RE, '_').slice(0, 64)
 const createSandbox = async (templateId: string, opts: CreateOpts = {}): Promise<Sandbox> => {
   const image = templateId || env.SANDBOX_IMAGE

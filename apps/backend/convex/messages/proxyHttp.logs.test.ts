@@ -121,12 +121,12 @@ describe('proxy log assertions', () => {
     await res.text()
     await flushScheduler(t)
     const settles = eventsByName('proxy.settle')
-    expect(settles.length).toBe(1)
+    expect(settles).toHaveLength(1)
     expect(settles[0]?.cause).toBe('sse-flush')
     const reserves = eventsByName('spend.reserve')
-    expect(reserves.length).toBe(1)
+    expect(reserves).toHaveLength(1)
     const settled = eventsByName('spend.settle')
-    expect(settled.length).toBe(1)
+    expect(settled).toHaveLength(1)
     expect(settled[0]?.kind).toBe('same-day')
   })
   test('non-SSE 500 emits proxy.refund cause=non-sse-error', async () => {
@@ -141,7 +141,7 @@ describe('proxy log assertions', () => {
     })
     await flushScheduler(t)
     const refunds = eventsByName('proxy.refund')
-    expect(refunds.length).toBe(1)
+    expect(refunds).toHaveLength(1)
     expect(refunds[0]?.cause).toBe('non-sse-error')
   })
   test('non-SSE 200 with no usage emits proxy.settle cause=non-sse-no-usage', async () => {
@@ -156,7 +156,7 @@ describe('proxy log assertions', () => {
     })
     await flushScheduler(t)
     const settles = eventsByName('proxy.settle')
-    expect(settles.length).toBe(1)
+    expect(settles).toHaveLength(1)
     expect(settles[0]?.cause).toBe('non-sse-no-usage')
   })
   test('non-SSE 200 with usage emits proxy.settle cause=non-sse-usage', async () => {
@@ -177,7 +177,7 @@ describe('proxy log assertions', () => {
     })
     await flushScheduler(t)
     const settles = eventsByName('proxy.settle')
-    expect(settles.length).toBe(1)
+    expect(settles).toHaveLength(1)
     expect(settles[0]?.cause).toBe('non-sse-usage')
   })
   test('inflight-rejected reserve emits spend.reserve.rejected reason=inflight', async () => {
@@ -189,7 +189,7 @@ describe('proxy log assertions', () => {
     const r = await t.mutation(api.ownerSpend.reserveBudget, { cents: 100, owner })
     expect(r.ok).toBe(false)
     const rejected = eventsByName('spend.reserve.rejected')
-    expect(rejected.length).toBe(1)
+    expect(rejected).toHaveLength(1)
     expect(rejected[0]?.reason).toBe('inflight')
   })
   test('cap-rejected reserve emits spend.reserve.rejected reason=cap', async () => {
@@ -207,7 +207,7 @@ describe('proxy log assertions', () => {
     const r2 = await t.mutation(api.ownerSpend.reserveBudget, { cents: 200, owner })
     expect(r2.ok).toBe(false)
     const rejected = eventsByName('spend.reserve.rejected')
-    expect(rejected.length).toBe(1)
+    expect(rejected).toHaveLength(1)
     expect(rejected[0]?.reason).toBe('cap')
   })
   test('cap overshoot triggers spend.cap.overshoot error log', async () => {
@@ -239,7 +239,7 @@ describe('proxy log assertions', () => {
     captured.length = 0
     await t.mutation(api.ownerSpend.auditInvariants, {})
     const summary = eventsByName('audit.summary')
-    expect(summary.length).toBe(1)
+    expect(summary).toHaveLength(1)
     expect(summary[0]?.overshootCents).toBe(0)
     expect(summary[0]?.overshootInflight).toBe(0)
     expect(summary[0]?.stuckInflight).toBe(0)
@@ -255,7 +255,7 @@ describe('proxy log assertions', () => {
       reservedCents: 100,
       reservedDayKey: r.dayKey
     })
-    expect(eventsByName('spend.reserve').length).toBe(1)
-    expect(eventsByName('spend.settle').length).toBe(1)
+    expect(eventsByName('spend.reserve')).toHaveLength(1)
+    expect(eventsByName('spend.settle')).toHaveLength(1)
   })
 })

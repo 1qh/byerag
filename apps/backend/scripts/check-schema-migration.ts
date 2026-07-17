@@ -21,6 +21,7 @@ if (before === after) {
   process.exit(0)
 }
 const issues: string[] = []
+// eslint-disable-next-line sonarjs/super-linear-regex -- quantifiers bounded by disjoint delimiters (:, }), no ambiguous adjacency, linear
 const TABLE_RE = /(?<name>\w+):\s*defineTable\(\{(?<body>[^}]*)\}/gu
 const tables = (src: string): Map<string, string> => {
   const out = new Map<string, string>()
@@ -33,6 +34,7 @@ const tAfter = tables(after)
 for (const [name, body] of tAfter) {
   const oldBody = tBefore.get(name)
   if (oldBody) {
+    // eslint-disable-next-line sonarjs/super-linear-regex -- quantifiers bounded by disjoint delimiters (:, (, )), no ambiguous adjacency, linear
     const FIELD_RE = /(?<f>\w+):\s*(?<type>v\.[\w.]+\([^)]*\))/gu
     const oldFields = new Set([...oldBody.matchAll(FIELD_RE)].map(m => m.groups?.f).filter(Boolean) as string[])
     for (const m of body.matchAll(FIELD_RE)) {

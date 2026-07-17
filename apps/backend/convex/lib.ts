@@ -6,12 +6,14 @@ import type { QueryCtx } from './_generated/server'
 import { internal } from './_generated/api'
 import { internalMutation, internalQuery, mutation, query } from './_generated/server'
 
-const RE_CONTROL_ASCII = /[\u0000-\u0009\u000B\u000C\u000E-\u001F\u007F]/gu
+const RE_CONTROL_ASCII = /[\u0000-\u0009\v\f\u000E-\u001F\u007F]/gu
 const RE_NEWLINES = /[\n\r\u0085\u2028\u2029]/gu
+// eslint-disable-next-line sonarjs/super-linear-regex -- negated class [^>] bounded by its own delimiter, no ambiguous adjacency, linear
 const RE_HTML_TAGS = /<[^>]*>/gu
 const RE_UNICODE_CONTROL = /[\u200B-\u200F\u202A-\u202E\u2060-\u2069\uFEFF]/gu
+// eslint-disable-next-line sonarjs/super-linear-regex -- negated classes bounded by disjoint delimiters (], ), no ambiguous adjacency, linear
 const RE_MD_LINK = /\[(?<text>[^\]]*)\]\([^)]*\)/gu
-const RE_MD_IMAGE = /!\[(?<alt>[^\]]*)\]\([^)]*\)/gu
+const RE_MD_IMAGE = /!\[[^\]]*\]\([^)]*\)/gu
 const RE_CODE_BLOCK = /```[\s\S]*?```/gu
 const RE_INLINE_CODE = /`[^`]*`/gu
 const RE_HEADING = /#{1,6}\s/gu

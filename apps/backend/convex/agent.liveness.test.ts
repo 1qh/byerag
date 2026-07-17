@@ -39,7 +39,7 @@ describe('streamEventsForLiveness', () => {
     const t = makeTest()
     const { chatId } = await seedChat(t)
     const events = await t.query(internal.messages.streamEventsForLiveness, { chatId })
-    expect(events.length).toBe(0)
+    expect(events).toHaveLength(0)
   })
   test('returns positive-seq event when present', async () => {
     const t = makeTest()
@@ -48,7 +48,7 @@ describe('streamEventsForLiveness', () => {
       await ctx.db.insert('streamEvents', { chatId, content: '{}', seq: 5 })
     })
     const events = await t.query(internal.messages.streamEventsForLiveness, { chatId })
-    expect(events.length).toBe(1)
+    expect(events).toHaveLength(1)
     expect(events[0]?.seq).toBe(5)
   })
   test('falls back to negative-seq agent events when no positive seqs', async () => {
@@ -58,7 +58,7 @@ describe('streamEventsForLiveness', () => {
       await ctx.db.insert('streamEvents', { chatId, content: '{}', seq: -999 })
     })
     const events = await t.query(internal.messages.streamEventsForLiveness, { chatId })
-    expect(events.length).toBe(1)
+    expect(events).toHaveLength(1)
     expect(events[0]?.seq).toBe(-999)
   })
   test('prefers positive seq over negative when both exist', async () => {

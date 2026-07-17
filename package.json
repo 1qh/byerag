@@ -1,5 +1,6 @@
 {
   "private": true,
+  "description": "byerag monorepo — agent-first RAG training and evaluation platform",
   "workspaces": [
     "packages/*",
     "apps/*",
@@ -35,7 +36,7 @@
     "convex-test": "latest",
     "drizzle-kit": "latest",
     "fast-check": "latest",
-    "lintmax": "latest",
+    "lintmax": "^0.1.82",
     "sherif": "latest",
     "simple-git-hooks": "latest",
     "tsdown": "latest",

@@ -1,4 +1,4 @@
-/* eslint-disable no-await-in-loop, complexity */
+/* eslint-disable no-await-in-loop */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential bulk delete */
 'use client'
 import type { Id } from 'backend/convex/_generated/dataModel'
@@ -93,45 +93,48 @@ const DocCard = ({
   onToggleSelect?: (id: Id<'docs'>) => void
   selected?: boolean
   selectMode?: boolean
-}): React.ReactElement => (
-  <li
-    className={cn(
-      'flex items-stretch gap-1 rounded-xl border bg-card transition-all hover:-translate-y-px hover:shadow-md',
-      selected && 'bg-muted'
-    )}>
-    {selectMode ? (
-      <span className='flex items-center pl-3'>
-        <Checkbox
-          aria-label={`Select ${doc.filename}`}
-          checked={selected ?? false}
-          onCheckedChange={() => onToggleSelect?.(doc._id)}
-        />
-      </span>
-    ) : null}
-    <button
-      className='group flex min-w-0 flex-1 items-center gap-3 rounded-l-xl px-3 py-3 text-left'
-      onClick={() => (selectMode ? onToggleSelect?.(doc._id) : onOpen(doc._id))}
-      title={`${relTime(doc.uploadedAt, now)} · ${humanSize(doc.fileSize)}${doc.uploadedBy ? ` · by ${doc.uploadedBy}` : ''}`}
-      type='button'>
-      <FileTypeChip mime={doc.mime} />
-      <div className='min-w-0 flex-1'>
-        <p className='truncate font-medium text-sm'>
-          {doc.filename}
-          {doc.version > 1 ? <span className='ml-1 text-muted-foreground text-xs'>v{doc.version}</span> : null}
-        </p>
-        <p className='line-clamp-2 text-muted-foreground text-xs'>
-          {doc.summary ?? `Added ${relTime(doc.uploadedAt, now)}.`}
-        </p>
-      </div>
-      {doc.policyStatus === 'pending' ? (
-        <span className='flex items-center gap-1 pr-2 text-muted-foreground text-xs'>
-          <Loader2 aria-hidden className='size-3 animate-spin' />
-          Reading…
+}): React.ReactElement => {
+  const byline = doc.uploadedBy ? ` · by ${doc.uploadedBy}` : ''
+  return (
+    <li
+      className={cn(
+        'flex items-stretch gap-1 rounded-xl border bg-card transition-all hover:-translate-y-px hover:shadow-md',
+        selected && 'bg-muted'
+      )}>
+      {selectMode ? (
+        <span className='flex items-center pl-3'>
+          <Checkbox
+            aria-label={`Select ${doc.filename}`}
+            checked={selected ?? false}
+            onCheckedChange={() => onToggleSelect?.(doc._id)}
+          />
         </span>
       ) : null}
-    </button>
-  </li>
-)
+      <button
+        className='group flex min-w-0 flex-1 items-center gap-3 rounded-l-xl px-3 py-3 text-left'
+        onClick={() => (selectMode ? onToggleSelect?.(doc._id) : onOpen(doc._id))}
+        title={`${relTime(doc.uploadedAt, now)} · ${humanSize(doc.fileSize)}${byline}`}
+        type='button'>
+        <FileTypeChip mime={doc.mime} />
+        <div className='min-w-0 flex-1'>
+          <p className='truncate font-medium text-sm'>
+            {doc.filename}
+            {doc.version > 1 ? <span className='ml-1 text-muted-foreground text-xs'>v{doc.version}</span> : null}
+          </p>
+          <p className='line-clamp-2 text-muted-foreground text-xs'>
+            {doc.summary ?? `Added ${relTime(doc.uploadedAt, now)}.`}
+          </p>
+        </div>
+        {doc.policyStatus === 'pending' ? (
+          <span className='flex items-center gap-1 pr-2 text-muted-foreground text-xs'>
+            <Loader2 aria-hidden className='size-3 animate-spin' />
+            Reading…
+          </span>
+        ) : null}
+      </button>
+    </li>
+  )
+}
 const SectionHeader = ({ count, label }: { count: number; label: string }): React.ReactElement => (
   <div className='flex items-baseline gap-2'>
     <h2 className='font-semibold text-base'>{label}</h2>
@@ -181,7 +184,8 @@ const DocsPage = (): React.ReactElement => {
         fail += 1
         toast.error(`${id.slice(-6)}: ${String(error).slice(0, 80)}`)
       }
-    toast.success(`Deleted ${ok}/${ids.length}${fail > 0 ? ` (${fail} failed)` : ''}`)
+    const failSuffix = fail > 0 ? ` (${fail} failed)` : ''
+    toast.success(`Deleted ${ok}/${ids.length}${failSuffix}`)
     setConfirmOpen(false)
     setDeleting(false)
     exitSelectMode()
@@ -222,6 +226,66 @@ const DocsPage = (): React.ReactElement => {
       }
       router.push('/')
     }
+  }
+  const renderCorpusActions = (): null | React.ReactElement => {
+    if (sharedFiltered.length === 0) return null
+    if (!selectMode)
+      return (
+        <Button onClick={() => setSelectMode(true)} size='sm' variant='outline'>
+          Select
+        </Button>
+      )
+    return (
+      <div className='flex items-center gap-2 text-sm'>
+        <span className='text-muted-foreground'>{selected.size} selected</span>
+        <Button disabled={selected.size === 0 || deleting} onClick={askAboutSelected} size='sm'>
+          <MessageSquare className='size-4' />
+          Ask about {selected.size > 0 ? selected.size : ''}
+        </Button>
+        <Button
+          disabled={selected.size === 0 || deleting}
+          onClick={() => setConfirmOpen(true)}
+          size='sm'
+          variant='destructive'>
+          <Trash2 className='size-4' />
+          Delete {selected.size > 0 ? selected.size : ''}
+        </Button>
+        <Button disabled={deleting} onClick={exitSelectMode} size='sm' variant='ghost'>
+          Done
+        </Button>
+      </div>
+    )
+  }
+  const renderCorpusList = (): React.ReactElement => {
+    if (shared === undefined) return <p className='text-muted-foreground text-sm'>Loading…</p>
+    if (sharedFiltered.length === 0)
+      return (
+        <p className='rounded-xl border border-dashed p-6 text-center text-muted-foreground text-sm'>
+          {q ? 'Nothing matches your search yet.' : 'No shared documents yet. Upload to seed the corpus.'}
+        </p>
+      )
+    return (
+      <>
+        <ul className='space-y-2'>
+          {(q || expanded ? sharedFiltered : sharedFiltered.slice(0, 5)).map(d => (
+            <DocCard
+              doc={d}
+              key={d._id}
+              now={now}
+              onOpen={onOpen}
+              onToggleSelect={onToggleSelect}
+              selected={selected.has(d._id as string)}
+              selectMode={selectMode}
+            />
+          ))}
+        </ul>
+        {!q && sharedFiltered.length > 5 ? (
+          <Button onClick={() => setExpanded(v => !v)} size='sm' variant='ghost'>
+            {expanded ? 'Show less' : `Show all (${sharedFiltered.length})`}
+          </Button>
+        ) : null}
+      </>
+    )
   }
   return (
     <div className='mx-auto flex h-dvh w-full max-w-3xl flex-col gap-6 overflow-y-auto p-6'>
@@ -270,63 +334,11 @@ const DocsPage = (): React.ReactElement => {
       <section className='space-y-3'>
         <div className='flex items-center justify-between gap-2'>
           <SectionHeader count={sharedFiltered.length} label='Shared corpus' />
-          {sharedFiltered.length > 0 ? (
-            selectMode ? (
-              <div className='flex items-center gap-2 text-sm'>
-                <span className='text-muted-foreground'>{selected.size} selected</span>
-                <Button disabled={selected.size === 0 || deleting} onClick={askAboutSelected} size='sm'>
-                  <MessageSquare className='size-4' />
-                  Ask about {selected.size > 0 ? selected.size : ''}
-                </Button>
-                <Button
-                  disabled={selected.size === 0 || deleting}
-                  onClick={() => setConfirmOpen(true)}
-                  size='sm'
-                  variant='destructive'>
-                  <Trash2 className='size-4' />
-                  Delete {selected.size > 0 ? selected.size : ''}
-                </Button>
-                <Button disabled={deleting} onClick={exitSelectMode} size='sm' variant='ghost'>
-                  Done
-                </Button>
-              </div>
-            ) : (
-              <Button onClick={() => setSelectMode(true)} size='sm' variant='outline'>
-                Select
-              </Button>
-            )
-          ) : null}
+          {renderCorpusActions()}
         </div>
         <p className='text-muted-foreground text-xs'>The assistant cites these when it answers your team.</p>
         <DocUpload isAdmin scope='shared' />
-        {shared === undefined ? (
-          <p className='text-muted-foreground text-sm'>Loading…</p>
-        ) : sharedFiltered.length === 0 ? (
-          <p className='rounded-xl border border-dashed p-6 text-center text-muted-foreground text-sm'>
-            {q ? 'Nothing matches your search yet.' : 'No shared documents yet. Upload to seed the corpus.'}
-          </p>
-        ) : (
-          <>
-            <ul className='space-y-2'>
-              {(q || expanded ? sharedFiltered : sharedFiltered.slice(0, 5)).map(d => (
-                <DocCard
-                  doc={d}
-                  key={d._id}
-                  now={now}
-                  onOpen={onOpen}
-                  onToggleSelect={onToggleSelect}
-                  selected={selected.has(d._id as string)}
-                  selectMode={selectMode}
-                />
-              ))}
-            </ul>
-            {!q && sharedFiltered.length > 5 ? (
-              <Button onClick={() => setExpanded(v => !v)} size='sm' variant='ghost'>
-                {expanded ? 'Show less' : `Show all (${sharedFiltered.length})`}
-              </Button>
-            ) : null}
-          </>
-        )}
+        {renderCorpusList()}
       </section>
       <AlertDialog
         onOpenChange={open => {

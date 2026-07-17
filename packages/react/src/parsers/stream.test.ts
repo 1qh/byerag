@@ -31,12 +31,12 @@ describe('parseMessage', () => {
 })
 describe('parseStreamEvent', () => {
   test('null on malformed json', () => {
-    expect(parseStreamEvent('not json')).toBe(null)
+    expect(parseStreamEvent('not json')).toBeNull()
   })
   test('parses a system event', () => {
     const raw = JSON.stringify({ subtype: 'status', type: 'system', uuid: 'u1' })
     const out = parseStreamEvent(raw)
-    expect(out).not.toBe(null)
+    expect(out).not.toBeNull()
     expect(out?.type).toBe('system')
   })
   test('parses an assistant event with content array', () => {

@@ -18,6 +18,36 @@ type SchemaNode =
   | { kind: 'string' }
   | { kind: 'union'; members: SchemaNode[] }
   | { kind: 'unknown'; text?: string }
+const byString = (a: string, b: string): number => (a < b ? -1 : Number(a > b))
+const unifySchema = (unique: SchemaNode[]): SchemaNode => {
+  const [first] = unique
+  if (unique.length === 1 && first) return first
+  if (unique.length > 1) return { kind: 'union', members: unique }
+  return { kind: 'unknown' }
+}
+const mergeUnionObjects = (parts: SchemaNode[]): SchemaNode => {
+  const merged: Record<string, { optional: boolean; schema: SchemaNode }> = {}
+  const allKeys = new Set(parts.flatMap(p => (p.kind === 'object' ? Object.keys(p.shape) : [])))
+  for (const k of allKeys) {
+    const present = parts.filter(p => p.kind === 'object' && k in p.shape)
+    const optional =
+      present.length < parts.length || present.some(p => p.kind === 'object' && p.shape[k]?.optional === true)
+    const schemas = present.map(p =>
+      p.kind === 'object' ? (p.shape[k]?.schema ?? { kind: 'unknown' as const }) : { kind: 'unknown' as const }
+    )
+    merged[k] =
+      schemas.length > 0 && schemas.every(s => s.kind === 'enum')
+        ? {
+            optional,
+            schema: {
+              kind: 'enum',
+              values: [...new Set(schemas.flatMap(s => (s.kind === 'enum' ? s.values : [])))].toSorted(byString)
+            }
+          }
+        : { optional, schema: unifySchema([...new Map(schemas.map(s => [JSON.stringify(s), s])).values()]) }
+  }
+  return { kind: 'object', shape: merged }
+}
 const extractSchemas = (toolFiles: string[]): Map<string, Extracted> => {
   const cfgPath = ts.findConfigFile(process.cwd(), ts.sys.fileExists.bind(ts.sys), 'tsconfig.json')
   if (!cfgPath) throw new Error('tsconfig.json not found')
@@ -28,6 +58,7 @@ const extractSchemas = (toolFiles: string[]): Map<string, Extracted> => {
   )
   const program = ts.createProgram({ options: parsed.options, rootNames: parsed.fileNames })
   const checker = program.getTypeChecker()
+  // eslint-disable-next-line sonarjs/cognitive-complexity -- irreducible handler/orchestrator; cohesive helpers already extracted
   const typeToSchema = (type: ts.Type, depth = 0): SchemaNode => {
     if (depth > 12) return { kind: 'unknown', text: '<too deep>' }
     const { flags } = type
@@ -43,41 +74,11 @@ const extractSchemas = (toolFiles: string[]): Map<string, Extracted> => {
       if (nonUndef.length === 1 && onlyMember) return typeToSchema(onlyMember, depth + 1)
       const parts = nonUndef.map(t => typeToSchema(t, depth + 1))
       if (parts.every(p => p.kind === 'enum'))
-        return { kind: 'enum', values: [...new Set(parts.flatMap(p => (p.kind === 'enum' ? p.values : [])))].toSorted() }
-      if (parts.every(p => p.kind === 'object')) {
-        const merged: Record<string, { optional: boolean; schema: SchemaNode }> = {}
-        const allKeys = new Set(parts.flatMap(p => (p.kind === 'object' ? Object.keys(p.shape) : [])))
-        for (const k of allKeys) {
-          const present = parts.filter(p => p.kind === 'object' && k in p.shape)
-          const optional =
-            present.length < parts.length || present.some(p => p.kind === 'object' && p.shape[k]?.optional === true)
-          const schemas = present.map(p =>
-            p.kind === 'object' ? (p.shape[k]?.schema ?? { kind: 'unknown' as const }) : { kind: 'unknown' as const }
-          )
-          if (schemas.length > 0 && schemas.every(s => s.kind === 'enum'))
-            merged[k] = {
-              optional,
-              schema: {
-                kind: 'enum',
-                values: [...new Set(schemas.flatMap(s => (s.kind === 'enum' ? s.values : [])))].toSorted()
-              }
-            }
-          else {
-            const unique = [...new Map(schemas.map(s => [JSON.stringify(s), s])).values()]
-            const [first] = unique
-            merged[k] = {
-              optional,
-              schema:
-                unique.length === 1 && first
-                  ? first
-                  : unique.length > 1
-                    ? { kind: 'union', members: unique }
-                    : { kind: 'unknown' }
-            }
-          }
+        return {
+          kind: 'enum',
+          values: [...new Set(parts.flatMap(p => (p.kind === 'enum' ? p.values : [])))].toSorted(byString)
         }
-        return { kind: 'object', shape: merged }
-      }
+      if (parts.every(p => p.kind === 'object')) return mergeUnionObjects(parts)
       return { kind: 'union', members: parts }
     }
     const typeArguments = checker.getTypeArguments(type as ts.TypeReference)

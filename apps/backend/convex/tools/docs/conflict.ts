@@ -9,6 +9,7 @@ const MAX_DOC_CHARS = 50_000
 const KIMI_TIMEOUT_MS = 45_000
 const KIMI_MAX_TOKENS = 1500
 const TYPE_RANK = { factual: 0, gap: 1, wording: 2 } as const
+// eslint-disable-next-line sonarjs/super-linear-regex -- single greedy quantifier bounded by trailing literal ], one backtrack scan, linear
 const JSON_ARRAY_RE = /\[[\s\S]*\]/u
 interface Conflict {
   docA_excerpt: string

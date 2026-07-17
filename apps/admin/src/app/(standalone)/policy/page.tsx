@@ -69,6 +69,10 @@ const KindHeadline = ({ row }: { row: Row }): React.ReactElement => {
     </p>
   )
 }
+const actHandler = (fn: (id: Id<'docs'>) => Promise<void>, id: Id<'docs'>) => (): void => {
+  // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
+  fn(id).catch((error: unknown) => toast.error(String(error)))
+}
 const PolicyInboxPage = (): React.ReactElement => {
   const rows = useQuery(api.docs.listPolicyPending, {})
   const stats = useQuery(api.docs.policyTodayStats, {})
@@ -113,6 +117,73 @@ const PolicyInboxPage = (): React.ReactElement => {
       setBusy(null)
     }
   }
+  const renderInbox = (): React.ReactElement => {
+    if (rows === undefined) return <div className='p-6 text-muted-foreground text-sm'>Loading…</div>
+    if (rows.length === 0)
+      return (
+        <div className='flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center'>
+          <CheckCircle2 aria-hidden className='size-12 text-green-600' />
+          <p className='font-medium'>All clear</p>
+          <p className='max-w-xs text-muted-foreground text-sm'>
+            The auto-check handled every upload today. Nothing here needs you right now.
+          </p>
+          {stats && stats.uploaded > 0 ? (
+            <p className='text-muted-foreground text-xs'>
+              Today the auto-check accepted {stats.accepted} and rejected {stats.rejected} of {stats.uploaded} uploads.
+            </p>
+          ) : null}
+        </div>
+      )
+    return (
+      <ul className='flex-1 space-y-3 overflow-auto p-4'>
+        {rows.map(r => {
+          const isBusy = busy === r._id
+          return (
+            <li className='rounded-lg border bg-card p-4 shadow-sm' key={r._id}>
+              <KindHeadline row={r} />
+              <p className='mt-1 text-muted-foreground text-xs'>
+                {r.scope === 'shared' ? 'For the shared corpus' : 'Personal upload'} ·{' '}
+                {r.kind === 'appeal' && r.policyReviewRequestedAt
+                  ? `asked ${fmtVN(r.policyReviewRequestedAt)}`
+                  : `uploaded ${fmtVN(r.uploadedAt)}`}
+              </p>
+              {r.policyReason || r.policyCategory ? (
+                <p className='mt-2 rounded bg-muted/50 px-2 py-1.5 text-muted-foreground text-xs italic'>
+                  AI said: {plainReason(r.policyCategory, r.policyReason)}
+                </p>
+              ) : null}
+              <div className='mt-3 flex flex-wrap gap-2'>
+                <Button onClick={() => openDoc(r._id)} size='sm' variant='outline'>
+                  <FileText className='size-4' />
+                  Look at file
+                </Button>
+                <Button disabled={isBusy} onClick={actHandler(onApprove, r._id)} size='sm'>
+                  <CheckCircle2 className='size-4' />
+                  Add to corpus
+                </Button>
+                {r.kind === 'appeal' ? (
+                  <Button disabled={isBusy} onClick={actHandler(onReject, r._id)} size='sm' variant='outline'>
+                    <XCircle className='size-4' />I agree with AI
+                  </Button>
+                ) : (
+                  <Button disabled={isBusy} onClick={actHandler(onReject, r._id)} size='sm' variant='outline'>
+                    <XCircle className='size-4' />
+                    Don&apos;t add
+                  </Button>
+                )}
+                {r.kind === 'appeal' ? null : (
+                  <Button disabled={isBusy} onClick={actHandler(onReclassify, r._id)} size='sm' variant='outline'>
+                    <RotateCw className='size-4' />
+                    Try AI again
+                  </Button>
+                )}
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    )
+  }
   return (
     <div className='flex h-dvh flex-col'>
       <header className='flex items-center gap-4 border-b px-4 py-3'>
@@ -134,97 +205,7 @@ const PolicyInboxPage = (): React.ReactElement => {
         ) : null}
       </header>
       <div className='mx-auto flex w-full max-w-3xl flex-1 flex-col overflow-hidden'>
-        {rows === undefined ? (
-          <div className='p-6 text-muted-foreground text-sm'>Loading…</div>
-        ) : rows.length === 0 ? (
-          <div className='flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center'>
-            <CheckCircle2 aria-hidden className='size-12 text-green-600' />
-            <p className='font-medium'>All clear</p>
-            <p className='max-w-xs text-muted-foreground text-sm'>
-              The auto-check handled every upload today. Nothing here needs you right now.
-            </p>
-            {stats && stats.uploaded > 0 ? (
-              <p className='text-muted-foreground text-xs'>
-                Today the auto-check accepted {stats.accepted} and rejected {stats.rejected} of {stats.uploaded} uploads.
-              </p>
-            ) : null}
-          </div>
-        ) : (
-          <ul className='flex-1 space-y-3 overflow-auto p-4'>
-            {rows.map(r => {
-              const isBusy = busy === r._id
-              return (
-                <li className='rounded-lg border bg-card p-4 shadow-sm' key={r._id}>
-                  <KindHeadline row={r} />
-                  <p className='mt-1 text-muted-foreground text-xs'>
-                    {r.scope === 'shared' ? 'For the shared corpus' : 'Personal upload'} ·{' '}
-                    {r.kind === 'appeal' && r.policyReviewRequestedAt
-                      ? `asked ${fmtVN(r.policyReviewRequestedAt)}`
-                      : `uploaded ${fmtVN(r.uploadedAt)}`}
-                  </p>
-                  {r.policyReason || r.policyCategory ? (
-                    <p className='mt-2 rounded bg-muted/50 px-2 py-1.5 text-muted-foreground text-xs italic'>
-                      AI said: {plainReason(r.policyCategory, r.policyReason)}
-                    </p>
-                  ) : null}
-                  <div className='mt-3 flex flex-wrap gap-2'>
-                    <Button onClick={() => openDoc(r._id)} size='sm' variant='outline'>
-                      <FileText className='size-4' />
-                      Look at file
-                    </Button>
-                    <Button
-                      disabled={isBusy}
-                      onClick={() => {
-                        // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
-                        onApprove(r._id).catch((error: unknown) => toast.error(String(error)))
-                      }}
-                      size='sm'>
-                      <CheckCircle2 className='size-4' />
-                      Add to corpus
-                    </Button>
-                    {r.kind === 'appeal' ? (
-                      <Button
-                        disabled={isBusy}
-                        onClick={() => {
-                          // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
-                          onReject(r._id).catch((error: unknown) => toast.error(String(error)))
-                        }}
-                        size='sm'
-                        variant='outline'>
-                        <XCircle className='size-4' />I agree with AI
-                      </Button>
-                    ) : (
-                      <Button
-                        disabled={isBusy}
-                        onClick={() => {
-                          // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
-                          onReject(r._id).catch((error: unknown) => toast.error(String(error)))
-                        }}
-                        size='sm'
-                        variant='outline'>
-                        <XCircle className='size-4' />
-                        Don&apos;t add
-                      </Button>
-                    )}
-                    {r.kind === 'appeal' ? null : (
-                      <Button
-                        disabled={isBusy}
-                        onClick={() => {
-                          // oxlint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks -- React handler
-                          onReclassify(r._id).catch((error: unknown) => toast.error(String(error)))
-                        }}
-                        size='sm'
-                        variant='outline'>
-                        <RotateCw className='size-4' />
-                        Try AI again
-                      </Button>
-                    )}
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
-        )}
+        {renderInbox()}
         {rows && rows.length > 0 ? (
           <div className='border-t bg-background p-4'>
             <Textarea

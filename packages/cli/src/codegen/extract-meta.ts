@@ -1,6 +1,6 @@
 import ts from 'typescript'
 
-const DEFINE_RE = /^define(?<kind>Tool|Query|Mutation)$/u
+const DEFINE_RE = /^define(?:Tool|Query|Mutation)$/u
 interface ExtractedMeta {
   argDescriptions: Record<string, string>
   deprecated?: string

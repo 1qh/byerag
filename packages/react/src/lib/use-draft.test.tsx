@@ -67,6 +67,6 @@ describe('useDraft', () => {
     act(() => result.current[1]('text'))
     act(() => result.current[2]())
     expect(result.current[0]).toBe('')
-    expect(globalThis.localStorage.getItem('draft-c3')).toBe(null)
+    expect(globalThis.localStorage.getItem('draft-c3')).toBeNull()
   })
 })

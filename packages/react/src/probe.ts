@@ -2,7 +2,7 @@
 /* oxlint-disable unicorn/no-process-exit, unicorn/consistent-function-scoping */
 /** biome-ignore-all lint/style/noProcessEnv: probe env override */
 /** biome-ignore-all lint/performance/useTopLevelRegex: probe-only inline regex */
-/* eslint-disable no-console */
+/* eslint-disable no-console, sonarjs/cognitive-complexity -- linear deployment probe running many sequential pass/fail assertions */
 const runProbe = async (defaultUrl?: string): Promise<void> => {
   const url = process.env.PROBE_URL ?? defaultUrl
   if (!url) {
@@ -44,7 +44,8 @@ const runProbe = async (defaultUrl?: string): Promise<void> => {
   if (!cb) fail('auth callback endpoint unreachable')
   else if (cb.status >= 500) fail(`auth callback returned ${cb.status} — backend wired badly`)
   else pass(`auth callback responded ${cb.status} in ${Date.now() - t1}ms`)
-  console.log(`\n${failed === 0 ? '✔ probe passed' : `✘ ${failed} failures`}`)
+  const summary = failed === 0 ? '✔ probe passed' : `✘ ${failed} failures`
+  console.log(`\n${summary}`)
   process.exit(failed > 0 ? 1 : 0)
 }
 export { runProbe }

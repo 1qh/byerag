@@ -6,7 +6,7 @@ import { watch } from 'node:fs'
 import { resolve } from 'node:path'
 
 const ROOT = resolve('convex/tools')
-const SKIP = /(?<gen>_generated|\.generated\.)/u
+const SKIP = /_generated|\.generated\./u
 console.log(`watching ${ROOT} for .ts changes — regen on save`)
 let pending = false
 let running = false

@@ -7,20 +7,8 @@
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { parseEnv } from './lib/env'
 
-const ENV_LINE = /^\s*(?<key>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?<val>.*?)\s*$/u
-const parseEnv = (text: string): Record<string, string> => {
-  const out: Record<string, string> = {}
-  for (const line of text.split('\n')) {
-    const t = line.trim()
-    if (t && !t.startsWith('#')) {
-      const m = ENV_LINE.exec(line)
-      const key = m?.groups?.key
-      if (key) out[key] = (m.groups?.val ?? '').replaceAll(/^["']|["']$/gu, '')
-    }
-  }
-  return out
-}
 interface Candidate {
   distinctiveFact: string
   filename: string

@@ -3,8 +3,8 @@ import { parseStdout, parseToolPath } from './tool-parse'
 
 describe('parseStdout', () => {
   test('null when input missing', () => {
-    expect(parseStdout(undefined)).toBe(null)
-    expect(parseStdout('')).toBe(null)
+    expect(parseStdout(undefined)).toBeNull()
+    expect(parseStdout('')).toBeNull()
   })
   test('parses JSON from string', () => {
     expect(parseStdout('{"a":1}')).toEqual({ a: 1 })
@@ -17,13 +17,13 @@ describe('parseStdout', () => {
     expect(parseStdout(content)).toEqual({ k: 'v' })
   })
   test('non-json text → null', () => {
-    expect(parseStdout('hello world')).toBe(null)
+    expect(parseStdout('hello world')).toBeNull()
   })
 })
 describe('parseToolPath', () => {
   test('null when no command', () => {
-    expect(parseToolPath(undefined)).toBe(null)
-    expect(parseToolPath({ command: 'ls' })).toBe(null)
+    expect(parseToolPath(undefined)).toBeNull()
+    expect(parseToolPath({ command: 'ls' })).toBeNull()
   })
   test('parses "x <provider> <tool>"', () => {
     expect(parseToolPath({ command: 'x provider tool' })).toEqual(['provider', 'tool'])

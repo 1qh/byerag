@@ -15,7 +15,7 @@ import { constantTimeEqual } from '../utils'
 const VALID_SESSION_ID = /^[a-f0-9-]{36}$/u
 const WHITESPACE_RE = /\s+/gu
 const SENTENCE_SPLIT_RE = /[.!?]\s+/u
-const QUESTION_WORD_RE = /\b(?<q>what|how|why|when|which|who|where|should|can|does|do|is|are)\b/iu
+const QUESTION_WORD_RE = /\b(?:what|how|why|when|which|who|where|should|can|does|do|is|are)\b/iu
 const sessionMessage = z.object({
   message: z.record(z.string(), z.unknown()).optional(),
   parent_tool_use_id: z.string().nullable().optional(),
@@ -47,6 +47,7 @@ const sanitizeTitle = (s: string): string => {
 const sendCore = async (
   ctx: MutationCtx,
   { app, email, chatId, content }: { app: string; chatId?: Id<'chats'>; content: string; email: string }
+  // eslint-disable-next-line sonarjs/cognitive-complexity -- irreducible handler/orchestrator; cohesive helpers already extracted
 ): Promise<{ chatId: Id<'chats'>; secret: string }> => {
   if (!content.trim()) throw new Error('empty message')
   if (!isAppId(app)) throw new Error(`unknown app id: ${app}`)

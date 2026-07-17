@@ -29,7 +29,8 @@ const CLAMAV_HOST = process.env.CLAMAV_HOST ?? 'clamav'
 const CLAMAV_PORT = 3310
 const CLAMAV_DEADLINE_MS = 30_000
 const MAX_FILE_BYTES = 50 * 1024 * 1024
-const FOUND_RE = /:\s*(?<sig>.+)\s+FOUND/u
+// eslint-disable-next-line sonarjs/super-linear-regex -- \S+ and \s+ are disjoint classes, so this ClamAV "SIG FOUND" matcher never backtracks (linear)
+const FOUND_RE = /:\s*(?<sig>\S+)\s+FOUND/u
 const NUL_TRAILING_RE = new RegExp(`${String.fromCodePoint(0)}+$`, 'u')
 interface ScanResult {
   ok: boolean

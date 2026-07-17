@@ -51,8 +51,9 @@ const cliTokenAuth = async (ctx: ActionCtx, req: Request): Promise<null | Resolv
 const randomUserCode = (): string => {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
   const pick = (n: number): string => {
+    const bytes = crypto.getRandomValues(new Uint8Array(n))
     const out: string[] = []
-    for (let i = 0; i < n; i += 1) out.push(alphabet[Math.floor(Math.random() * alphabet.length)] ?? 'A')
+    for (let i = 0; i < n; i += 1) out.push(alphabet[(bytes[i] ?? 0) % alphabet.length] ?? 'A')
     return out.join('')
   }
   return `${pick(4)}-${pick(4)}`

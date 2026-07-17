@@ -73,6 +73,36 @@ const checkNumberConstraints = (name: string, val: number, spec: ArgSpec): null 
     return { details: { arg: name }, message: `${name}: must be integer`, ok: false }
   return null
 }
+const resolveArg = ({
+  args,
+  expected,
+  name,
+  spec
+}: {
+  args: Record<string, unknown>
+  expected: string[]
+  name: string
+  spec: ArgSpec
+}): ValidateErr | { skip: true } | { value: unknown } => {
+  const raw = args[name]
+  const empty = raw === undefined || raw === null || raw === ''
+  if (empty && spec.default !== undefined) return { value: spec.default }
+  if (empty && spec.required !== false)
+    return { details: { expected, missing: name }, message: `missing required: ${name}`, ok: false }
+  if (empty) return { skip: true }
+  const c = coerceRaw(name, raw, spec)
+  if ('ok' in c) return c
+  const { val } = c
+  if (typeof val === 'string') {
+    const err = checkStringConstraints(name, val, spec)
+    if (err) return err
+  }
+  if (typeof val === 'number') {
+    const err = checkNumberConstraints(name, val, spec)
+    if (err) return err
+  }
+  return { value: val }
+}
 const validateArgs = (specs: ArgSpecs, args: Record<string, unknown>): ValidateErr | ValidateOk => {
   const expected = Object.keys(specs)
   const unknownKeys = Object.keys(args).filter(k => !specs[k])
@@ -90,25 +120,9 @@ const validateArgs = (specs: ArgSpecs, args: Record<string, unknown>): ValidateE
   }
   const coerced: Record<string, unknown> = {}
   for (const [name, spec] of Object.entries(specs)) {
-    const raw = args[name]
-    const empty = raw === undefined || raw === null || raw === ''
-    if (empty && spec.default !== undefined) coerced[name] = spec.default
-    else if (empty && spec.required !== false)
-      return { details: { expected, missing: name }, message: `missing required: ${name}`, ok: false }
-    else if (!empty) {
-      const c = coerceRaw(name, raw, spec)
-      if ('ok' in c) return c
-      const { val } = c
-      if (typeof val === 'string') {
-        const err = checkStringConstraints(name, val, spec)
-        if (err) return err
-      }
-      if (typeof val === 'number') {
-        const err = checkNumberConstraints(name, val, spec)
-        if (err) return err
-      }
-      coerced[name] = val
-    }
+    const r = resolveArg({ args, expected, name, spec })
+    if ('ok' in r) return r
+    if ('value' in r) coerced[name] = r.value
   }
   return { coerced, ok: true }
 }

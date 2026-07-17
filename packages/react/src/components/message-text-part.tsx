@@ -19,7 +19,7 @@ const PERSISTENT_USER_KINDS = new Set([
   'reminder',
   'template'
 ])
-const MENTION_RE = /(?<!\S)@(?<kind>[a-z]+)(?::(?<name>[^\s)]*))?/giu
+const MENTION_RE = /(?<!\S)@[a-z]+(?::[^\s)]*)?/giu
 const MENTION_INNER_RE = /@(?<kind>[a-z]+)(?::(?<name>[^\s)]*))?/u
 const SINGLETONS = new Set(['me'])
 const linkifyMentions = (text: string): string =>
@@ -29,7 +29,8 @@ const linkifyMentions = (text: string): string =>
     const name = m?.groups?.name
     if (!SINGLETONS.has(kind) && (!name || name.length === 0)) return raw
     const safe = name ? encodeURIComponent(name) : ''
-    return `[${raw}](mention://${kind}${name ? `/${safe}` : ''})`
+    const suffix = name ? `/${safe}` : ''
+    return `[${raw}](mention://${kind}${suffix})`
   })
 const MentionAnchor = ({ href, children }: ComponentProps<'a'>) => {
   const pane = usePane()

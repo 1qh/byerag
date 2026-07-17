@@ -10,6 +10,6 @@ describe('ChatHeader', () => {
         <ChatHeader chatId='c1' />
       </SidebarProvider>
     )
-    expect(container.querySelector('header')).toBe(null)
+    expect(container.querySelector('header')).toBeNull()
   })
 })

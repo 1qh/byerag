@@ -194,7 +194,7 @@ describe('useChatConvex', () => {
       ])
     })
     const { result } = renderHook(() => useChatConvex({ chatId: chatId as never }))
-    expect(result.current.exportEvents.length).toBe(2)
+    expect(result.current.exportEvents).toHaveLength(2)
   })
   test('streamEvents sorted by seq ascending', () => {
     const chatId = 'chat-seq'
@@ -242,7 +242,7 @@ describe('useChatConvex', () => {
     rerender('chat-dedup')
     await waitFor(() => {
       const userMsgs = result.current.messages.filter(m => m.role === 'user')
-      expect(userMsgs.length).toBe(1)
+      expect(userMsgs).toHaveLength(1)
     })
   })
   test('error from chat A does NOT leak into chat B on navigation', async () => {

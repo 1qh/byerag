@@ -1,4 +1,4 @@
-/* eslint-disable complexity */
+/* eslint-disable complexity, sonarjs/cognitive-complexity -- single-pass stream-event classifiers with many event-type branches */
 import type { ContentBlock, StreamEvent } from 'backend/convex/streamProtocol'
 import { assemblePartials } from './partials'
 import { parseMessageFromObject, parseStreamEvent } from './stream'
@@ -32,7 +32,7 @@ type PerEventOutput =
   | { blocks: ContentBlock[]; kind: 'agent-error' }
   | { kind: 'status'; text: string; tone: 'error' | 'info' | 'warn' }
   | { kind: 'user-text'; text: string }
-const API_ERROR_RE = /^API Error:\s*(?<status>\d{3})\s*(?<rest>.*)$/u
+const API_ERROR_RE = /^API Error:\s*(?<status>\d{3})\s*(?<rest>\S.*)?$/u
 const TOO_MANY_RE = /too many concurrent/iu
 const BUDGET_RE = /daily owner USD budget|budget exhausted/iu
 const TURN_BUDGET_RE = /turn budget exhausted/iu

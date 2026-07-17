@@ -1,4 +1,6 @@
 import { describe, expect, test } from 'bun:test'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { buildSandboxEnv } from './sandboxLaunch'
 
 const baseInput = {
@@ -9,7 +11,7 @@ const baseInput = {
   maxBudgetUsd: '0.5',
   maxTurns: '20',
   model: 'claude-haiku-4-5',
-  pgidFile: '/tmp/pgid-1',
+  pgidFile: join(tmpdir(), 'pgid-1'),
   resumeSessionId: '',
   secret: '01234567-89ab-cdef-0123-456789abcdef',
   systemPrompt: 'sys',

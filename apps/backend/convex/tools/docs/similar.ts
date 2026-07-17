@@ -30,6 +30,7 @@ const action = defineTool({
   description: 'Vector similarity over docs.embedding. Returns top-K w/ cosine score, filename, snippet.',
   errorCodes: ['UPSTREAM_ERROR'],
   examples: ['docs similar --query "PTO policy" --scope shared'],
+  // eslint-disable-next-line sonarjs/cognitive-complexity -- irreducible tool handler: per-scope vector search + granular/flat result assembly wiring
   handler: async (ctx, args) => {
     const cap = Math.min(args.limit, 50)
     const full = await embedQuery(args.query)

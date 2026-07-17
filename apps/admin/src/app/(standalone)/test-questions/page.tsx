@@ -47,7 +47,8 @@ const TestQuestionsPage = (): React.ReactElement => {
         fail += 1
         toast.error(`${id.slice(-6)}: ${String(error).slice(0, 80)}`)
       }
-    toast.success(`${kind} ${ok}/${ids.length}${fail > 0 ? ` (${fail} failed)` : ''}`)
+    const failSuffix = fail > 0 ? ` (${fail} failed)` : ''
+    toast.success(`${kind} ${ok}/${ids.length}${failSuffix}`)
     setSelected(new Set())
     setBulkBusy(false)
   }

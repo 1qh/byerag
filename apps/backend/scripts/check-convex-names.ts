@@ -4,7 +4,7 @@ import { Glob } from 'bun'
 import { join } from 'node:path'
 
 const CONVEX_DIR = join(import.meta.dir, '..', 'convex')
-const VALID_PATH_SEGMENT = /^[A-Za-z_][A-Za-z0-9_.]*$/u
+const VALID_PATH_SEGMENT = /^[A-Za-z_][\w.]*$/u
 const errors: string[] = []
 // oxlint-disable-next-line node/no-sync
 for (const f of new Glob('**/*.{ts,tsx}').scanSync({ cwd: CONVEX_DIR, onlyFiles: true }))

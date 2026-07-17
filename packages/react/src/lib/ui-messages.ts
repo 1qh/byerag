@@ -1,4 +1,4 @@
-/* eslint-disable complexity */
+/* eslint-disable complexity, sonarjs/cognitive-complexity -- single-pass content-block to UI-part translators with many block-type branches */
 import type { ContentBlock } from 'backend/convex/streamProtocol'
 import type { ChatChunk } from '../parsers/chunks'
 

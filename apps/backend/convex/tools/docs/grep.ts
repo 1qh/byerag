@@ -14,6 +14,7 @@ const action = defineQuery({
   description: 'Regex match across docs in scope. Returns {docId, filename, lineNumber, snippet} tuples.',
   errorCodes: ['INVALID_ARG'],
   examples: ['docs grep --pattern "warranty" --scope shared'],
+  // eslint-disable-next-line sonarjs/cognitive-complexity -- irreducible tool handler: per-scope doc collection + bounded regex line-scan wiring
   handler: async (ctx, args) => {
     const fail = makeFail('INVALID_ARG')
     const cap = Math.min(args.limit, MAX_HITS)

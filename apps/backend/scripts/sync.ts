@@ -39,7 +39,8 @@ const die = (msg: string): never => {
   console.error(`fatal: ${msg}`)
   process.exit(1)
 }
-const ENV_KEY_RE = /^\s*(?<key>[A-Za-z_][A-Za-z0-9_]*)\s*=(?<rest>.*)$/u
+const ENV_KEY_RE = /^\s*(?<key>[A-Za-z_]\w*)\s*=(?<rest>.*)$/u
+// eslint-disable-next-line sonarjs/cognitive-complexity -- irreducible parser: per-line quote-state machine over dotenv text
 const parseDotEnv = (text: string): Record<string, string> => {
   const out: Record<string, string> = {}
   const lines = text.split('\n')
@@ -49,7 +50,9 @@ const parseDotEnv = (text: string): Record<string, string> => {
     const key = m?.groups?.key
     let rest = m?.groups?.rest ?? ''
     if (key) {
-      const quote = rest.startsWith('"') ? '"' : rest.startsWith("'") ? "'" : null
+      let quote: null | string = null
+      if (rest.startsWith('"')) quote = '"'
+      else if (rest.startsWith("'")) quote = "'"
       let value: string
       if (quote) {
         rest = rest.slice(1)
@@ -151,6 +154,7 @@ const fetchBackendVar = async (name: string): Promise<string> => {
 const ensureAuthKeys = async (
   setVar: (name: string, value: string) => Promise<void>,
   vars: Record<string, string>
+  // eslint-disable-next-line sonarjs/cognitive-complexity -- irreducible handler/orchestrator; cohesive helpers already extracted
 ): Promise<void> => {
   const listRes = await $`bunx convex env list`.quiet().nothrow()
   if (listRes.exitCode !== 0)

@@ -193,7 +193,7 @@ describe('ownerSpend synthetic load', () => {
     setNow(Date.UTC(2026, 3, 26, 12, 0, 0))
     await t.mutation(internal.ownerSpend.pruneStaleSpend, {})
     const after = await totalCents(t, owner)
-    expect(after.rows.length).toBe(0)
+    expect(after.rows).toHaveLength(0)
   })
   test('settleReservation with pruned reserved row still posts actual to today', async () => {
     const t = makeTest()

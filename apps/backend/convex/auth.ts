@@ -13,7 +13,7 @@ const BOOTSTRAP_ADMIN_EMAILS = parseAllowed(process.env.BOOTSTRAP_ADMIN_EMAIL)
 if (BOOTSTRAP_ADMIN_EMAILS.size === 0)
   // eslint-disable-next-line no-console
   console.warn('[auth] WARN: BOOTSTRAP_ADMIN_EMAIL is empty or unset — no admin will be seeded on first sign-in')
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u
+const EMAIL_RE = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/u
 const { auth, isAuthenticated, signIn, signOut, store } = convexAuth({
   callbacks: {
     createOrUpdateUser: async (ctx, { existingUserId, profile }) => {

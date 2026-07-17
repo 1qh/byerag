@@ -44,6 +44,31 @@ const DeletedDocsPage = (): React.ReactElement => {
   const allIds = rows?.map(r => r._id) ?? []
   const allOn = allIds.length > 0 && allIds.every(i => checked.has(i))
   const toggleAll = (): void => setChecked(allOn ? new Set() : new Set(allIds))
+  const renderList = (): React.ReactElement => {
+    if (rows === undefined) return <div className='p-4 text-muted-foreground text-sm'>Loading…</div>
+    if (rows.length === 0) return <div className='p-4 text-muted-foreground text-sm'>No deleted documents.</div>
+    return (
+      <ul className='flex-1 space-y-1 overflow-auto p-2 text-sm'>
+        {rows.map(r => {
+          const id = r._id as string
+          const isChecked = checked.has(id)
+          return (
+            <li className='flex items-center gap-2 rounded px-2 py-1 hover:bg-muted' key={r._id}>
+              <Checkbox aria-label={`Select ${r.filename}`} checked={isChecked} onCheckedChange={() => toggle(id)} />
+              <button className='min-w-0 flex-1 text-left' onClick={() => openDoc(r._id)} type='button'>
+                <span className='block truncate'>
+                  {r.filename} <span className='text-muted-foreground text-xs'>v{r.version}</span>
+                </span>
+                <span className='text-muted-foreground text-xs'>
+                  {r.scope} · deleted {fmtVN(r.deletedAt)}
+                </span>
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+    )
+  }
   const runRestore = async (): Promise<void> => {
     setRunning('restore')
     const ids = [...checked]
@@ -57,7 +82,8 @@ const DeletedDocsPage = (): React.ReactElement => {
         fail += 1
         toast.error(`${id.slice(-6)}: ${String(error).slice(0, 80)}`)
       }
-    toast.success(`Restored ${ok}/${ids.length}${fail > 0 ? ` (${fail} failed)` : ''}`)
+    const failSuffix = fail > 0 ? ` (${fail} failed)` : ''
+    toast.success(`Restored ${ok}/${ids.length}${failSuffix}`)
     setChecked(new Set())
     setRunning(null)
   }
@@ -74,7 +100,8 @@ const DeletedDocsPage = (): React.ReactElement => {
         fail += 1
         toast.error(`${id.slice(-6)}: ${String(error).slice(0, 80)}`)
       }
-    toast.success(`Permanently deleted ${ok}/${ids.length}${fail > 0 ? ` (${fail} failed)` : ''}`)
+    const failSuffix = fail > 0 ? ` (${fail} failed)` : ''
+    toast.success(`Permanently deleted ${ok}/${ids.length}${failSuffix}`)
     setChecked(new Set())
     setConfirmOpen(false)
     setRunning(null)
@@ -120,31 +147,7 @@ const DeletedDocsPage = (): React.ReactElement => {
           ) : null}
         </div>
       ) : null}
-      {rows === undefined ? (
-        <div className='p-4 text-muted-foreground text-sm'>Loading…</div>
-      ) : rows.length === 0 ? (
-        <div className='p-4 text-muted-foreground text-sm'>No deleted documents.</div>
-      ) : (
-        <ul className='flex-1 space-y-1 overflow-auto p-2 text-sm'>
-          {rows.map(r => {
-            const id = r._id as string
-            const isChecked = checked.has(id)
-            return (
-              <li className='flex items-center gap-2 rounded px-2 py-1 hover:bg-muted' key={r._id}>
-                <Checkbox aria-label={`Select ${r.filename}`} checked={isChecked} onCheckedChange={() => toggle(id)} />
-                <button className='min-w-0 flex-1 text-left' onClick={() => openDoc(r._id)} type='button'>
-                  <span className='block truncate'>
-                    {r.filename} <span className='text-muted-foreground text-xs'>v{r.version}</span>
-                  </span>
-                  <span className='text-muted-foreground text-xs'>
-                    {r.scope} · deleted {fmtVN(r.deletedAt)}
-                  </span>
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-      )}
+      {renderList()}
       <AlertDialog onOpenChange={setConfirmOpen} open={confirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

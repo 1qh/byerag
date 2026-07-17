@@ -13,6 +13,7 @@ const errorRes = (opts: {
 }): Response =>
   jsonRes(opts.status, { error: makeError({ code: opts.code, details: opts.details, message: opts.message }) })
 const newTraceId = (): string => `tr_${crypto.randomUUID().replaceAll('-', '').slice(0, 16)}`
+// eslint-disable-next-line sonarjs/function-return-type -- returns parsed segments or an error Response by design
 const parsePath = (raw: unknown): Response | string[] => {
   if (!Array.isArray(raw) || raw.length < 2)
     return errorRes({ code: 'INVALID_ARG', message: 'path must be array of at least 2 segments', status: 400 })

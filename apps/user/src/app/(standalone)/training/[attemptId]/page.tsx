@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unnecessary-condition */
 'use client'
 import { CitationAnchor } from '@a/react/components'
 import { cn } from '@a/ui'
@@ -40,7 +39,7 @@ const AttemptPage = ({ params }: { params: Promise<{ attemptId: string }> }): Re
   const { attemptId } = use(params)
   const attempt = useQuery(api.trainingAttempts.getMyAttemptDetail, { attemptId: attemptId as never })
   const submit = useMutation(api.trainingAttempts.submitAttempt)
-  const [answers, setAnswers] = useState<number[]>([])
+  const [answers, setAnswers] = useState<(number | undefined)[]>([])
   const [submitting, setSubmitting] = useState(false)
   if (attempt === undefined) return <p className='p-6'>Loading…</p>
   if (attempt === null) return <p className='p-6 text-destructive'>Attempt not found or not yours.</p>
@@ -76,13 +75,12 @@ const AttemptPage = ({ params }: { params: Promise<{ attemptId: string }> }): Re
   const onSubmit = async (): Promise<void> => {
     setSubmitting(true)
     try {
-      await submit({ answers, attemptId: attemptId as never })
+      await submit({ answers: answers as number[], attemptId: attemptId as never })
     } catch (error: unknown) {
       toast.error(`Could not submit: ${String(error).slice(0, 120)}`)
       setSubmitting(false)
     }
   }
-  // oxlint-disable-next-line no-unnecessary-condition
   const allAnswered = answers.length === a.questionSnapshots.length && answers.every(v => v !== undefined)
   const total = a.questionSnapshots.length
   const answered = answers.filter(v => v !== undefined).length

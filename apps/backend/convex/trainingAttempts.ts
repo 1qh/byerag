@@ -8,6 +8,7 @@ const POOL_MIN = 5
 const shuffle = <T>(arr: T[]): T[] => {
   const a = [...arr]
   for (let i = a.length - 1; i > 0; i -= 1) {
+    // eslint-disable-next-line sonarjs/pseudo-random -- non-security quiz-question shuffle, not a token
     const j = Math.floor(Math.random() * (i + 1))
     const ai = a[i]
     const aj = a[j]

@@ -29,7 +29,7 @@ describe('exec-stream endpoint', () => {
     expect(res.status).toBe(200)
     expect(res.headers.get('content-type')).toContain('application/x-ndjson')
     const events = await readNdjson(res)
-    expect(events.length).toBe(2)
+    expect(events).toHaveLength(2)
     expect(events[0]?.kind).toBe('started')
     expect(events[0]?.runId).toMatch(/^r_/u)
     expect(events[1]?.kind).toBe('complete')

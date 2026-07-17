@@ -10,7 +10,7 @@ describe('startBlock', () => {
     expect(out).toEqual({ acc: '', blockIndex: 2, kind: 'text' })
   })
   test('returns null if content_block missing', () => {
-    expect(startBlock({ index: 0, type: 'content_block_start' })).toBe(null)
+    expect(startBlock({ index: 0, type: 'content_block_start' })).toBeNull()
   })
 })
 describe('applyDelta', () => {
@@ -42,7 +42,7 @@ describe('messageIdFromStart', () => {
     expect(messageIdFromStart({ message: { id: 'msg_1' }, type: 'message_start' })).toBe('msg_1')
   })
   test('null if missing', () => {
-    expect(messageIdFromStart({ type: 'message_start' })).toBe(null)
+    expect(messageIdFromStart({ type: 'message_start' })).toBeNull()
   })
 })
 describe('assemblePartials', () => {

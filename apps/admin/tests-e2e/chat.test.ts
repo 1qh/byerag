@@ -17,7 +17,7 @@ describe('chat', () => {
     await sendMessage({ content: 'First', email })
     await sendMessage({ content: 'Second', email })
     const chats = await listChats(email)
-    expect(chats.length).toBe(2)
+    expect(chats).toHaveLength(2)
     for (const c of chats) expect(c.updatedAt).toBeGreaterThan(0)
   })
   test('sidebar sorted newest first', async () => {
@@ -51,14 +51,14 @@ describe('chat', () => {
     const chatId = await sendMessage({ content: 'x', email })
     await removeChat(email, chatId)
     const chats = await listChats(email)
-    expect(chats.length).toBe(0)
+    expect(chats).toHaveLength(0)
   })
   test('non-existent chat returns empty messages', async () => {
     const email = fresh()
     const chatId = await sendMessage({ content: 'x', email })
     await removeChat(email, chatId)
     const msgs = await listMessages(chatId)
-    expect(msgs.length).toBe(0)
+    expect(msgs).toHaveLength(0)
   })
   test('new chat after delete', async () => {
     const email = fresh()

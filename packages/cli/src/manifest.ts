@@ -20,6 +20,7 @@ interface Meta {
 type Providers = Record<string, ProviderMeta>
 type Registry = Record<string, RegistryEntry>
 const KEBAB = (s: string): string => s.replaceAll('_', '-')
+const byString = (a: string, b: string): number => (a < b ? -1 : Number(a > b))
 const PRIMITIVE_KINDS: Record<string, Meta> = {
   array: { type: 'array' },
   boolean: { type: 'boolean' },
@@ -44,6 +45,15 @@ const validatorMeta = (val: IntrospectedValidator): Meta => {
     return validatorMeta(val.value as IntrospectedValidator)
   return { type: 'unknown' }
 }
+const argConstraints = (spec: ArgSpecs[string]): Partial<ManifestArg> => ({
+  ...(spec.aliases && spec.aliases.length > 0 ? { aliases: spec.aliases.map(a => `--${KEBAB(a)}`) } : {}),
+  ...(spec.pattern === undefined ? {} : { pattern: spec.pattern }),
+  ...(spec.min === undefined ? {} : { min: spec.min }),
+  ...(spec.max === undefined ? {} : { max: spec.max }),
+  ...(spec.minLength === undefined ? {} : { minLength: spec.minLength }),
+  ...(spec.maxLength === undefined ? {} : { maxLength: spec.maxLength }),
+  ...(spec.integer === undefined ? {} : { integer: spec.integer })
+})
 const buildArgs = (specs: ArgSpecs): ManifestArg[] => {
   const out: ManifestArg[] = []
   for (const [name, spec] of Object.entries(specs)) {
@@ -55,13 +65,7 @@ const buildArgs = (specs: ArgSpecs): ManifestArg[] => {
       required: spec.required !== false,
       type,
       ...(en ? { enum: en } : {}),
-      ...(spec.aliases && spec.aliases.length > 0 ? { aliases: spec.aliases.map(a => `--${KEBAB(a)}`) } : {}),
-      ...(spec.pattern === undefined ? {} : { pattern: spec.pattern }),
-      ...(spec.min === undefined ? {} : { min: spec.min }),
-      ...(spec.max === undefined ? {} : { max: spec.max }),
-      ...(spec.minLength === undefined ? {} : { minLength: spec.minLength }),
-      ...(spec.maxLength === undefined ? {} : { maxLength: spec.maxLength }),
-      ...(spec.integer === undefined ? {} : { integer: spec.integer })
+      ...argConstraints(spec)
     })
   }
   return out
@@ -165,6 +169,6 @@ const findValidPath = (
     const seg = isMatchAtPrefix ? entry.path[bestMatch] : null
     if (seg) childSet.add(seg)
   }
-  return { validChildren: [...childSet].toSorted(), validPath }
+  return { validChildren: [...childSet].toSorted(byString), validPath }
 }
 export { buildArgs, buildTree, findCommand, findValidPath }

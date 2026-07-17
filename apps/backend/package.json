@@ -2,6 +2,7 @@
   "name": "backend",
   "version": "0.0.0",
   "private": true,
+  "description": "byerag Convex backend",
   "type": "module",
   "exports": {
     "./convex/_generated/api": {
@@ -12,21 +13,21 @@
       "types": "./convex/_generated/dataModel.d.ts",
       "default": "./convex/_generated/dataModel.d.ts"
     },
-    "./convex/streamProtocol": "./convex/streamProtocol.ts",
-    "./convex/constants": "./convex/constants.ts",
-    "./convex/env": "./convex/env.ts",
-    "./convex/tools/_api": "./convex/tools/_api.ts",
-    "./convex/apps/types": "./convex/apps/types.ts",
-    "./convex/tools/generated/registry": "./convex/tools/generated/registry.ts",
-    "./convex/tools/generated/toolCallers": "./convex/tools/generated/toolCallers.ts",
-    "./convex/tools/generated/toolTypes": "./convex/tools/generated/toolTypes.ts",
     "./convex/_generated/server": {
       "types": "./convex/_generated/server.d.ts",
       "default": "./convex/_generated/server.js"
     },
-    "./test-utils/setup": "./test-utils/setup.ts",
+    "./convex/apps/types": "./convex/apps/types.ts",
+    "./convex/constants": "./convex/constants.ts",
+    "./convex/env": "./convex/env.ts",
+    "./convex/streamProtocol": "./convex/streamProtocol.ts",
+    "./convex/tools/_api": "./convex/tools/_api.ts",
+    "./convex/tools/generated/registry": "./convex/tools/generated/registry.ts",
+    "./convex/tools/generated/toolCallers": "./convex/tools/generated/toolCallers.ts",
+    "./convex/tools/generated/toolTypes": "./convex/tools/generated/toolTypes.ts",
     "./test-utils/convex": "./test-utils/convex.ts",
-    "./test-utils/messages-helpers": "./test-utils/messages-helpers.ts"
+    "./test-utils/messages-helpers": "./test-utils/messages-helpers.ts",
+    "./test-utils/setup": "./test-utils/setup.ts"
   },
   "scripts": {
     "build": "bun run codegen",

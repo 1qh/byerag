@@ -1,7 +1,7 @@
 import { v } from 'convex/values'
 import { internalQuery } from '../../_generated/server'
 
-const MENTION_RE = /^@(?<kind>[a-z]+):(?<name>[a-zA-Z0-9_.-]+)$/u
+const MENTION_RE = /^@(?<kind>[a-z]+):(?<name>[\w.-]+)$/u
 const resolveMention = internalQuery({
   args: { mention: v.string(), userId: v.string() },
   handler: (_ctx, { mention }): null | { _id: null | string; kind: string; name: string } => {

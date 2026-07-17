@@ -10,40 +10,43 @@ const TIER_ADMIN_PREFIX = '_admin'
 const SKIP_DIRS = new Set(['_app', '_lib', 'generated'])
 const CAMEL_RE = /[A-Z]/gu
 const camelToKebab = (s: string): string => s.replace(CAMEL_RE, m => `-${m.toLowerCase()}`)
+const byString = (a: string, b: string): number => (a < b ? -1 : Number(a > b))
 interface ToolFile {
   absPath: string
   allExports: readonly string[]
   cliPath: string[]
-  exportName: 'action' | 'mutation' | 'query'
+  exportName: ToolKind
   fnAccessor: string
   importBase: null | string
   importPath: string
   importVar: string
-  kind: 'action' | 'mutation' | 'query'
+  kind: ToolKind
   modulePath: string[]
   registryKey: string
   tier: 'admin' | 'user'
   useNode: boolean
 }
+type ToolKind = 'action' | 'mutation' | 'query'
 interface ToolsRootSpec {
   importBase: null | string
   root: string
 }
+// eslint-disable-next-line sonarjs/unused-named-groups -- exp/def groups are read via typed cast in detectKind
 const KIND_RE = /(?:export )?const (?<exp>action|query|mutation) = define(?<def>Tool|Query|Mutation)\(/u
-const EXPORT_BLOCK_RE = /^export\s*\{\s*(?<names>[^}]+)\s*\}/mu
+const EXPORT_BLOCK_RE = /^export\s*\{(?<names>[^}]+)\}/mu
 const USE_NODE_RE = /^['"]use node['"]/mu
 const detectKind = async (
   abs: string
 ): Promise<null | {
   allExports: string[]
-  exportName: 'action' | 'mutation' | 'query'
-  kind: 'action' | 'mutation' | 'query'
+  exportName: ToolKind
+  kind: ToolKind
   useNode: boolean
 }> => {
   const text = await readFile(abs, 'utf8')
   const m = KIND_RE.exec(text)
   if (!m) return null
-  const exportName = (m.groups as { def: string; exp: string }).exp as 'action' | 'mutation' | 'query'
+  const exportName = (m.groups as { def: string; exp: string }).exp as ToolKind
   const kindMap = { Mutation: 'mutation', Query: 'query', Tool: 'action' } as const
   const kind = kindMap[(m.groups as { def: string; exp: string }).def as 'Mutation' | 'Query' | 'Tool']
   const blockMatch = EXPORT_BLOCK_RE.exec(text)
@@ -56,6 +59,59 @@ const detectKind = async (
   const useNode = USE_NODE_RE.test(text)
   return { allExports, exportName, kind, useNode }
 }
+const buildToolFile = async ({
+  emitShim,
+  outDir,
+  rel,
+  shimsDir,
+  spec
+}: {
+  emitShim: boolean
+  outDir: string
+  rel: string
+  shimsDir: null | string
+  spec: ToolsRootSpec
+}): Promise<null | { provider: string; tool: ToolFile }> => {
+  const segments = rel.split('/')
+  const [provider] = segments
+  const filename = segments.at(-1)
+  const skip =
+    !(provider && filename) ||
+    segments.length < 2 ||
+    SKIP_DIRS.has(provider) ||
+    segments.slice(1).some(s => s.startsWith('_'))
+  if (skip || !provider || !filename) return null
+  const baseName = filename.replace(/\.ts$/u, '')
+  const moduleSegs = [...segments.slice(0, -1), baseName]
+  const cliSegs = moduleSegs.map((s, i) => (i === 0 ? camelToKebab(s.replace(/^_/u, '')) : camelToKebab(s)))
+  const tier = provider.startsWith(TIER_ADMIN_PREFIX) ? 'admin' : 'user'
+  const importTarget = emitShim && shimsDir ? resolve(shimsDir, ...moduleSegs) : resolve(spec.root, ...moduleSegs)
+  const relImp = relative(outDir, importTarget).replaceAll('\\', '/')
+  const importPath = relImp.startsWith('.') ? relImp : `./${relImp}`
+  const importVar = `${moduleSegs.map((s, i) => (i === 0 ? s : s.charAt(0).toUpperCase() + s.slice(1))).join('')}_mod`
+  const absPath = resolve(spec.root, rel)
+  const detected = await detectKind(absPath)
+  if (!detected) return null
+  const fnAccessor = `internal.tools.${moduleSegs.join('.')}.${detected.exportName}`
+  return {
+    provider,
+    tool: {
+      absPath,
+      allExports: detected.allExports,
+      cliPath: cliSegs,
+      exportName: detected.exportName,
+      fnAccessor,
+      importBase: emitShim ? spec.importBase : null,
+      importPath,
+      importVar,
+      kind: detected.kind,
+      modulePath: moduleSegs,
+      registryKey: cliSegs.join('.'),
+      tier,
+      useNode: detected.useNode
+    }
+  }
+}
 const collectOne = async (
   spec: ToolsRootSpec,
   outDir: string,
@@ -66,44 +122,10 @@ const collectOne = async (
   const glob = new Glob('*/**/*.ts')
   const emitShim = shimsDir !== null && spec.importBase !== null
   for await (const rel of glob.scan({ cwd: spec.root })) {
-    const segments = rel.split('/')
-    const [provider] = segments
-    const filename = segments.at(-1)
-    const skip =
-      !(provider && filename) ||
-      segments.length < 2 ||
-      SKIP_DIRS.has(provider) ||
-      segments.slice(1).some(s => s.startsWith('_'))
-    if (!skip && provider && filename) {
-      const baseName = filename.replace(/\.ts$/u, '')
-      const moduleSegs = [...segments.slice(0, -1), baseName]
-      const cliSegs = moduleSegs.map((s, i) => (i === 0 ? camelToKebab(s.replace(/^_/u, '')) : camelToKebab(s)))
-      const tier = provider.startsWith(TIER_ADMIN_PREFIX) ? 'admin' : 'user'
-      const importTarget = emitShim && shimsDir ? resolve(shimsDir, ...moduleSegs) : resolve(spec.root, ...moduleSegs)
-      const relImp = relative(outDir, importTarget).replaceAll('\\', '/')
-      const importPath = relImp.startsWith('.') ? relImp : `./${relImp}`
-      const importVar = `${moduleSegs.map((s, i) => (i === 0 ? s : s.charAt(0).toUpperCase() + s.slice(1))).join('')}_mod`
-      const absPath = resolve(spec.root, rel)
-      const detected = await detectKind(absPath)
-      if (detected) {
-        providers.add(provider)
-        const fnAccessor = `internal.tools.${moduleSegs.join('.')}.${detected.exportName}`
-        tools.push({
-          absPath,
-          allExports: detected.allExports,
-          cliPath: cliSegs,
-          exportName: detected.exportName,
-          fnAccessor,
-          importBase: emitShim ? spec.importBase : null,
-          importPath,
-          importVar,
-          kind: detected.kind,
-          modulePath: moduleSegs,
-          registryKey: cliSegs.join('.'),
-          tier,
-          useNode: detected.useNode
-        })
-      }
+    const built = await buildToolFile({ emitShim, outDir, rel, shimsDir, spec })
+    if (built) {
+      providers.add(built.provider)
+      tools.push(built.tool)
     }
   }
   return { providers: [...providers], tools }
@@ -124,7 +146,7 @@ const collect = async (
     allTools.push(...tools)
   }
   return {
-    providers: [...allProviders].toSorted(),
+    providers: [...allProviders].toSorted(byString),
     tools: allTools.toSorted((a, b) => a.registryKey.localeCompare(b.registryKey))
   }
 }

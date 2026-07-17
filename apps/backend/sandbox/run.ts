@@ -102,6 +102,7 @@ const sleep = async (ms: number): Promise<void> =>
   new Promise(resolve => {
     setTimeout(resolve, ms)
   })
+// eslint-disable-next-line sonarjs/cognitive-complexity -- irreducible retry orchestrator: bounded attempts + retry-after parsing + backoff jitter
 const postJson = async (path: string, body: Record<string, unknown>): Promise<void> => {
   const url = `${config.CONVEX_SITE_URL}${path}`
   const payload = JSON.stringify(body)
@@ -122,10 +123,12 @@ const postJson = async (path: string, body: Record<string, unknown>): Promise<vo
       const delay =
         Number.isFinite(retryAfterSec) && retryAfterSec > 0
           ? Math.min(retryAfterSec * 1000, 30_000)
-          : 200 * 2 ** attempt + Math.floor(Math.random() * 100)
+          : // eslint-disable-next-line sonarjs/pseudo-random -- non-security retry-backoff jitter, not a token
+            200 * 2 ** attempt + Math.floor(Math.random() * 100)
       await sleep(delay)
     } catch (error) {
       lastErr = error
+      // eslint-disable-next-line sonarjs/pseudo-random -- non-security retry-backoff jitter, not a token
       await sleep(200 * 2 ** attempt + Math.floor(Math.random() * 100))
     }
   throw lastErr instanceof Error ? lastErr : new Error(`${path} failed`)
@@ -170,7 +173,7 @@ try {
         .slice(-500)
         .replaceAll(/sk-ant-[^\s"]*/gu, '[REDACTED]')
         .replaceAll(/sk-kimi-[^\s"]*/gu, '[REDACTED]')
-        .replaceAll(/eyJ[A-Za-z0-9._-]{20,}/gu, '[REDACTED]')
+        .replaceAll(/eyJ[\w.-]{20,}/gu, '[REDACTED]')
         .replaceAll(secretRe, '[REDACTED]')
         .replaceAll(/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/gu, '[IP]')
         .replaceAll(/at\s+\S+\s+\([^)]+\)/gu, '')

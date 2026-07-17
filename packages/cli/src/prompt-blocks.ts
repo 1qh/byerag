@@ -1,6 +1,7 @@
 import type { ManifestArg, RegistryEntry } from './types'
 import { buildArgs } from './manifest'
 
+const flagName = (f: string): string => `--${f.replaceAll('_', '-')}`
 interface ToolListOpts {
   includeExamples?: boolean
   includeExclusive?: boolean
@@ -29,11 +30,7 @@ const renderVerbose = (entry: RegistryEntry): string => {
   if (required.length > 0) parts.push('required:', ...required.map(renderArg))
   if (optional.length > 0) parts.push('optional:', ...optional.map(renderArg))
   if (entry.meta.exclusive.length > 0)
-    parts.push(
-      `mutually-exclusive: ${entry.meta.exclusive
-        .map(g => g.map(f => `--${f.replaceAll('_', '-')}`).join(' | '))
-        .join(' ; ')}`
-    )
+    parts.push(`mutually-exclusive: ${entry.meta.exclusive.map(g => g.map(flagName).join(' | ')).join(' ; ')}`)
   if (entry.meta.examples.length > 0) {
     parts.push('examples:')
     for (const ex of entry.meta.examples) parts.push(`  ${ex}`)
@@ -48,9 +45,7 @@ const renderCompact = (entry: RegistryEntry, opts: ToolListOpts): string[] => {
   const annotations: string[] = []
   if (entry.meta.deprecated) annotations.push(`DEPRECATED → ${entry.meta.deprecated.replacedBy}`)
   if (opts.includeExclusive && entry.meta.exclusive.length > 0)
-    annotations.push(
-      `one-of: ${entry.meta.exclusive.map(g => g.map(f => `--${f.replaceAll('_', '-')}`).join('|')).join(' ; ')}`
-    )
+    annotations.push(`one-of: ${entry.meta.exclusive.map(g => g.map(flagName).join('|')).join(' ; ')}`)
   const head = annotations.length > 0 ? `${base}  (${annotations.join('; ')})` : base
   lines.push(head)
   if (opts.includeExamples) for (const ex of entry.meta.examples) lines.push(`    e.g. ${ex}`)

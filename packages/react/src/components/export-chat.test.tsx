@@ -22,7 +22,7 @@ describe('ExportChat', () => {
   })
   test('hidden when no events', () => {
     const { container } = render(<ExportChat events={[]} title='empty' />)
-    expect(container.querySelector('button')).toBe(null)
+    expect(container.querySelector('button')).toBeNull()
   })
   test('click triggers a download (URL.createObjectURL called)', () => {
     const calls: Blob[] = []
@@ -40,7 +40,7 @@ describe('ExportChat', () => {
       const btn = container.querySelector('button')
       if (!btn) throw new Error('no button')
       fireEvent.click(btn)
-      expect(calls.length).toBe(1)
+      expect(calls).toHaveLength(1)
     } finally {
       globalThis.URL.createObjectURL = originalCreate
       globalThis.URL.revokeObjectURL = originalRevoke

@@ -127,6 +127,7 @@ const resolveStreamAuth = async (
   return { mode: 'token', owner: row.userId, tier: 'user' }
 }
 type WrappedResult = { error: unknown; ok: false } | { ok: true; result: unknown }
+// eslint-disable-next-line sonarjs/cognitive-complexity -- irreducible httpAction: auth + ndjson stream lifecycle + tool-dispatch request wiring
 const execStreamHttp = httpAction(async (ctx, req) => {
   const authHeader = req.headers.get('Authorization') ?? ''
   const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''

@@ -39,6 +39,7 @@ const run = internalAction({
     email: v.string(),
     secret: v.string()
   },
+  // eslint-disable-next-line sonarjs/cognitive-complexity -- irreducible action handler: sandbox lifecycle + stream-sequencing request wiring
   handler: async (ctx, { chatId, email, secret }) => {
     const t0 = Date.now()
     let seq = -1000

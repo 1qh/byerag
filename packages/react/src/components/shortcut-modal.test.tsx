@@ -8,7 +8,7 @@ afterEach(() => {
 describe('ShortcutModal', () => {
   test('closed by default', () => {
     render(<ShortcutModal />)
-    expect(document.querySelector('[role="dialog"]')).toBe(null)
+    expect(document.querySelector('[role="dialog"]')).toBeNull()
   })
   test('opens on ? key', () => {
     render(<ShortcutModal />)
@@ -19,6 +19,6 @@ describe('ShortcutModal', () => {
   test('ignores ? when metaKey pressed', () => {
     render(<ShortcutModal />)
     fireEvent.keyDown(globalThis.window, { key: '?', metaKey: true })
-    expect(document.querySelector('[role="dialog"]')).toBe(null)
+    expect(document.querySelector('[role="dialog"]')).toBeNull()
   })
 })

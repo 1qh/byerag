@@ -11,6 +11,7 @@ const MAX_PROMPT_CHARS = 4000
 const MAX_SUMMARY_CHARS = 220
 const KIMI_TIMEOUT_MS = 30_000
 const TRAILING_SLASH_RE = /\/$/u
+// eslint-disable-next-line sonarjs/super-linear-regex -- anchored single-run quantifiers (^…+, …+$), disjoint, no ambiguous adjacency, linear
 const SURROUNDING_QUOTES_RE = /^["“]+|["”]+$/gu
 interface KimiResponse {
   content?: { text?: string; type?: string }[]

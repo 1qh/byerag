@@ -93,16 +93,14 @@ const TrainingPage = (): React.ReactElement => {
   const assigned = startable.filter(t => assignedIds.has(t._id) && t.myStatus !== 'passed-assigned')
   const practice = startable.filter(t => !(assignedIds.has(t._id) || t.myStatus.startsWith('passed-')))
   const completed = startable.filter(t => t.myStatus.startsWith('passed-'))
+  let heading: string
+  if (assigned.length > 0) heading = `You have ${assigned.length} test${assigned.length === 1 ? '' : 's'} to complete`
+  else if (completed.length > 0) heading = "Nice work — you're all caught up this cycle"
+  else heading = 'No tests assigned to you'
   return (
     <div className='mx-auto max-w-2xl space-y-8 p-6'>
       <section className='space-y-3'>
-        <h1 className='font-semibold text-xl'>
-          {assigned.length > 0
-            ? `You have ${assigned.length} test${assigned.length === 1 ? '' : 's'} to complete`
-            : completed.length > 0
-              ? "Nice work — you're all caught up this cycle"
-              : 'No tests assigned to you'}
-        </h1>
+        <h1 className='font-semibold text-xl'>{heading}</h1>
         {assigned.length === 0 ? (
           <p className='text-muted-foreground text-sm'>
             {completed.length > 0

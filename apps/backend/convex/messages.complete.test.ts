@@ -107,7 +107,7 @@ describe('complete: event consumption and message persistence', () => {
     ])
     await t.mutation(internal.messages.complete, { chatId, secret })
     const msgs = await messagesOf(t, chatId)
-    expect(msgs.length).toBe(1)
+    expect(msgs).toHaveLength(1)
     expect(msgs[0]?.type).toBe('assistant')
   })
   test('drops events with malformed JSON', async () => {
@@ -119,7 +119,7 @@ describe('complete: event consumption and message persistence', () => {
     ])
     await t.mutation(internal.messages.complete, { chatId, secret })
     const msgs = await messagesOf(t, chatId)
-    expect(msgs.length).toBe(1)
+    expect(msgs).toHaveLength(1)
   })
   test('deletes ALL streamEvents after consumption', async () => {
     const t = makeTest()
@@ -135,7 +135,7 @@ describe('complete: event consumption and message persistence', () => {
         .withIndex('by_chat', q => q.eq('chatId', chatId))
         .collect()
     )
-    expect(remaining.length).toBe(0)
+    expect(remaining).toHaveLength(0)
   })
   test('reads events across multiple batches (>200 events)', async () => {
     const t = makeTest()
@@ -147,7 +147,7 @@ describe('complete: event consumption and message persistence', () => {
     await seedEvents(t, chatId, events)
     await t.mutation(internal.messages.complete, { chatId, secret })
     const msgs = await messagesOf(t, chatId)
-    expect(msgs.length).toBe(250)
+    expect(msgs).toHaveLength(250)
   })
 })
 describe('complete: truncation', () => {
@@ -161,7 +161,7 @@ describe('complete: truncation', () => {
     await seedEvents(t, chatId, events)
     await t.mutation(internal.messages.complete, { chatId, secret })
     const msgs = await messagesOf(t, chatId)
-    expect(msgs.length).toBe(2001)
+    expect(msgs).toHaveLength(2001)
     expect(msgs.at(-1)?.type).toBe('error')
     expect(msgs.at(-1)?.content).toContain('truncated: too many messages this turn')
   })

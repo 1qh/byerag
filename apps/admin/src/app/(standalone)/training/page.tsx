@@ -33,9 +33,11 @@ import { useRouter } from 'next/navigation'
 import { useId, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
-const VN_DIACRITIC_RE = /[̀-ͯ]/gu
+const VN_DIACRITIC_RE = /\p{Mn}/gu
 const NON_SLUG_RE = /[^a-z0-9]+/gu
-const TRIM_HYPHEN_RE = /^-+|-+$/gu
+const LEAD_HYPHEN_RE = /^-+/u
+// eslint-disable-next-line sonarjs/super-linear-regex -- `-+$` is a single quantifier anchored at end, linear on any input
+const TRAIL_HYPHEN_RE = /-+$/u
 const slugify = (s: string): string =>
   s
     .normalize('NFD')
@@ -44,7 +46,9 @@ const slugify = (s: string): string =>
     .replaceAll('Đ', 'D')
     .toLowerCase()
     .replaceAll(NON_SLUG_RE, '-')
-    .replaceAll(TRIM_HYPHEN_RE, '')
+    .replace(LEAD_HYPHEN_RE, '')
+    .replace(TRAIL_HYPHEN_RE, '')
+const toggleInList = (arr: string[], id: string): string[] => (arr.includes(id) ? arr.filter(x => x !== id) : [...arr, id])
 const ACTIONS_TRIGGER = <Button aria-label='Topic actions' size='icon-sm' variant='ghost' />
 const DEPARTMENTS = ['Safety, Health and Environment'] as const
 const HOURS = Array.from({ length: 24 }, (_, h) => String(h))
@@ -116,8 +120,10 @@ const AgentStatusBadge = ({
   const lastMs = Number(lastRunSetting)
   const hasLast = Number.isFinite(lastMs) && lastMs > 0
   const next = nextRunMs(hourStr, wd)
-  const when =
-    hourStr === '' ? 'continuously (every few min)' : next === null ? `${hourStr.padStart(2, '0')}:00 VN` : fmtVN(next)
+  let when: string
+  if (hourStr === '') when = 'continuously (every few min)'
+  else if (next === null) when = `${hourStr.padStart(2, '0')}:00 VN`
+  else when = fmtVN(next)
   const last = hasLast ? `${fmtVN(lastMs)} (${relTime(lastMs)})` : 'not yet run'
   return (
     <span
@@ -157,6 +163,7 @@ const Card = ({
   </button>
 )
 // oxlint-disable-next-line complexity
+// eslint-disable-next-line sonarjs/cognitive-complexity -- top-level route orchestrator, helpers extracted
 const TrainingPage = (): React.ReactElement => {
   const router = useRouter()
   const summary = useQuery(api.dashboard.trainingSummary, {})
@@ -322,6 +329,206 @@ const TrainingPage = (): React.ReactElement => {
     if (!summary.weakestTest) return
     router.push(`/training/tests/${slugify(summary.weakestTest.name)}`)
   }
+  const renderTests = (): React.ReactElement => {
+    if (summary.tests.length === 0) return <div className='text-muted-foreground'>No topics with pool ≥ 5 yet.</div>
+    if (tFiltered.length === 0) return <div className='text-muted-foreground'>No tests match that name.</div>
+    return (
+      <>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Test</TableHead>
+              <TableHead className='text-right'>Questions</TableHead>
+              <TableHead className='text-right'>Assigned</TableHead>
+              <TableHead className='text-right'>Pass rate</TableHead>
+              <TableHead className='text-right'>Overdue</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {pagedTests.map(t => (
+              <TableRow key={t.topicId}>
+                <TableCell className='font-medium'>
+                  <Link className='hover:underline' href={`/training/tests/${slugify(t.name)}`}>
+                    {t.name}
+                  </Link>
+                </TableCell>
+                <TableCell className='text-right tabular-nums'>{t.poolSize}</TableCell>
+                <TableCell className='text-right tabular-nums'>{t.assigned}</TableCell>
+                <TableCell className='text-right tabular-nums'>
+                  {t.assigned === 0 ? '—' : `${Math.round((t.passed / t.assigned) * 100)}%`}
+                </TableCell>
+                <TableCell
+                  className={cn(
+                    'text-right tabular-nums',
+                    t.overdue > 0 && 'font-semibold text-yellow-700 dark:text-yellow-400'
+                  )}>
+                  {t.overdue}
+                </TableCell>
+                <TableCell className='text-right'>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger render={ACTIONS_TRIGGER}>⋯</DropdownMenuTrigger>
+                    <DropdownMenuContent align='end'>
+                      <DropdownMenuItem
+                        onClick={() => setPending({ kind: 'unassign', topicId: t.topicId, topicName: t.name })}>
+                        Un-assign all
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => setPending({ kind: 'rearm', topicId: t.topicId, topicName: t.name })}>
+                        Mark substantive (re-arm)
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        {tPageCount > 1 ? (
+          <div className='flex items-center justify-between text-muted-foreground text-sm'>
+            <span>{tFiltered.length} tests</span>
+            <div className='flex items-center gap-2'>
+              <Button disabled={tClamped === 0} onClick={() => setTPage(p => p - 1)} size='sm' variant='outline'>
+                Prev
+              </Button>
+              <span>
+                {tClamped + 1} / {tPageCount}
+              </span>
+              <Button
+                disabled={tClamped + 1 >= tPageCount}
+                onClick={() => setTPage(p => p + 1)}
+                size='sm'
+                variant='outline'>
+                Next
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </>
+    )
+  }
+  const renderTraineeSummary = (): React.ReactElement => {
+    if (userSum === undefined) return <div className='text-muted-foreground'>Loading…</div>
+    if (userSum === null || userSum.rows.length === 0)
+      return <div className='text-muted-foreground'>No trainees match.</div>
+    return (
+      <>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>User</TableHead>
+              <TableHead>Department</TableHead>
+              <TableHead className='text-right'>Passed / assigned</TableHead>
+              <TableHead className='text-right'>Failed</TableHead>
+              <TableHead className='text-right'>Overdue</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {userSum.rows.map(u => (
+              <TableRow key={u.userId}>
+                <TableCell>
+                  <button
+                    className='text-left font-medium hover:underline'
+                    onClick={() => setDrilldownUser(u.userId)}
+                    type='button'>
+                    {u.userId}
+                  </button>
+                </TableCell>
+                <TableCell className='text-muted-foreground'>{u.department}</TableCell>
+                <TableCell className='text-right tabular-nums'>
+                  {u.passed}/{u.assigned}
+                </TableCell>
+                <TableCell
+                  className={cn(
+                    'text-right tabular-nums',
+                    u.failedAttempts >= 3 && 'font-semibold text-destructive',
+                    u.failedAttempts > 0 && u.failedAttempts < 3 && 'text-yellow-700 dark:text-yellow-400'
+                  )}>
+                  {u.failedAttempts}
+                </TableCell>
+                <TableCell
+                  className={cn(
+                    'text-right tabular-nums',
+                    u.overdue > 0 && 'font-semibold text-yellow-700 dark:text-yellow-400'
+                  )}>
+                  {u.overdue}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <div className='flex items-center justify-between text-muted-foreground text-sm'>
+          <span>
+            {userSum.total} trainee{userSum.total === 1 ? '' : 's'}
+          </span>
+          <div className='flex items-center gap-2'>
+            <Button disabled={sPage === 0} onClick={() => setSPage(p => p - 1)} size='sm' variant='outline'>
+              Prev
+            </Button>
+            <span>
+              {sPage + 1} / {userSum.pageCount}
+            </span>
+            <Button
+              disabled={sPage + 1 >= userSum.pageCount}
+              onClick={() => setSPage(p => p + 1)}
+              size='sm'
+              variant='outline'>
+              Next
+            </Button>
+          </div>
+        </div>
+      </>
+    )
+  }
+  const renderDrilldown = (): React.ReactElement => {
+    if (drilldown === undefined) return <div className='text-muted-foreground text-sm'>Loading…</div>
+    if (drilldown === null) return <div className='text-destructive text-sm'>Not found.</div>
+    if (drilldown.attempts.length === 0) return <div className='text-muted-foreground text-sm'>No attempts yet.</div>
+    return (
+      <div className='space-y-3'>
+        {drilldown.failedTopics.length > 0 ? (
+          <div className='rounded-md bg-destructive/10 px-3 py-2 text-sm'>
+            <span className='font-medium text-destructive'>Repeatedly failed:</span>{' '}
+            <span className='text-foreground'>{drilldown.failedTopics.join(', ')}</span>
+          </div>
+        ) : null}
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Topic</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className='text-right'>Score</TableHead>
+              <TableHead className='text-right'>When</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {drilldown.attempts.map(a => (
+              <TableRow key={`${a.topicName}-${a.startedAt}`}>
+                <TableCell className='font-medium'>{a.topicName}</TableCell>
+                <TableCell>
+                  <span
+                    className={cn(
+                      'rounded-full px-2 py-0.5 text-xs',
+                      a.status === 'passed' && 'bg-green-500/15 text-green-700 dark:text-green-400',
+                      a.status === 'failed' && 'bg-destructive/15 text-destructive',
+                      a.status === 'in-progress' && 'bg-muted text-muted-foreground',
+                      a.status === 'cancelled' && 'bg-muted/50 text-muted-foreground'
+                    )}>
+                    {a.status}
+                  </span>
+                </TableCell>
+                <TableCell className='text-right tabular-nums'>{a.score ?? '—'}</TableCell>
+                <TableCell className='text-right text-muted-foreground text-xs'>
+                  {new Date(a.finishedAt ?? a.startedAt).toISOString().slice(0, 10)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    )
+  }
   return (
     <div className='space-y-6 p-6'>
       <div className='flex flex-wrap items-center gap-4'>
@@ -421,85 +628,7 @@ const TrainingPage = (): React.ReactElement => {
             value={tSearch}
           />
         </div>
-        {summary.tests.length === 0 ? (
-          <div className='text-muted-foreground'>No topics with pool ≥ 5 yet.</div>
-        ) : tFiltered.length === 0 ? (
-          <div className='text-muted-foreground'>No tests match that name.</div>
-        ) : (
-          <>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Test</TableHead>
-                  <TableHead className='text-right'>Questions</TableHead>
-                  <TableHead className='text-right'>Assigned</TableHead>
-                  <TableHead className='text-right'>Pass rate</TableHead>
-                  <TableHead className='text-right'>Overdue</TableHead>
-                  <TableHead />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pagedTests.map(t => (
-                  <TableRow key={t.topicId}>
-                    <TableCell className='font-medium'>
-                      <Link className='hover:underline' href={`/training/tests/${slugify(t.name)}`}>
-                        {t.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell className='text-right tabular-nums'>{t.poolSize}</TableCell>
-                    <TableCell className='text-right tabular-nums'>{t.assigned}</TableCell>
-                    <TableCell className='text-right tabular-nums'>
-                      {t.assigned === 0 ? '—' : `${Math.round((t.passed / t.assigned) * 100)}%`}
-                    </TableCell>
-                    <TableCell
-                      className={cn(
-                        'text-right tabular-nums',
-                        t.overdue > 0 && 'font-semibold text-yellow-700 dark:text-yellow-400'
-                      )}>
-                      {t.overdue}
-                    </TableCell>
-                    <TableCell className='text-right'>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger render={ACTIONS_TRIGGER}>⋯</DropdownMenuTrigger>
-                        <DropdownMenuContent align='end'>
-                          <DropdownMenuItem
-                            onClick={() => setPending({ kind: 'unassign', topicId: t.topicId, topicName: t.name })}>
-                            Un-assign all
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => setPending({ kind: 'rearm', topicId: t.topicId, topicName: t.name })}>
-                            Mark substantive (re-arm)
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            {tPageCount > 1 ? (
-              <div className='flex items-center justify-between text-muted-foreground text-sm'>
-                <span>{tFiltered.length} tests</span>
-                <div className='flex items-center gap-2'>
-                  <Button disabled={tClamped === 0} onClick={() => setTPage(p => p - 1)} size='sm' variant='outline'>
-                    Prev
-                  </Button>
-                  <span>
-                    {tClamped + 1} / {tPageCount}
-                  </span>
-                  <Button
-                    disabled={tClamped + 1 >= tPageCount}
-                    onClick={() => setTPage(p => p + 1)}
-                    size='sm'
-                    variant='outline'>
-                    Next
-                  </Button>
-                </div>
-              </div>
-            ) : null}
-          </>
-        )}
+        {renderTests()}
       </section>
       <section className='space-y-2' ref={summaryRef}>
         <div className='flex flex-wrap items-center gap-3'>
@@ -528,78 +657,7 @@ const TrainingPage = (): React.ReactElement => {
             </button>
           ) : null}
         </div>
-        {userSum === undefined ? (
-          <div className='text-muted-foreground'>Loading…</div>
-        ) : userSum === null || userSum.rows.length === 0 ? (
-          <div className='text-muted-foreground'>No trainees match.</div>
-        ) : (
-          <>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead className='text-right'>Passed / assigned</TableHead>
-                  <TableHead className='text-right'>Failed</TableHead>
-                  <TableHead className='text-right'>Overdue</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {userSum.rows.map(u => (
-                  <TableRow key={u.userId}>
-                    <TableCell>
-                      <button
-                        className='text-left font-medium hover:underline'
-                        onClick={() => setDrilldownUser(u.userId)}
-                        type='button'>
-                        {u.userId}
-                      </button>
-                    </TableCell>
-                    <TableCell className='text-muted-foreground'>{u.department}</TableCell>
-                    <TableCell className='text-right tabular-nums'>
-                      {u.passed}/{u.assigned}
-                    </TableCell>
-                    <TableCell
-                      className={cn(
-                        'text-right tabular-nums',
-                        u.failedAttempts >= 3 && 'font-semibold text-destructive',
-                        u.failedAttempts > 0 && u.failedAttempts < 3 && 'text-yellow-700 dark:text-yellow-400'
-                      )}>
-                      {u.failedAttempts}
-                    </TableCell>
-                    <TableCell
-                      className={cn(
-                        'text-right tabular-nums',
-                        u.overdue > 0 && 'font-semibold text-yellow-700 dark:text-yellow-400'
-                      )}>
-                      {u.overdue}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            <div className='flex items-center justify-between text-muted-foreground text-sm'>
-              <span>
-                {userSum.total} trainee{userSum.total === 1 ? '' : 's'}
-              </span>
-              <div className='flex items-center gap-2'>
-                <Button disabled={sPage === 0} onClick={() => setSPage(p => p - 1)} size='sm' variant='outline'>
-                  Prev
-                </Button>
-                <span>
-                  {sPage + 1} / {userSum.pageCount}
-                </span>
-                <Button
-                  disabled={sPage + 1 >= userSum.pageCount}
-                  onClick={() => setSPage(p => p + 1)}
-                  size='sm'
-                  variant='outline'>
-                  Next
-                </Button>
-              </div>
-            </div>
-          </>
-        )}
+        {renderTraineeSummary()}
       </section>
       <AlertDialog
         onOpenChange={open => {
@@ -783,11 +841,7 @@ const TrainingPage = (): React.ReactElement => {
                     <button
                       className='flex w-full items-center gap-2 py-0.5 text-left'
                       key={u.userId}
-                      onClick={() =>
-                        setCUserIds(prev =>
-                          prev.includes(u.userId) ? prev.filter(x => x !== u.userId) : [...prev, u.userId]
-                        )
-                      }
+                      onClick={() => setCUserIds(toggleInList(cUserIds, u.userId))}
                       type='button'>
                       <Checkbox checked={cUserIds.includes(u.userId)} />
                       <span className='font-mono text-xs'>{u.userId}</span>
@@ -840,55 +894,7 @@ const TrainingPage = (): React.ReactElement => {
               {drilldownUser ? <span className='font-mono text-xs'>{drilldownUser}</span> : null}
             </DialogDescription>
           </DialogHeader>
-          {drilldown === undefined ? (
-            <div className='text-muted-foreground text-sm'>Loading…</div>
-          ) : drilldown === null ? (
-            <div className='text-destructive text-sm'>Not found.</div>
-          ) : drilldown.attempts.length === 0 ? (
-            <div className='text-muted-foreground text-sm'>No attempts yet.</div>
-          ) : (
-            <div className='space-y-3'>
-              {drilldown.failedTopics.length > 0 ? (
-                <div className='rounded-md bg-destructive/10 px-3 py-2 text-sm'>
-                  <span className='font-medium text-destructive'>Repeatedly failed:</span>{' '}
-                  <span className='text-foreground'>{drilldown.failedTopics.join(', ')}</span>
-                </div>
-              ) : null}
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Topic</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className='text-right'>Score</TableHead>
-                    <TableHead className='text-right'>When</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {drilldown.attempts.map(a => (
-                    <TableRow key={`${a.topicName}-${a.startedAt}`}>
-                      <TableCell className='font-medium'>{a.topicName}</TableCell>
-                      <TableCell>
-                        <span
-                          className={cn(
-                            'rounded-full px-2 py-0.5 text-xs',
-                            a.status === 'passed' && 'bg-green-500/15 text-green-700 dark:text-green-400',
-                            a.status === 'failed' && 'bg-destructive/15 text-destructive',
-                            a.status === 'in-progress' && 'bg-muted text-muted-foreground',
-                            a.status === 'cancelled' && 'bg-muted/50 text-muted-foreground'
-                          )}>
-                          {a.status}
-                        </span>
-                      </TableCell>
-                      <TableCell className='text-right tabular-nums'>{a.score ?? '—'}</TableCell>
-                      <TableCell className='text-right text-muted-foreground text-xs'>
-                        {new Date(a.finishedAt ?? a.startedAt).toISOString().slice(0, 10)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+          {renderDrilldown()}
         </DialogContent>
       </Dialog>
     </div>

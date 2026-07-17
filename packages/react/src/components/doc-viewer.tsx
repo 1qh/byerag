@@ -25,6 +25,45 @@ const OFFICE_MIMES = new Set([
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 ])
+interface DocPreviewProps {
+  content: string
+  filename: string
+  isImage: boolean
+  isMarkdown: boolean
+  isOffice: boolean
+  isPdf: boolean
+  url: null | string
+}
+const DocPreview = ({
+  content,
+  filename,
+  isImage,
+  isMarkdown,
+  isOffice,
+  isPdf,
+  url
+}: DocPreviewProps): React.ReactElement => {
+  if (isPdf && url) return <PdfPreview url={url} />
+  if (isImage && url)
+    return (
+      <div className='relative h-[80vh] w-full'>
+        <Image alt={filename} className='rounded-md border object-contain' fill src={url} unoptimized />
+      </div>
+    )
+  if (isMarkdown) return <MessageResponse className='w-full'>{content}</MessageResponse>
+  return (
+    <>
+      {isOffice ? (
+        <p className='text-muted-foreground text-xs italic'>
+          Preview shows text only. Use Download for the original formatting.
+        </p>
+      ) : null}
+      <pre className='max-h-[80vh] overflow-auto whitespace-pre-wrap rounded-md border bg-muted p-4 font-sans text-sm leading-relaxed'>
+        {content}
+      </pre>
+    </>
+  )
+}
 const DocViewer = ({ docId }: DocViewerProps): React.ReactElement => {
   const result = useQuery(api.docs.read, { docId })
   const { close: closeDocSheet } = useDocSheet()
@@ -70,26 +109,15 @@ const DocViewer = ({ docId }: DocViewerProps): React.ReactElement => {
           ) : null}
         </div>
       </header>
-      {isPdf && url ? (
-        <PdfPreview url={url} />
-      ) : isImage && url ? (
-        <div className='relative h-[80vh] w-full'>
-          <Image alt={result.filename} className='rounded-md border object-contain' fill src={url} unoptimized />
-        </div>
-      ) : isMarkdown ? (
-        <MessageResponse className='w-full'>{content}</MessageResponse>
-      ) : (
-        <>
-          {isOffice ? (
-            <p className='text-muted-foreground text-xs italic'>
-              Preview shows text only. Use Download for the original formatting.
-            </p>
-          ) : null}
-          <pre className='max-h-[80vh] overflow-auto whitespace-pre-wrap rounded-md border bg-muted p-4 font-sans text-sm leading-relaxed'>
-            {content}
-          </pre>
-        </>
-      )}
+      <DocPreview
+        content={content}
+        filename={result.filename}
+        isImage={isImage}
+        isMarkdown={isMarkdown}
+        isOffice={isOffice}
+        isPdf={isPdf}
+        url={url}
+      />
     </article>
   )
 }

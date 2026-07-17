@@ -9,6 +9,7 @@ import { didYouMean, parseFlags } from '../src/parser'
 
 const STRIP_RE = /[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2060-\u2069\uFEFF]/gu
 const KEBAB_RE = /^[a-z][a-z0-9-]*$/u
+const byString = (a: string, b: string): number => (a < b ? -1 : Number(a > b))
 const strip = (s: string): string => s.replaceAll(STRIP_RE, '')
 const parseEnvLine = (vars: Record<string, string>, line: string): void => {
   const trimmed = line.trim()
@@ -168,6 +169,17 @@ const printTree = (tree: Record<string, ManifestNode>, indent = 0): void => {
     if (node.children) printTree(node.children, indent + 1)
   }
 }
+const argConstraintStr = (a: ManifestArg): string => {
+  const constraints: string[] = []
+  if (a.pattern) constraints.push(`regex=${a.pattern}`)
+  if (a.minLength !== undefined) constraints.push(`minLen=${a.minLength}`)
+  if (a.maxLength !== undefined) constraints.push(`maxLen=${a.maxLength}`)
+  if (a.min !== undefined) constraints.push(`min=${a.min}`)
+  if (a.max !== undefined) constraints.push(`max=${a.max}`)
+  if (a.integer) constraints.push('integer')
+  if (a.aliases && a.aliases.length > 0) constraints.push(`aliases=${a.aliases.join(',')}`)
+  return constraints.length > 0 ? ` [${constraints.join(' ')}]` : ''
+}
 const printCommandHelp = (path: string[], cmd: ManifestCommand): void => {
   console.log(`${strip(cmd.description)}\n`)
   const required = cmd.args.filter(a => a.required)
@@ -179,16 +191,7 @@ const printCommandHelp = (path: string[], cmd: ManifestCommand): void => {
   for (const a of cmd.args) {
     const enumPart = a.enum ? ` (${a.enum.join('|')})` : ''
     const reqPart = a.required ? '' : ' [optional]'
-    const constraints: string[] = []
-    if (a.pattern) constraints.push(`regex=${a.pattern}`)
-    if (a.minLength !== undefined) constraints.push(`minLen=${a.minLength}`)
-    if (a.maxLength !== undefined) constraints.push(`maxLen=${a.maxLength}`)
-    if (a.min !== undefined) constraints.push(`min=${a.min}`)
-    if (a.max !== undefined) constraints.push(`max=${a.max}`)
-    if (a.integer) constraints.push('integer')
-    if (a.aliases && a.aliases.length > 0) constraints.push(`aliases=${a.aliases.join(',')}`)
-    const constraintStr = constraints.length > 0 ? ` [${constraints.join(' ')}]` : ''
-    console.log(`  ${a.name.padEnd(24)} ${strip(a.description)}${enumPart}${reqPart}${constraintStr}`)
+    console.log(`  ${a.name.padEnd(24)} ${strip(a.description)}${enumPart}${reqPart}${argConstraintStr(a)}`)
   }
   if (cmd.examples.length > 0) {
     console.log('\nExamples:')
@@ -245,11 +248,12 @@ const rejectUnknownFlag = (cmd: ManifestCommand, coerced: Record<string, unknown
     }
 }
 const printProviderIndex = (manifest: Manifest): void => {
-  const providerKeys = Object.keys(manifest.tree).toSorted()
+  const providerKeys = Object.keys(manifest.tree).toSorted(byString)
   console.log('Providers (each installed as a top-level binary):')
   for (const k of providerKeys) {
     const p = manifest.tree[k]
-    console.log(`  ${k}${p?.description ? `  —  ${p.description}` : ''}`)
+    const descPart = p?.description ? `  —  ${p.description}` : ''
+    console.log(`  ${k}${descPart}`)
   }
   console.log("\nRun `<provider> --help` to list that provider's commands.")
   console.log('Run `<provider> <command> --help` for command usage.')

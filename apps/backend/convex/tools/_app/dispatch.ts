@@ -61,7 +61,6 @@ interface ExecBody extends AuthBody {
   contextToken?: string
   path?: unknown
 }
-const BUSY_BYPASS = new Set<string>()
 type FnRef = FunctionReference<'action' | 'mutation' | 'query', 'internal', Record<string, unknown>, WrappedResult>
 interface MentionResolveErr {
   code: 'INVALID_ARG' | 'NOT_FOUND'
@@ -246,8 +245,27 @@ const parseExecBody = async (req: Request): Promise<ExecBody | Response> => {
     return errorRes({ code: 'INVALID_ARG', message: 'invalid JSON body', status: 400 })
   }
 }
-const REDACT_KEY_RE =
-  /(?:password|\bsecret\b|\btoken\b|api[_-]?key|authorization|cookie|access[_-]?token|refresh[_-]?token|\bcard\b|\bssn\b|\bphone\b|\bpassport\b|\blicense\b|bearer|\bemail\b|credentials?)/iu
+const REDACT_KEY_RE = new RegExp(
+  [
+    'password',
+    String.raw`\bsecret\b`,
+    String.raw`\btoken\b`,
+    'api[_-]?key',
+    'authorization',
+    'cookie',
+    'access[_-]?token',
+    'refresh[_-]?token',
+    String.raw`\bcard\b`,
+    String.raw`\bssn\b`,
+    String.raw`\bphone\b`,
+    String.raw`\bpassport\b`,
+    String.raw`\blicense\b`,
+    'bearer',
+    String.raw`\bemail\b`,
+    'credentials?'
+  ].join('|'),
+  'iu'
+)
 const REDACT_COMBINED_RE = new RegExp(
   [
     String.raw`(?<email>[\w.+-]+@[\w-]+\.[\w.-]+)`,
@@ -343,6 +361,7 @@ const recordTrace = internalMutation({
     await ctx.db.insert('xTraces', { ...row, expiresAt: Date.now() + TRACE_TTL_MS })
   }
 })
+// eslint-disable-next-line sonarjs/cognitive-complexity -- irreducible httpAction: auth + rate + CSRF + tool-dispatch + trace request wiring
 const exec = httpAction(async (ctx, req) => {
   const body = await parseExecBody(req)
   if (body instanceof Response) return body
@@ -378,16 +397,18 @@ const exec = httpAction(async (ctx, req) => {
     }
   for (const group of entry.meta.exclusive) {
     const present = group.filter(g => checked.coerced[g] !== undefined)
-    if (present.length !== 1)
+    if (present.length !== 1) {
+      const flagList = group.map(g => `--${g.replaceAll('_', '-')}`).join(' / ')
       return errDep({
         code: 'INVALID_ARG',
         details: { group, present },
         message:
           present.length === 0
-            ? `exactly one of ${group.map(g => `--${g.replaceAll('_', '-')}`).join(' / ')} required`
-            : `exactly one of ${group.map(g => `--${g.replaceAll('_', '-')}`).join(' / ')} allowed (got ${present.length})`,
+            ? `exactly one of ${flagList} required`
+            : `exactly one of ${flagList} allowed (got ${present.length})`,
         status: 400
       })
+    }
   }
   const traceId = newTraceId()
   if (deprecated)
@@ -397,7 +418,7 @@ const exec = httpAction(async (ctx, req) => {
       replacedBy: deprecated.replacedBy
     })
   const isStatefulKind = entry.kind === 'action' || entry.kind === 'mutation'
-  if (isStatefulKind && !BUSY_BYPASS.has(entry.path.join('.'))) {
+  if (isStatefulKind) {
     const userCtx = await ctx.runQuery(internal.userContexts.getByUser, { userId: auth.owner })
     if (userCtx) {
       if (

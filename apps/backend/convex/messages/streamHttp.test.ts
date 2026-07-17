@@ -98,7 +98,7 @@ describe('streamEventHttp', () => {
         .withIndex('by_chat_seq', q => q.eq('chatId', chatId as Id<'chats'>).eq('seq', 0))
         .collect()
     )
-    expect(events.length).toBe(1)
+    expect(events).toHaveLength(1)
   })
   test('duplicate seq returns 409', async () => {
     const t = makeTest()

@@ -1,7 +1,7 @@
-/* eslint-disable @typescript-eslint/no-deprecated */
 'use node'
 import { v } from 'convex/values'
 import { Buffer } from 'node:buffer'
+import type { Id } from './_generated/dataModel'
 import { internal } from './_generated/api'
 import { internalAction } from './_generated/server'
 import { EXTRACT_INLINE_MAX_CHARS } from './constants'
@@ -19,8 +19,8 @@ const PANDOC_MIMES: Record<string, string> = {
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx'
 }
 const IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/tiff', 'image/webp'])
-const CJK_RE = /\p{Script=Han}|\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Hangul}/u
-const VIET_DIACRITIC_RE = /[ăâđêôơưĂÂĐÊÔƠƯ]/u
+const CJK_RE = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u
+const VIET_DIACRITIC_RE = /[ăâđêôơư]/iu
 const detectLang = (sample: string): string => {
   if (CJK_RE.test(sample)) return 'mixed'
   if (VIET_DIACRITIC_RE.test(sample)) return 'vi'
@@ -36,7 +36,7 @@ const extract = internalAction({
   handler: async (ctx, { docId }): Promise<{ extracted: boolean; reason?: string }> => {
     const target = (await ctx.runQuery(internal.docs.getForExtract, { docId })) as ExtractTarget | null
     if (!target) return { extracted: false, reason: 'no-storage' }
-    const blob = await ctx.storage.get(target.storageId)
+    const blob = await ctx.storage.get(target.storageId as Id<'_storage'>)
     if (!blob) return { extracted: false, reason: 'blob-missing' }
     const bytes = new Uint8Array(await blob.arrayBuffer())
     const sandbox = await createSandbox('', {})

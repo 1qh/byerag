@@ -162,7 +162,7 @@ describe('files', () => {
     await ensureSandbox()
     await uploadFile(email, '/home/user/workspace/emptydir/.gitkeep', '')
     const entries = await listFiles(email, '/home/user/workspace/emptydir')
-    expect(entries.length).toBe(1)
+    expect(entries).toHaveLength(1)
   })
   test('upload creates nested parent dirs', async () => {
     await ensureSandbox()

@@ -192,11 +192,8 @@ const addSpendScheduled = internalMutation({
     const day = targetDay ?? dayKey(Date.now())
     const before = await findRowForDay(ctx, owner, day)
     const next = Math.max(0, before.centsToday + cents)
-    await (before.id
-      ? ctx.db.patch(before.id, { centsToday: next })
-      : next > 0
-        ? ctx.db.insert('ownerSpend', { centsToday: next, dayKey: day, owner })
-        : Promise.resolve())
+    if (before.id) await ctx.db.patch(before.id, { centsToday: next })
+    else if (next > 0) await ctx.db.insert('ownerSpend', { centsToday: next, dayKey: day, owner })
     checkInvariants({ centsToday: next, inflight: before.inflight, owner, where: 'addSpendScheduled' })
     log('info', 'spend.adjust', {
       afterCents: next,

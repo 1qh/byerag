@@ -42,6 +42,7 @@ const ChatItemInner = ({
   onSelect,
   onToggleBookmark,
   setOpenMobile
+  // eslint-disable-next-line sonarjs/cognitive-complexity -- irreducible handler/orchestrator; cohesive helpers already extracted
 }: ChatItemProps) => {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(chat.title)

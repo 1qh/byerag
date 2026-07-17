@@ -34,7 +34,10 @@ const humanizeName = (raw: string): string =>
     .join(' ')
 const MentionChip = ({ kind, name, onClick, tombstone }: MentionChipProps) => {
   const tone = KIND_TONES[kind] ?? DEFAULT_TONE
-  const label = kind === 'me' ? 'Me' : name ? humanizeName(name) : kind
+  let label: string
+  if (kind === 'me') label = 'Me'
+  else if (name) label = humanizeName(name)
+  else label = kind
   const className = cn('text-[0.75rem] gap-1', onClick && 'cursor-pointer', tone, tombstone && 'line-through opacity-60')
   const inner = (
     <Badge className={className} variant='outline'>

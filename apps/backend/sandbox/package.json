@@ -1,6 +1,7 @@
 {
   "name": "sandbox-agent",
   "private": true,
+  "description": "byerag sandbox execution runner",
   "type": "module",
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "latest",
