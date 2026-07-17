@@ -92,6 +92,7 @@ const main = async (): Promise<void> => {
   const apps = await discoverApps()
   if (apps.length === 0) {
     console.error(`no apps with server/tools found under ${APPS_DIR}; skipping docgen`)
+    process.exitCode = 1
     return
   }
   for (const app of apps) {
