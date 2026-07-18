@@ -1,16 +1,15 @@
 /** biome-ignore-all lint/suspicious/noShadow: scoped shadows ok */
-/** biome-ignore-all lint/suspicious/noUndeclaredEnvVars: OLLAMA_HOST optional */
 /* eslint-disable @typescript-eslint/no-shadow, no-await-in-loop */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
-/** biome-ignore-all lint/style/noProcessEnv: OLLAMA_HOST env */
 'use node'
 import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
 import { internal } from './_generated/api'
 import { internalAction } from './_generated/server'
+import { optionalEnv } from './env'
 
-const OLLAMA_HOST = process.env.OLLAMA_HOST ?? 'host.docker.internal'
-const OLLAMA_PORT = process.env.OLLAMA_PORT ?? '11434'
+const OLLAMA_HOST = optionalEnv<{ OLLAMA_HOST?: string }>().OLLAMA_HOST ?? 'host.docker.internal'
+const OLLAMA_PORT = optionalEnv<{ OLLAMA_PORT?: string }>().OLLAMA_PORT ?? '11434'
 const EMBED_MODEL = 'nomic-embed-text-v2-moe'
 const CHUNK_SIZE = 1600
 const CHUNK_OVERLAP = 200

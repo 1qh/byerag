@@ -1,7 +1,5 @@
-/** biome-ignore-all lint/suspicious/noUndeclaredEnvVars: CLAMAV_HOST optional */
 /* eslint-disable no-await-in-loop */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential Convex DB ops */
-/** biome-ignore-all lint/style/noProcessEnv: clamav host env */
 /** biome-ignore-all lint/suspicious/useAwait: scanBytes wraps net.Socket callback in Promise */
 'use node'
 import { v } from 'convex/values'
@@ -11,6 +9,7 @@ import type { Id } from './_generated/dataModel'
 import { internal } from './_generated/api'
 import { internalAction } from './_generated/server'
 import { canonicalizeEmail } from './authHelpers'
+import { optionalEnv } from './env'
 
 const ALLOWED_MIMES = new Set<string>([
   'application/epub+zip',
@@ -25,7 +24,7 @@ const ALLOWED_MIMES = new Set<string>([
   'text/markdown',
   'text/plain'
 ])
-const CLAMAV_HOST = process.env.CLAMAV_HOST ?? 'clamav'
+const CLAMAV_HOST = optionalEnv<{ CLAMAV_HOST?: string }>().CLAMAV_HOST ?? 'clamav'
 const CLAMAV_PORT = 3310
 const CLAMAV_DEADLINE_MS = 30_000
 const MAX_FILE_BYTES = 50 * 1024 * 1024

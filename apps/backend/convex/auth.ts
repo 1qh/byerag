@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/suspicious/noUndeclaredEnvVars: SITE_URL + BOOTSTRAP_ADMIN_EMAIL via Convex env */
-/** biome-ignore-all lint/style/noProcessEnv: Convex env read at runtime */
 /* eslint-disable @typescript-eslint/require-await */
 import Google from '@auth/core/providers/google'
 import { Anonymous } from '@convex-dev/auth/providers/Anonymous'
@@ -7,9 +5,12 @@ import { convexAuth } from '@convex-dev/auth/server'
 import type { DataModel } from './_generated/dataModel'
 import type { DatabaseWriter } from './_generated/server'
 import { parseAllowed, parseSiteUrls, validateProfileEmail, validateRedirectTo } from './authHelpers'
+import { optionalEnv } from './env'
 
-const { allowedOrigins: ALLOWED_ORIGINS, primary: PRIMARY_SITE_URL } = parseSiteUrls(process.env.SITE_URL)
-const BOOTSTRAP_ADMIN_EMAILS = parseAllowed(process.env.BOOTSTRAP_ADMIN_EMAIL)
+const { allowedOrigins: ALLOWED_ORIGINS, primary: PRIMARY_SITE_URL } = parseSiteUrls(
+  optionalEnv<{ SITE_URL?: string }>().SITE_URL
+)
+const BOOTSTRAP_ADMIN_EMAILS = parseAllowed(optionalEnv<{ BOOTSTRAP_ADMIN_EMAIL?: string }>().BOOTSTRAP_ADMIN_EMAIL)
 if (BOOTSTRAP_ADMIN_EMAILS.size === 0)
   // eslint-disable-next-line no-console
   console.warn('[auth] WARN: BOOTSTRAP_ADMIN_EMAIL is empty or unset — no admin will be seeded on first sign-in')
@@ -71,7 +72,7 @@ const { auth, isAuthenticated, signIn, signOut, store } = convexAuth({
     }
   },
   providers:
-    process.env.ALLOW_DEV_TOKENS === '1'
+    optionalEnv<{ ALLOW_DEV_TOKENS?: string }>().ALLOW_DEV_TOKENS === '1'
       ? [
           Google,
           Anonymous<DataModel>({

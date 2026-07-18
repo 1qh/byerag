@@ -1,18 +1,18 @@
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential by design */
 /** biome-ignore-all lint/performance/noAwaitInLoops: sequential dup-row consolidation */
-/** biome-ignore-all lint/style/noProcessEnv: Convex env is process.env at runtime */
 /* eslint-disable no-await-in-loop */
 import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
 import { internal } from './_generated/api'
 import { internalMutation, internalQuery } from './_generated/server'
+import { optionalEnv } from './env'
 import { log } from './utils'
 
 const DAILY_USD_CAP = 25
 const DAILY_CENTS_CAP = DAILY_USD_CAP * 100
 const isAdmin = (owner: string): boolean => {
-  const raw = process.env.ALLOWED_EMAILS ?? ''
+  const raw = optionalEnv<{ ALLOWED_EMAILS?: string }>().ALLOWED_EMAILS ?? ''
   const lower = owner.toLowerCase()
   for (const e of raw.split(',')) if (e.trim().toLowerCase() === lower) return true
   return false

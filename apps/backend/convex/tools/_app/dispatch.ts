@@ -161,9 +161,7 @@ const sameOrigin = (originRaw: string, siteUrl: string): boolean => {
   }
 }
 const checkIdentityCsrf = (req: Request): null | Response => {
-  // biome-ignore lint/style/noProcessEnv: SITE_URL guard for CSRF same-origin check
-  // biome-ignore lint/suspicious/noUndeclaredEnvVars: SITE_URL absence = test context (pm4ai check enforces presence at deploy)
-  const siteUrl = process.env.SITE_URL ?? ''
+  const siteUrl = optionalEnv<{ SITE_URL?: string }>().SITE_URL ?? ''
   if (!siteUrl) return null
   const xrw = req.headers.get('x-requested-by')
   const originRaw = req.headers.get('origin') ?? req.headers.get('referer') ?? ''

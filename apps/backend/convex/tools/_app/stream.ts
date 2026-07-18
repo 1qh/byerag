@@ -1,6 +1,4 @@
-/** biome-ignore-all lint/suspicious/noUndeclaredEnvVars: dev gate env */
 /** biome-ignore-all lint/performance/noAwaitInLoops: polling + sequential delete loops are intentional */
-/** biome-ignore-all lint/style/noProcessEnv: ALLOW_DEV_TOKENS env gate */
 /* eslint-disable no-await-in-loop, complexity, max-depth */
 import type { FunctionReference } from 'convex/server'
 import {
@@ -19,6 +17,7 @@ import type { Doc } from '../../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../../_generated/server'
 import { internal } from '../../_generated/api'
 import { httpAction, internalMutation, internalQuery } from '../../_generated/server'
+import { optionalEnv } from '../../env'
 import { hashSecret } from '../../secretHash'
 import { REGISTRY } from '../generated/registry'
 import { MENTION_RE } from './mentionResolver'
@@ -115,7 +114,7 @@ const resolveStreamAuth = async (
   ctx: Parameters<Parameters<typeof httpAction>[0]>[0],
   bearer: string
 ): Promise<null | ResolvedStreamAuth> => {
-  const allowDev = process.env.ALLOW_DEV_TOKENS === '1'
+  const allowDev = optionalEnv<{ ALLOW_DEV_TOKENS?: string }>().ALLOW_DEV_TOKENS === '1'
   if (allowDev && bearer.startsWith('dev-')) {
     const owner = bearer.slice('dev-'.length).trim()
     if (!owner) return null
